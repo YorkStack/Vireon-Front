@@ -239,9 +239,52 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
   }),
 };
 
-/** Vehicle classes that get per-faction variants (order = codex display). */
+/** Vehicle classes that get per-faction variants (order = codex display + balance audit). */
 export const VEHICLE_CLASS_IDS = [
   'harvester', 'builder', 'scout', 'lightAttack',
   'mediumTank', 'heavyTank', 'antiAir', 'support',
 ] as const;
 export type VehicleClassId = typeof VEHICLE_CLASS_IDS[number];
+
+// ---------------- custom classes (studio-authored: ships, aircraft, …) ----------------
+// Registered by `npm run import:vehicle` writing src/data/customClasses.json from
+// an export bundle's classDef. Statically integrated: they get a ground-vehicle
+// balance template (no new movement physics), render via their imported spec, and
+// appear in the Unit Codex. Faction perks still apply via unitFactory.
+import customClassDefs from './customClasses.json';
+
+export interface CustomClassDef {
+  id: string;
+  displayName: string;
+  role: string;
+  tilesWide: number;
+  subject?: string;
+  techTier?: number;
+  movementType?: MovementType;
+}
+
+/** Build a full balance template for a custom class from its compact definition. */
+export function customClassToTemplate(def: CustomClassDef): UnitClassTemplate {
+  const tiles = Math.max(1, def.tilesWide || 3);
+  const hp = Math.round(220 + tiles * 140);
+  return T({
+    id: def.id, displayName: def.displayName, unitClass: 'vehicle', role: def.role || 'attackVehicle',
+    techTier: def.techTier ?? 2, builtAt: 'foundry', buildTime: Math.round(10 + tiles * 3),
+    cost: Math.round((400 + tiles * 200) / 5) * 5, supplyCost: 0, prerequisites: [],
+    description: def.subject || `${def.displayName} (custom class).`,
+    defaultMovementType: def.movementType ?? 'tracked', speed: 5.2,
+    collisionRadius: +(tiles * 0.3).toFixed(2), ...GROUND_MOBILITY,
+    maxHitPoints: hp, armorClass: 'heavy', armorValue: 0, resistances: res('heavy'), ...NO_SHIELD,
+    primaryWeapon: null, secondaryWeapon: null,
+    visionRange: 10, autoAcquireRange: 10, pursuitRange: 16,
+    targetPriority: ['vehicles', 'structures'], ...COMBAT_AI,
+  });
+}
+
+export const CUSTOM_CLASS_DEFS = customClassDefs as unknown as CustomClassDef[];
+export const CUSTOM_CLASS_IDS: string[] = CUSTOM_CLASS_DEFS.map((d) => d.id);
+
+// Merge custom templates into the single balance registry.
+for (const def of CUSTOM_CLASS_DEFS) {
+  UNIT_CLASS_TEMPLATES[def.id] = customClassToTemplate(def);
+}

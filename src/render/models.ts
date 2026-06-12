@@ -586,16 +586,21 @@ function getVariantTemplate(factoryId: string): Template | null {
   if (cached) return cached;
   const [factionId, classId] = factoryId.split(':');
   const variant = getVariant(factionId, classId);
-  if (!variant) return null;
   // Prefer a studio-designed imported spec; fall back to procedural geometry.
   const spec = importedSpecFor(factionId, classId);
+  if (!variant && !spec) return null;   // not a known vehicle and nothing imported
   let build;
   if (spec) {
     try { build = buildPartsFromSpec(spec); }
-    catch (err) { console.warn(`[vehicle-spec] ${factoryId} invalid, using procedural:`, err); build = buildVehicleParts(variant); }
+    catch (err) {
+      console.warn(`[vehicle-spec] ${factoryId} invalid, using procedural:`, err);
+      build = variant ? buildVehicleParts(variant) : null;
+    }
   } else {
-    build = buildVehicleParts(variant);
+    build = variant ? buildVehicleParts(variant) : null;
   }
+  // Custom class whose spec failed to build and has no procedural variant: skip.
+  if (!build) return null;
   if (build.turretPivot) TURRET_PIVOTS[key] = build.turretPivot;
   return makeTemplate(key, build.parts);
 }

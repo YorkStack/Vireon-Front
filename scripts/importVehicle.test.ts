@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { planImport } from './importVehicle';
+import { planImport, applyImport } from './importVehicle';
 
 let bundle: string;
 
@@ -40,5 +40,36 @@ describe('planImport', () => {
   });
   it('rejects a missing geometry.json', () => {
     expect(planImport(tmpdir()).ok).toBe(false);
+  });
+
+  it('carries a custom class definition from meta.classDef', () => {
+    const b = mkdtempSync(join(tmpdir(), 'veh-custom-'));
+    const classDef = { id: 'frigate', displayName: 'Frigate', role: 'ship', tilesWide: 4 };
+    writeFileSync(join(b, 'geometry.json'), JSON.stringify({ ...spec, vehicleClass: 'frigate' }));
+    writeFileSync(join(b, 'meta.json'), JSON.stringify({ classDef }));
+    const p = planImport(b);
+    expect(p.ok).toBe(true);
+    expect(p.classDef).toEqual(classDef);
+    rmSync(b, { recursive: true, force: true });
+  });
+
+  it('does not attach a classDef for a built-in class', () => {
+    expect(planImport(bundle).classDef).toBeUndefined();
+  });
+
+  it('registers a custom class into customClasses.json on apply (idempotent)', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'veh-repo-'));
+    const b = mkdtempSync(join(tmpdir(), 'veh-apply-'));
+    const classDef = { id: 'frigate', displayName: 'Frigate', role: 'ship', tilesWide: 4 };
+    writeFileSync(join(b, 'geometry.json'), JSON.stringify({ ...spec, vehicleClass: 'frigate' }));
+    writeFileSync(join(b, 'meta.json'), JSON.stringify({ classDef }));
+    const p = planImport(b);
+    applyImport(p, repo);
+    applyImport(p, repo);  // second apply must not duplicate
+    const list = JSON.parse(readFileSync(join(repo, 'src/data/customClasses.json'), 'utf8'));
+    expect(list).toHaveLength(1);
+    expect(list[0]).toEqual(classDef);
+    expect(existsSync(join(repo, 'src/vehicles/specs/blue/frigate.json'))).toBe(true);
+    rmSync(repo, { recursive: true, force: true }); rmSync(b, { recursive: true, force: true });
   });
 });

@@ -7,7 +7,10 @@
 import * as THREE from 'three';
 import { FACTION_DEFS } from '../core/defs';
 import { resolveUnit } from '../systems/unitFactory';
-import { UNIT_CLASS_TEMPLATES, VEHICLE_CLASS_IDS } from '../data/unitClasses';
+import { UNIT_CLASS_TEMPLATES, VEHICLE_CLASS_IDS, CUSTOM_CLASS_IDS } from '../data/unitClasses';
+
+/** Where the external design studio runs (override with ?studio=URL). */
+const STUDIO_URL = new URLSearchParams(location.search).get('studio') || 'http://localhost:5188';
 import { WEAPONS } from '../data/weapons';
 import { ART_METADATA } from '../data/artMetadata';
 import { makeEntityGroup, pulseLights } from '../render/models';
@@ -40,7 +43,10 @@ export function showUnitCodex(): Promise<void> {
           </div>
           <div class="codex-stats tac-panel" id="cx-stats"></div>
         </div>
-        <button class="primary" id="cx-close" style="margin-top:12px;padding:10px 44px;letter-spacing:2px;">⬅ BACK</button>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="primary" id="cx-close" style="padding:10px 44px;letter-spacing:2px;">⬅ BACK</button>
+          <button class="primary" id="cx-studio" style="padding:10px 28px;letter-spacing:2px;" title="Open the external Vehicle Design Studio (must be running: cd ../vireon-design-studio && npm run dev)">🎨 DESIGN STUDIO ↗</button>
+        </div>
       </div>
     `);
 
@@ -121,7 +127,10 @@ export function showUnitCodex(): Promise<void> {
       const t = UNIT_CLASS_TEMPLATES[classId];
       const d = resolveUnit(classId, f);
       const spec = t.primaryWeapon ? WEAPONS[t.primaryWeapon] : null;
-      const meta = ART_METADATA[`${factionId}_${classId}`];
+      const meta = ART_METADATA[`${factionId}_${classId}`] ?? {
+        designBrief: { movementType: t.defaultMovementType, silhouette: t.description, palette: '—' },
+        textureSetId: '—', status: 'needsRevision',
+      };
       const r = t.resistances as Record<string, number | undefined>;
       const row = (k: string, v: string) => `<div class="cx-row"><span>${k}</span><b>${v}</b></div>`;
       const head = (s: string) => `<div class="cx-head">${s}</div>`;
@@ -179,7 +188,7 @@ export function showUnitCodex(): Promise<void> {
       tabRow.appendChild(b);
     }
     const listEl = screen.querySelector('#cx-classes')!;
-    for (const c of VEHICLE_CLASS_IDS) {
+    for (const c of [...VEHICLE_CLASS_IDS, ...CUSTOM_CLASS_IDS]) {
       const t = UNIT_CLASS_TEMPLATES[c];
       const b = el(`<button class="codex-class"><b>${t.displayName}</b><span>${t.role}</span></button>`);
       if (c === classId) b.classList.add('active');
@@ -197,6 +206,9 @@ export function showUnitCodex(): Promise<void> {
       renderer.dispose();
       screen.remove();
       resolve();
+    });
+    screen.querySelector('#cx-studio')!.addEventListener('click', () => {
+      window.open(STUDIO_URL, '_blank', 'noopener');
     });
 
     rootEl().appendChild(screen);

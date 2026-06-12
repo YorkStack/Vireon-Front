@@ -111,6 +111,14 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
       previewCamera: variant.previewCamera,
     };
     if (variant.displayName) def.name = variant.displayName;
+  } else if (template.unitClass === 'vehicle') {
+    // Custom (studio-authored) class with no per-faction variant file: still give
+    // it a factoryId so the renderer picks up its imported spec geometry.
+    def.visual = {
+      factoryId: `${faction.id}:${classId}`,
+      movement: template.defaultMovementType,
+      silhouetteScale: 1,
+    };
   }
   def.factionId = faction.id;
 

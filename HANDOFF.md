@@ -79,6 +79,7 @@ public/assets/
 10. **Asset-Ordner strukturiert** (`public/assets/{terrain,buildings,vehicles,people,ui}/…`); 3 Bodentexturen pro Höhe + Blend-Shader (weiche Übergänge statt Schachbrett); Vegetation-Sprites (Bäume/Büsche) + 4 Fels-Texturen auf Boulders; horizontaler **Domain-Warp** (`warpXZ`) gegen den quadratischen Map-Look.
 11. **Datengetriebene Fahrzeug-Architektur** (siehe eigene Sektion): Klassen-Templates + 32 Fraktions-Varianten-Dateien + Resolver + Balance-Validator + Unit Codex + KI-Rollen; prozedurale Geometrie v2 (gerundet, monoWheel v3, walker v2, halfTrack, +60 % Greeble); **alle 32 Fahrzeug-Texturen** im hellen Militär-Stil (Nieten/Luken/Lufteinlässe, vorher zu dunkel).
 12. **Vehicle Design Studio** (separates Repo) + **Spec-Import-Pipeline** (siehe Sektion unten): `vehicle-spec`-Schema, Interpreter, Few-Shot-Seeds, Catalog-Export, Import-Skript (Phase A, TDD); Studio-App mit Skizze→Geometrie→Textur→Export, fraktions-Prompts, Versions-Bibliothek, aufgeräumtem Log (Phase B). Vertikaler Schnitt end-to-end bewiesen.
+13. **Studio-Erweiterungen** (Phase C, siehe Sektion unten): editierbare Original-Prompts pro Fraktion×Fahrzeug für Skizze/Geometrie/Textur (kompletter User-Prompt-Pack als Default, pro Fahrzeug + pro Version gespeichert); klarerer Step-Status (↻ vorne, ✓ hinten); Studio-Link im Spiel-Codex; **neue Fahrzeugklassen** anlegbar (Schiffe/Flugzeuge/Raketen/Raumschiffe) — Studio-Authoring + statische Spiel-Integration (Custom-Balance-Template + Codex + Spec-Rendering), 22 Tests grün.
 
 ---
 
@@ -94,7 +95,8 @@ Reihenfolge war **A→B→D→C** vereinbart; Terrain (Teil von A/C) gerade gema
 
 ### Studio / Fahrzeug-Pipeline (neu, teils offen)
 6. **Batch über alle 32** im Studio — Liste/Stapel-Generierung mit Approve-Gates pro Fahrzeug + `import:vehicle --all`. **Geplant, noch nicht gebaut** (vertikaler Schnitt für 1 Fahrzeug ist fertig). User wollte erst einzeln durchspielen.
-7. **Geometrie-Qualität iterieren** — Gemini-Specs sind grob; Hebel: stärkere Few-Shot-Auswahl, Notizfeld-Feedback, ggf. Pro-Modell für Geometrie, evtl. halb-manuelles Nachjustieren (Slider) als späterer Schritt.
+7. **Geometrie-Qualität iterieren** — Gemini-Specs sind grob; Hebel: stärkere Few-Shot-Auswahl, **editierbare Prompts pro Fahrzeug (ERLEDIGT, Phase C)**, ggf. Pro-Modell für Geometrie, evtl. halb-manuelles Nachjustieren (Slider) als späterer Schritt.
+   - **Neue Klassen voll ins Gameplay** (Flug-/Wasser-Bewegung, Luftkampf, Höhen-Pathing) ist bewusst NICHT gemacht — aktuell „statisch" (Bodenfahrzeug-Balance). Großes eigenes Feature, wenn gewünscht.
 8. **Studio-Komfort offen:** Versionen vergleichen/löschen, Textur live auf das 3D-Modell mappen (aktuell nur Slot-Farben + Textur-Thumbnail), Emissive-Maps, Batch-Export. Catalog/Seeds müssen nach Spiel-Änderungen manuell ins Studio kopiert werden (könnte automatisiert werden).
 9. **Große Spiel-Lücken** (aus früherer Bestandsaufnahme, weiter offen): **Audio fehlt komplett**, **Fog-of-War/Aufklärung fehlt**, **Steuerungskomfort** (Kontrollgruppen 1–9, Rally-Points-UI, Bau-Queue-UI, Hotkeys), Speichern/Laden, Settings, KI-Schwierigkeitsgrade.
 
@@ -144,6 +146,17 @@ Externe App, in der man pro Fraktion×Fahrzeug **Geometrie und Texturen mit Gemi
 **Bündel-Format:** `exports/<f>_<klasse>/{geometry.json, baseColor.png, sketch.png, meta.json}`.
 
 **Studio nutzen:** `cd ../vireon-design-studio && npm run dev` (Port 5188). Inputs aus dem Spiel aktuell halten: `npm run export:catalog` + `npm run seed:specs`, dann `catalog.json`/`seeds` nach `../vireon-design-studio/data/` kopieren.
+
+### Phase C — Studio-Erweiterungen (neueste Sitzung)
+- **Editierbare Prompts pro Fraktion×Fahrzeug (Skizze · Geometrie · Textur).** Es sind **drei getrennte** Prompts. Der vollständige **User-Prompt-Pack** (4 Fraktionen × 8 Klassen × 3 = 96 Texte) liegt in `src/prompts.ts#PROMPT_PACK` und ist die **einzige Default-Quelle** (alter generischer `VEHICLE_BASE` entfernt). Im UI aufklappbarer Bereich „PROMPTS" mit drei Textfeldern, vorbefüllt mit dem **Original-Prompt** (kein Anhängen — der Originaltext selbst ist editierbar).
+  - **Skizze** = Pack-Text wortwörtlich (enthält schon den Shared-Style-Suffix).
+  - **Geometrie** = Pack-Prose wortwörtlich + mechanisches Gerüst per Token `{{SCHEMA}} {{SIZE}} {{SEEDS}} {{NOTES}}` (Server `gemini.mjs` expandiert sie → gültiges, größenrichtiges JSON; Skizzenbild wird separat angehängt).
+  - **Textur** = Pack-Prose wortwörtlich + Technik-Zusatz (`TEXTURE_TECH`: seamless/tileable, flat top-down, hell genug).
+  - **Persistenz:** Overrides pro Fahrzeug in `library/<id>/prompts.json` (Endpunkte `GET/POST /api/prompts`), zusätzlich in **jede Version** geschnappschottet (`prompts.json` im vNNN-Ordner; auch von `/api/version` zurückgeliefert). „Save prompts" / „Reset to defaults".
+- **Klarerer Schritt-Status:** Step-Buttons mit rundem Badge vorne (Nummer → **↻ Redo** sobald erledigt) + **grünem ✓** hinten + grünem Rahmen. CSS in `style.css` (`.steps button.step`, `.done`).
+- **Studio-Link im Spiel-Codex:** `src/ui/unitCodex.ts` Button „🎨 DESIGN STUDIO ↗" öffnet `localhost:5188` (per `?studio=URL` überschreibbar).
+- **Neue Fahrzeugklassen (Schiffe/Flugzeuge/Raketen/Raumschiffe) — Studio-Authoring + statisch im Spiel.** „+ New class…" am Listenende → Dialog (id, Name, Rolle, Tiles, Subject) → `POST /api/classes` → `library/_classes.json`. Klasse erscheint für **alle Fraktionen** (`catalog.ts#makeCustomEntry` synthetisiert die CatalogEntry), wird wie jede andere entworfen/exportiert. **Keine neue Flug-/Wasser-Physik** (bewusst — User-Entscheidung „statisch").
+  - **Spiel-Seite:** Export trägt `classDef` in `meta.json`; `import:vehicle` registriert sie in **`src/data/customClasses.json`** (idempotent). `unitClasses.ts` merged sie via `customClassToTemplate()` als Bodenfahrzeug-Balance-Template + `CUSTOM_CLASS_IDS`; `unitFactory.resolveUnit()` setzt für varianten-lose Vehicle-Klassen `visual.factoryId` → rendert über importierten Spec; `models.ts#getVariantTemplate` baut auch ohne Varianten-Datei aus dem Spec; Codex robust gegen fehlende Art-Metadaten. Tests: `importVehicle.test.ts` (classDef getragen / nicht für Built-ins / idempotente Registrierung) — `npm test` = **22 grün**.
 
 ## Wichtige Dateien
 - `src/render/terrain.ts` — Terrain-Mesh (Multi-Material, Höhen-Rippeln), Felsen, Props, Kristalle. Bodentexturen `GROUND_TEX`.
