@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:specs": "node tools/convert_vehicle_to_spec.mjs",
-    "export:catalog": "node scripts/export-catalog.mjs"
+    "export:catalog": "node scripts/export-catalog.mjs",
+    "import:vehicle": "node scripts/import-vehicle.mjs"
   },
   "keywords": [],
   "author": "",

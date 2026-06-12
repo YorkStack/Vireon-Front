@@ -176,6 +176,14 @@ const STATUS: Partial<Record<string, AssetStatus>> = {
 };
 for (const [id, s] of Object.entries(STATUS)) if (ART_METADATA[id] && s) ART_METADATA[id].status = s;
 
+// Imported-vehicle status overlay, applied LAST so it survives the blanket
+// 'generated' above. The import script (npm run import:vehicle) writes here;
+// set an id to 'needsRevision' to revert that vehicle to procedural geometry +
+// fallback texture.
+import importedStatus from './importedStatus.json';
+for (const [id, s] of Object.entries(importedStatus as Record<string, AssetStatus>))
+  if (ART_METADATA[id] && s) ART_METADATA[id].status = s;
+
 /** True when the generated texture set may be loaded by the renderer. */
 export function textureSetUsable(artMetadataId: string | undefined): boolean {
   if (!artMetadataId) return false;
