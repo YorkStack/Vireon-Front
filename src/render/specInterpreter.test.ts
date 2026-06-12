@@ -2,6 +2,7 @@
 // (models.ts loads textures via THREE.TextureLoader at import time, which needs
 //  a DOM. happy-dom satisfies it; the async image load itself is irrelevant here.)
 import { describe, it, expect } from 'vitest';
+import type * as THREE from 'three';
 import { buildPartsFromSpec } from './specInterpreter';
 import type { VehicleSpec } from '../vehicles/spec/vehicleSpec';
 
@@ -28,5 +29,36 @@ describe('buildPartsFromSpec', () => {
   });
   it('throws on an invalid spec', () => {
     expect(() => buildPartsFromSpec({ ...spec, parts: [] } as VehicleSpec)).toThrow();
+  });
+
+  it('round-trips a real procedural variant: valid, same parts/slots, bbox within tolerance', async () => {
+    const THREE = await import('three');
+    const { getVariant } = await import('../vehicles');
+    const { buildVehicleParts, variantToSpec } = await import('./vehicleModels');
+    const { validateSpec } = await import('../vehicles/spec/validate');
+
+    const bbox = (parts: { geo: THREE.BufferGeometry }[]) => {
+      const b = new THREE.Box3();
+      for (const p of parts) { p.geo.computeBoundingBox(); b.union(p.geo.boundingBox!); }
+      return b;
+    };
+
+    for (const [faction, classId] of [['blue', 'mediumTank'], ['yellow', 'heavyTank'], ['green', 'harvester']] as const) {
+      const v = getVariant(faction, classId)!;
+      const orig = buildVehicleParts(v);
+      const ob = bbox(orig.parts);
+      const size = ob.getSize(new THREE.Vector3());
+      const spec2 = variantToSpec(v, { w: size.x, h: size.y, l: size.z });
+      expect(validateSpec(spec2).ok, `${faction}:${classId} spec invalid`).toBe(true);
+      const rebuilt = buildPartsFromSpec(spec2);
+      expect(rebuilt.parts).toHaveLength(orig.parts.length);
+      expect(rebuilt.parts.map((p) => p.slot)).toEqual(orig.parts.map((p) => p.slot));
+      const rb = bbox(rebuilt.parts);
+      // Tolerance covers the spec's 3-decimal rounding (~2cm on a ~2.5m hull).
+      for (const k of ['x', 'y', 'z'] as const) {
+        expect(Math.abs(rb.min[k] - ob.min[k]), `${faction}:${classId} min.${k}`).toBeLessThan(0.02);
+        expect(Math.abs(rb.max[k] - ob.max[k]), `${faction}:${classId} max.${k}`).toBeLessThan(0.02);
+      }
+    }
   });
 });

@@ -11,7 +11,8 @@
     "export:artmeta": "node scripts/export-artmeta.mjs",
     "generate:texture": "node scripts/export-artmeta.mjs && venv/bin/python tools/vehicle_texture.py",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:specs": "node tools/convert_vehicle_to_spec.mjs"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "three": "^0.184.0"
   },
   "devDependencies": {
+    "@happy-dom/global-registrator": "^20.10.2",
     "@types/three": "^0.184.1",
     "happy-dom": "^20.10.2",
     "typescript": "^6.0.3",

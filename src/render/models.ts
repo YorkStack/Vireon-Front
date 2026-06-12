@@ -18,7 +18,18 @@ import { buildVehicleParts } from './vehicleModels';
 // they get a plain shaded material instead.
 export type Slot = 'body' | 'dark' | 'accent' | 'light' | 'smooth' | 'roof';
 export type AnimName = 'turret' | 'spin' | 'load';
-export interface Part { geo: THREE.BufferGeometry; slot: Slot; anim?: AnimName }
+/** Pre-transform geometry spec, captured so a Part can be exported to vehicle-spec. */
+export interface PartSpecMeta { prim: string; size: number[]; round?: number; pos: number[]; rot: number[]; scale: number[] }
+export interface Part { geo: THREE.BufferGeometry; slot: Slot; anim?: AnimName; spec?: PartSpecMeta }
+
+// Tags each primitive geometry with the prim + args it was built from, so P()
+// can record a Part's full vehicle-spec description before the transform is
+// baked into the geometry. Keyed weakly so it never holds geometries alive.
+export const GEO_SPEC = new WeakMap<THREE.BufferGeometry, { prim: string; size: number[]; round?: number }>();
+export function tagGeo(g: THREE.BufferGeometry, prim: string, size: number[], round?: number): THREE.BufferGeometry {
+  GEO_SPEC.set(g, { prim, size, round });
+  return g;
+}
 
 const bodyMat = new THREE.MeshStandardMaterial({ color: '#7d8398', roughness: 0.55, metalness: 0.4 });
 const darkMat = new THREE.MeshStandardMaterial({ color: '#262834', roughness: 0.8, metalness: 0.25 });
@@ -168,10 +179,16 @@ export function P(
     .makeRotationFromEuler(new THREE.Euler(rx, ry, rz))
     .scale(new THREE.Vector3(sx, sy, sz))
     .setPosition(x, y, z);
+  // Capture the pre-transform spec (prim + args + this call's transform) so the
+  // part can be exported to vehicle-spec. Read before the matrix is baked in.
+  const tag = GEO_SPEC.get(geo);
+  const spec: PartSpecMeta | undefined = tag
+    ? { ...tag, pos: [x, y, z], rot: [rx, ry, rz], scale: [sx, sy, sz] }
+    : undefined;
   // toNonIndexed: primitive types mix indexed and non-indexed geometry,
   // and mergeGeometries requires them to be uniform.
   const g = geo.index ? geo.toNonIndexed() : geo.clone();
-  return { geo: g.applyMatrix4(m), slot };
+  return { geo: g.applyMatrix4(m), slot, spec };
 }
 
 /** Tag a part with an animation channel. */
@@ -180,12 +197,12 @@ export function A(anim: AnimName, part: Part): Part {
   return part;
 }
 
-export const box = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
-export const cyl = (rt: number, rb: number, h: number, seg = 10) => new THREE.CylinderGeometry(rt, rb, h, seg);
-export const sph = (r: number, seg = 12) => new THREE.SphereGeometry(r, seg, Math.max(6, seg - 2));
-export const cone = (r: number, h: number, seg = 8) => new THREE.ConeGeometry(r, h, seg);
-export const octa = (r: number) => new THREE.OctahedronGeometry(r);
-export const torus = (r: number, t: number) => new THREE.TorusGeometry(r, t, 8, 20);
+export const box = (w: number, h: number, d: number) => tagGeo(new THREE.BoxGeometry(w, h, d), 'box', [w, h, d]);
+export const cyl = (rt: number, rb: number, h: number, seg = 10) => tagGeo(new THREE.CylinderGeometry(rt, rb, h, seg), 'cyl', [rt, rb, h]);
+export const sph = (r: number, seg = 12) => tagGeo(new THREE.SphereGeometry(r, seg, Math.max(6, seg - 2)), 'sph', [r]);
+export const cone = (r: number, h: number, seg = 8) => tagGeo(new THREE.ConeGeometry(r, h, seg), 'cone', [r, h]);
+export const octa = (r: number) => new THREE.OctahedronGeometry(r); // buildings only; not a vehicle-spec prim
+export const torus = (r: number, t: number) => tagGeo(new THREE.TorusGeometry(r, t, 8, 20), 'torus', [r, t]);
 
 interface SlotGeos { body: THREE.BufferGeometry | null; dark: THREE.BufferGeometry | null; accent: THREE.BufferGeometry | null; light: THREE.BufferGeometry | null; smooth: THREE.BufferGeometry | null; roof: THREE.BufferGeometry | null }
 export interface Template {

@@ -11,13 +11,14 @@
 // (turret/spin/load) so world.ts animation code works unchanged.
 
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { A, P, box, cone, cyl, sph, torus, type Part } from './models';
+import { A, P, box, cone, cyl, sph, torus, tagGeo, type Part } from './models';
 import type { ChassisSpec, VehicleVariant } from '../vehicles/types';
+import type { SpecPart, SpecPrim, VehicleSpec } from '../vehicles/spec/vehicleSpec';
 
 /** Rounded (chamfered) box — hulls, turrets and cabs use this so vehicles
  * read as machined armor instead of raw voxels. Radius scales with size. */
 export const rbox = (w: number, h: number, d: number, r?: number) =>
-  new RoundedBoxGeometry(w, h, d, 2, r ?? Math.min(0.09, Math.min(w, h, d) * 0.22));
+  tagGeo(new RoundedBoxGeometry(w, h, d, 2, r ?? Math.min(0.09, Math.min(w, h, d) * 0.22)), 'rbox', [w, h, d], r ?? Math.min(0.09, Math.min(w, h, d) * 0.22));
 
 export interface VehicleBuild {
   parts: Part[];
@@ -353,4 +354,48 @@ export function buildVehicleParts(variant: VehicleVariant): VehicleBuild {
     case 'support': kitSupport(p, top, variant.chassis); break;
   }
   return { parts: p, turretPivot };
+}
+
+/**
+ * Converts a procedural variant into a vehicle-spec — the few-shot seed source.
+ * Each Part carries its pre-transform `spec` (prim + args + transform) captured
+ * by P(); rounding the values keeps the JSON readable. `footprint` is the
+ * model-local bounding size (caller supplies it from the seed bbox / catalog).
+ */
+export function variantToSpec(
+  variant: VehicleVariant,
+  footprint: { w: number; h: number; l: number },
+): VehicleSpec {
+  const { parts, turretPivot } = buildVehicleParts(variant);
+  const r3 = (a: number[]): [number, number, number] =>
+    [round(a[0]), round(a[1]), round(a[2])];
+  const specParts: SpecPart[] = parts.map((p) => {
+    const m = p.spec;
+    if (!m) throw new Error(`variantToSpec: part missing spec meta (slot ${p.slot})`);
+    const part: SpecPart = {
+      prim: m.prim as SpecPrim,
+      size: m.size.map(round),
+      slot: p.slot,
+      pos: r3(m.pos),
+    };
+    if (m.round !== undefined) part.round = round(m.round);
+    if (m.rot.some((v) => v !== 0)) part.rot = r3(m.rot);
+    if (m.scale.some((v) => v !== 1)) part.scale = r3(m.scale);
+    if (p.anim) part.anim = p.anim;
+    return part;
+  });
+  const spec: VehicleSpec = {
+    schemaVersion: '1.0',
+    faction: variant.factionId as VehicleSpec['faction'],
+    vehicleClass: variant.classId,
+    displayName: variant.displayName,
+    footprint: { w: round(footprint.w), h: round(footprint.h), l: round(footprint.l) },
+    parts: specParts,
+  };
+  if (turretPivot) spec.turretPivot = r3(turretPivot);
+  return spec;
+}
+
+function round(n: number): number {
+  return Math.round(n * 1000) / 1000;
 }
