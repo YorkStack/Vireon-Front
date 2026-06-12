@@ -12,7 +12,9 @@ import { TILE } from '../map/map';
 import type { UnitVisual } from '../core/types';
 import { textureSetUsable } from '../data/artMetadata';
 import { getVariant } from '../vehicles';
+import { importedSpecFor } from '../vehicles/importedSpecs';
 import { buildVehicleParts } from './vehicleModels';
+import { buildPartsFromSpec } from './specInterpreter';
 
 // 'smooth' = curved hero surfaces (domes) that look bad with a tiling texture;
 // they get a plain shaded material instead.
@@ -585,7 +587,15 @@ function getVariantTemplate(factoryId: string): Template | null {
   const [factionId, classId] = factoryId.split(':');
   const variant = getVariant(factionId, classId);
   if (!variant) return null;
-  const build = buildVehicleParts(variant);
+  // Prefer a studio-designed imported spec; fall back to procedural geometry.
+  const spec = importedSpecFor(factionId, classId);
+  let build;
+  if (spec) {
+    try { build = buildPartsFromSpec(spec); }
+    catch (err) { console.warn(`[vehicle-spec] ${factoryId} invalid, using procedural:`, err); build = buildVehicleParts(variant); }
+  } else {
+    build = buildVehicleParts(variant);
+  }
   if (build.turretPivot) TURRET_PIVOTS[key] = build.turretPivot;
   return makeTemplate(key, build.parts);
 }
