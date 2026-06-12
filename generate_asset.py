@@ -122,6 +122,19 @@ TEXTURE_MODIFIERS = (
     "no border, no vignette"
 )
 
+# Fahrzeug-Hülle: MITTELHELLES, gut lesbares Militaer-Metall. Bewusst NICHT
+# dunkel (sonst versinkt das Detail in der dunklen Spielszene). Nieten, Luken,
+# Lufteinlaesse, Kuehlrippen sollen deutlich sichtbar sein.
+VEHICLE_MATERIAL_STYLE = (
+    "clean mid-tone brushed metal vehicle armor, MEDIUM-LIGHT brightness "
+    "(definitely not dark, no black areas), strong readable surface detail: "
+    "raised rivets and bolts, bevelled armor panel seams, recessed maintenance "
+    "hatches, air intakes and slotted cooling grilles, small stencil markings; "
+    "matte finish, even diffuse light, bright crisp faction-color accent trim, "
+    "high local contrast so details pop at RTS distance, no heavy shadows, "
+    "no dark vignette, no text"
+)
+
 # Natur-Gelaende: organischer Fels OHNE Technik (kein Panel, keine Nieten).
 NATURE_STYLE = (
     "natural alien planet rock ground, organic weathered cracked stone, "
@@ -187,6 +200,8 @@ def build_prompt(prompt: str, is_sprite_sheet: bool, kind: str | None = None) ->
         kind = "sprite" if is_sprite_sheet else "icon"
     if kind == "texture":
         return f"{prompt.strip()}. {VIREON_MATERIAL_STYLE}. {TEXTURE_MODIFIERS}."
+    if kind == "vehicle":
+        return f"{prompt.strip()}. {VEHICLE_MATERIAL_STYLE}. {TEXTURE_MODIFIERS}."
     if kind == "terrain":
         return f"{prompt.strip()}. {NATURE_STYLE}. {TEXTURE_MODIFIERS}."
     if kind == "grass":
@@ -334,7 +349,7 @@ def create_game_asset(
     client = client or get_client()
     full_prompt = build_prompt(prompt, is_sprite_sheet, kind)
     # Texturen / Gelaende / Szenen haben keinen Alpha-Kanal - Chroma-Key aus.
-    if kind in ("texture", "terrain", "grass", "scene"):
+    if kind in ("texture", "vehicle", "terrain", "grass", "scene"):
         transparent = False
 
     print(f"[Nano Banana] Generiere '{filename}' mit Modell '{model}' ...")

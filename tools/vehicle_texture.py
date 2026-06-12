@@ -35,6 +35,8 @@ sys.path.insert(0, str(ROOT))
 
 import generate_asset as ga  # noqa: E402  (existing, proven pipeline)
 
+_PLAIN_PROMPT = False  # set from --plain-prompt in main()
+
 META_PATH = TOOLS_DIR / "art_metadata.json"
 OUT_ROOT = ROOT / "public" / "assets" / "vehicles"
 
@@ -51,7 +53,7 @@ SNAKE_TO_CLASS = {
 }
 
 
-def _ensure_png(path: Path) -> None:
+def _ensure_png(path: Path) -> Path:
     """Pro returns JPEG; the renderer loads .png — convert in place if needed."""
     if path.suffix.lower() != ".png":
         from PIL import Image
@@ -59,6 +61,23 @@ def _ensure_png(path: Path) -> None:
         Image.open(path).convert("RGB").save(png)
         path.unlink()
         print(f"  -> als PNG konvertiert: {png.name}")
+        return png
+    return path
+
+
+def _brighten_for_dark_scene(path: Path, target_mean: int = 122) -> None:
+    """Vehicle textures must read in a dark game scene. Lift the mean luminance
+    to ~target and add a little contrast so rivets/hatches stay crisp.
+    Deterministic, no API cost. Only brightens (never darkens)."""
+    from PIL import Image, ImageEnhance, ImageStat
+    img = Image.open(path).convert("RGB")
+    mean = sum(ImageStat.Stat(img).mean) / 3
+    if mean < target_mean:
+        img = ImageEnhance.Brightness(img).enhance(min(2.2, target_mean / max(mean, 1)))
+        img = ImageEnhance.Contrast(img).enhance(1.12)
+        img.save(path)
+        new_mean = sum(ImageStat.Stat(Image.open(path).convert("RGB")).mean) / 3
+        print(f"  -> aufgehellt: Mittel {mean:.0f} -> {new_mean:.0f}")
 
 
 def load_meta() -> dict:
@@ -122,8 +141,11 @@ def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
     out_dir = OUT_ROOT / faction / unit_snake
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    candidates = gemini_prompt_candidates(meta, client) if (client and not dry_run) else [build_texture_prompt(meta)]
-    chosen = candidates[-1]  # prefer the Gemini-imagined variant when available
+    use_gemini = client and not dry_run and not _PLAIN_PROMPT
+    candidates = gemini_prompt_candidates(meta, client) if use_gemini else [build_texture_prompt(meta)]
+    # Plain mode -> deterministic base prompt (consistent brightness/detail);
+    # otherwise prefer the Gemini-imagined variant.
+    chosen = candidates[0] if _PLAIN_PROMPT else candidates[-1]
 
     if dry_run:
         print(f"\n[{faction}/{unit_snake}] PROMPT (dry-run):\n  {chosen}\n")
@@ -137,8 +159,8 @@ def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
         vtag = f"_v{v + 1}" if variants > 1 else ""
         name = f"vehicles/{faction}/{unit_snake}/baseColor{vtag}{suffix}.png"
         path = ga.create_game_asset(prompt=chosen, filename=name, is_sprite_sheet=False,
-                                    client=client, model=model, transparent=False, kind="texture")
-        _ensure_png(path)
+                                    client=client, model=model, transparent=False, kind="vehicle")
+        _brighten_for_dark_scene(_ensure_png(path))
     if with_emissive:
         em_prompt = (
             f"{chosen} Emissive mask variant: mostly black surface with only the glowing "
@@ -147,7 +169,7 @@ def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
         em_path = ga.create_game_asset(prompt=em_prompt,
                                        filename=f"vehicles/{faction}/{unit_snake}/emissive{suffix}.png",
                                        is_sprite_sheet=False, client=client, model=model,
-                                       transparent=False, kind="texture")
+                                       transparent=False, kind="vehicle")
         _ensure_png(em_path)
 
     # Stage 4: reproducibility record next to the textures.
@@ -175,11 +197,15 @@ def main() -> None:
                     help="Flash-Qualitaet, aber als baseColor.png verdrahtet (guenstige Breite)")
     ap.add_argument("--skip-existing", action="store_true",
                     help="Sets mit vorhandener baseColor.png ueberspringen")
+    ap.add_argument("--plain-prompt", action="store_true",
+                    help="deterministischer Basis-Prompt (kein Gemini-Rewrite) - konsistente Helligkeit")
     ap.add_argument("--emissive", action="store_true", help="zusaetzlich Emissive-Map erzeugen")
     ap.add_argument("--all", action="store_true", help="alle 32 Varianten")
     ap.add_argument("--batch-initial", action="store_true", help="die freigegebene 6er-Erstcharge")
     ap.add_argument("--dry-run", action="store_true", help="nur Prompts ausgeben, keine API-Calls")
     args = ap.parse_args()
+    global _PLAIN_PROMPT
+    _PLAIN_PROMPT = args.plain_prompt
 
     if args.all:
         jobs = [(f, s) for f in ["red", "blue", "green", "yellow"] for s in SNAKE_TO_CLASS]

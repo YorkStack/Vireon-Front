@@ -29,8 +29,8 @@
   ],
   "finalImagePrompt": "Stylized seamless sci-fi military vehicle hull texture sheet for a red faction resource collector / hauler in an alien RTS. Material: rolled battle steel, scorched plating, riveted armor. Palette: gunmetal with crimson/orange emissive accent strips, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: brutalist, asymmetric reinforcement, battle wear, non-human panel language. Faction markings as abstract glyphs and small stencil icons. Forbidden: cannons, missile pods, anything that reads as a combat unit. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
   "generationDate": "2026-06-12",
-  "model": "gemini-3-pro-image-preview",
-  "quality": "final",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
   "approvalStatus": "pending-review",
   "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
 }
