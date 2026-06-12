@@ -12,7 +12,8 @@
     "generate:texture": "node scripts/export-artmeta.mjs && venv/bin/python tools/vehicle_texture.py",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:specs": "node tools/convert_vehicle_to_spec.mjs"
+    "seed:specs": "node tools/convert_vehicle_to_spec.mjs",
+    "export:catalog": "node scripts/export-catalog.mjs"
   },
   "keywords": [],
   "author": "",
