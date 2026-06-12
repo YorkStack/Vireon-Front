@@ -1,0 +1,36 @@
+{
+  "designBrief": {
+    "role": "siege platform / heavy assault",
+    "silhouette": "massive hull, oversized angled howitzer \u2014 must read as heavy and dangerous",
+    "movementType": "mono-wheel gyro platform",
+    "weaponType": "long-range explosive howitzer",
+    "requiredComponents": [
+      "oversized angled barrel",
+      "reinforced side armor",
+      "rear stabilizer"
+    ],
+    "forbiddenElements": [
+      "slim sporty shapes"
+    ],
+    "palette": "dark ceramic with yellow/gold emissive accents",
+    "materialFamily": "iridescent ceramic-alloy, energy lattice inlays",
+    "alienKeywords": [
+      "gyroscopic",
+      "energy lattice",
+      "floating segments",
+      "solar-forged"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a yellow faction siege platform / heavy assault in an alien RTS. Material: iridescent ceramic-alloy, energy lattice inlays. Palette: dark ceramic with yellow/gold emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: gyroscopic, energy lattice, floating segments, solar-forged. Faction markings as abstract glyphs and small stencil icons. Forbidden: slim sporty shapes. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless tileable texture sheet for a sci-fi heavy assault siege platform hull, featuring dark, almost black, iridescent ceramic-alloy plating interspersed with sharp, angular yellow and deep gold emissive channels; an intricate underlying energy lattice of glowing circuit-like inlays forms complex, non-Euclidean geometric patterns, integrating with rugged, alien-inspired industrial vents, reinforced bolt points, and subtle segmented panel lines suggestive of immense structural integrity, presented in a perfectly flat, orthographic view, devoid of any perspective, baked lighting, or alphanumeric text, ready for tiling.",
+    "A seamless, infinitely tileable sci-fi vehicle hull texture for a massive yellow siege platform, evoking an imposing heavy assault aesthetic, crafted from a deep, obsidian-like iridescent ceramic-alloy, accentuated by organic-flowing golden emissive lines and vibrant yellow energy conduits that pulse with contained power, where a glowing, sinuous energy lattice is subtly visible beneath the dark surface; the surface features imaginative alien industrial detailing including biomimetic vents resembling hardened chitin, intricate etched grooves like ancient alien script, and heavily armored sections with strange, almost biological metallic extrusions, rendered strictly as a flat orthographic sheet with no perspective distortion, no pre-baked shadows or highlights, and entirely free of any textual elements, perfect for material mapping."
+  ],
+  "finalImagePrompt": "A seamless, infinitely tileable sci-fi vehicle hull texture for a massive yellow siege platform, evoking an imposing heavy assault aesthetic, crafted from a deep, obsidian-like iridescent ceramic-alloy, accentuated by organic-flowing golden emissive lines and vibrant yellow energy conduits that pulse with contained power, where a glowing, sinuous energy lattice is subtly visible beneath the dark surface; the surface features imaginative alien industrial detailing including biomimetic vents resembling hardened chitin, intricate etched grooves like ancient alien script, and heavily armored sections with strange, almost biological metallic extrusions, rendered strictly as a flat orthographic sheet with no perspective distortion, no pre-baked shadows or highlights, and entirely free of any textual elements, perfect for material mapping.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

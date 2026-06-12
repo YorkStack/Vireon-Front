@@ -68,14 +68,21 @@ def load_meta() -> dict:
 
 
 def build_texture_prompt(meta: dict) -> str:
-    """Stage 2: deterministic prompt from the design brief (reproducible)."""
+    """Stage 2: deterministic prompt from the design brief (reproducible).
+
+    Detail level deliberately high (military hardware feel): riveted plates,
+    maintenance hatches, air intakes/cooling grilles, subtle faction-hue
+    camouflage, stowed spare parts and reserve fuel canisters."""
     b = meta["designBrief"]
     return (
-        f"Stylized seamless sci-fi vehicle hull texture sheet for a {meta['faction']} faction "
+        f"Stylized seamless sci-fi military vehicle hull texture sheet for a {meta['faction']} faction "
         f"{b['role']} in an alien RTS. Material: {b['materialFamily']}. "
-        f"Palette: {b['palette']}. "
+        f"Palette: {b['palette']}, with a subtle low-contrast camouflage pattern in the faction hue. "
+        f"Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, "
+        f"air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down "
+        f"reserve fuel canisters, scuffed edges and oil stains. "
         f"Alien design language: {', '.join(b['alienKeywords'])}. "
-        f"Include armor panel lines, subtle wear, faction markings as abstract glyphs. "
+        f"Faction markings as abstract glyphs and small stencil icons. "
         f"Forbidden: {', '.join(b['forbiddenElements'])}. "
         f"{b['rtsReadabilityNotes']}"
     )
@@ -104,7 +111,8 @@ def gemini_prompt_candidates(meta: dict, client) -> list[str]:
 
 
 def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
-                 dry_run: bool, with_emissive: bool, client=None) -> None:
+                 dry_run: bool, with_emissive: bool, client=None,
+                 flash_final: bool = False) -> None:
     meta_all = load_meta()
     class_id = SNAKE_TO_CLASS.get(unit_snake, unit_snake)
     meta = meta_all.get(f"{faction}_{class_id}")
@@ -121,8 +129,10 @@ def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
         print(f"\n[{faction}/{unit_snake}] PROMPT (dry-run):\n  {chosen}\n")
         return
 
+    # --final: Pro quality, wired name. --flash-final: Flash quality but ALSO
+    # wired (baseColor.png) — for breadth at low cost. Default: Flash draft.
     model = ga.MODEL_PRO if final else ga.MODEL_FAST
-    suffix = "" if final else "_draft"
+    suffix = "" if (final or flash_final) else "_draft"
     for v in range(variants):
         vtag = f"_v{v + 1}" if variants > 1 else ""
         name = f"vehicles/{faction}/{unit_snake}/baseColor{vtag}{suffix}.png"
@@ -161,6 +171,10 @@ def main() -> None:
     ap.add_argument("--unit", help="snake_case unit, z.B. medium_tank")
     ap.add_argument("--variants", type=int, default=1)
     ap.add_argument("--final", action="store_true", help="Pro-Qualitaet, ueberschreibt baseColor.png")
+    ap.add_argument("--flash-final", action="store_true",
+                    help="Flash-Qualitaet, aber als baseColor.png verdrahtet (guenstige Breite)")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="Sets mit vorhandener baseColor.png ueberspringen")
     ap.add_argument("--emissive", action="store_true", help="zusaetzlich Emissive-Map erzeugen")
     ap.add_argument("--all", action="store_true", help="alle 32 Varianten")
     ap.add_argument("--batch-initial", action="store_true", help="die freigegebene 6er-Erstcharge")
@@ -187,8 +201,12 @@ def main() -> None:
                      "Key in .gemini_key/.env hinterlegen, dann erneut ausfuehren.")
 
     for faction, unit in jobs:
+        if args.skip_existing and (OUT_ROOT / faction / unit / "baseColor.png").exists():
+            print(f"[{faction}/{unit}] uebersprungen (baseColor.png existiert).")
+            continue
         generate_set(faction, unit, final=args.final, variants=args.variants,
-                     dry_run=args.dry_run, with_emissive=args.emissive, client=client)
+                     dry_run=args.dry_run, with_emissive=args.emissive, client=client,
+                     flash_final=args.flash_final)
 
     if not args.dry_run:
         ga.print_cost_summary()

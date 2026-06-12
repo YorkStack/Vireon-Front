@@ -1,0 +1,35 @@
+{
+  "designBrief": {
+    "role": "construction & repair vehicle",
+    "silhouette": "work vehicle with crane/manipulator arm and utility body",
+    "movementType": "mono-wheel gyro platform",
+    "weaponType": "none",
+    "requiredComponents": [
+      "crane or manipulator arm",
+      "tool/utility racks",
+      "warning markings"
+    ],
+    "forbiddenElements": [
+      "weapons",
+      "aggressive armor spikes"
+    ],
+    "palette": "dark ceramic with yellow/gold emissive accents",
+    "materialFamily": "iridescent ceramic-alloy, energy lattice inlays",
+    "alienKeywords": [
+      "gyroscopic",
+      "energy lattice",
+      "floating segments",
+      "solar-forged"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a yellow faction construction & repair vehicle in an alien RTS. Material: iridescent ceramic-alloy, energy lattice inlays. Palette: dark ceramic with yellow/gold emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: gyroscopic, energy lattice, floating segments, solar-forged. Faction markings as abstract glyphs and small stencil icons. Forbidden: weapons, aggressive armor spikes. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  ],
+  "finalImagePrompt": "Stylized seamless sci-fi military vehicle hull texture sheet for a yellow faction construction & repair vehicle in an alien RTS. Material: iridescent ceramic-alloy, energy lattice inlays. Palette: dark ceramic with yellow/gold emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: gyroscopic, energy lattice, floating segments, solar-forged. Faction markings as abstract glyphs and small stencil icons. Forbidden: weapons, aggressive armor spikes. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

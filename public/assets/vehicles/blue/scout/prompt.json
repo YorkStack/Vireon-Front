@@ -1,0 +1,35 @@
+{
+  "designBrief": {
+    "role": "fast recon skimmer",
+    "silhouette": "small, slim, nose-forward dart shape \u2014 must read as fast and light",
+    "movementType": "wheeled (multi-axle)",
+    "weaponType": "light repeater",
+    "requiredComponents": [
+      "slim nose",
+      "canopy",
+      "light barrel"
+    ],
+    "forbiddenElements": [
+      "heavy armor plates",
+      "large turret"
+    ],
+    "palette": "cool steel blue with blue/white emissive accents",
+    "materialFamily": "precision-machined composite, clean panel seams",
+    "alienKeywords": [
+      "modular",
+      "sensor-studded",
+      "ordered geometry",
+      "shield emitter nodes"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a blue faction fast recon skimmer in an alien RTS. Material: precision-machined composite, clean panel seams. Palette: cool steel blue with blue/white emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: modular, sensor-studded, ordered geometry, shield emitter nodes. Faction markings as abstract glyphs and small stencil icons. Forbidden: heavy armor plates, large turret. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  ],
+  "finalImagePrompt": "Stylized seamless sci-fi military vehicle hull texture sheet for a blue faction fast recon skimmer in an alien RTS. Material: precision-machined composite, clean panel seams. Palette: cool steel blue with blue/white emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: modular, sensor-studded, ordered geometry, shield emitter nodes. Faction markings as abstract glyphs and small stencil icons. Forbidden: heavy armor plates, large turret. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

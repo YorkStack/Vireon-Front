@@ -1,0 +1,37 @@
+{
+  "designBrief": {
+    "role": "fast recon skimmer",
+    "silhouette": "small, slim, nose-forward dart shape \u2014 must read as fast and light",
+    "movementType": "heavy tracked",
+    "weaponType": "light repeater",
+    "requiredComponents": [
+      "slim nose",
+      "canopy",
+      "light barrel"
+    ],
+    "forbiddenElements": [
+      "heavy armor plates",
+      "large turret"
+    ],
+    "palette": "gunmetal with crimson/orange emissive accent strips",
+    "materialFamily": "rolled battle steel, scorched plating, riveted armor",
+    "alienKeywords": [
+      "brutalist",
+      "asymmetric reinforcement",
+      "battle wear",
+      "non-human panel language"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a red faction fast recon skimmer in an alien RTS. Material: rolled battle steel, scorched plating, riveted armor. Palette: gunmetal with crimson/orange emissive accent strips, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: brutalist, asymmetric reinforcement, battle wear, non-human panel language. Faction markings as abstract glyphs and small stencil icons. Forbidden: heavy armor plates, large turret. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless sci-fi vehicle hull texture for a red fast recon skimmer, rendered in a flat orthographic texture-sheet style with no perspective, baked lighting, or superimposed text. The primary material is heavily rolled battle steel, presented in a dark gunmetal finish, exhibiting areas of scorched plating and distinct riveted armor sections. Bright crimson and fiery orange emissive accent strips cut across the surface in sharp, geometric patterns, glowing intensely. Integrated alien industrial surface details include intricate hexagonal ventilation grilles, subtle etched glyphs suggesting advanced alien script, and integrated conduits that snake across the panels, hinting at complex energy pathways, all designed for perfect tiling.",
+    "Generate a perfectly tileable orthographic texture sheet for a futuristic red fast recon skimmer hull, completely flat with no perspective, baked lighting, or text overlay. The dominant material is rugged gunmetal rolled battle steel, showing clear signs of combat-scorched plating and meticulously detailed riveted armor plates. Dynamic, sharp crimson and vibrant orange emissive strips are strategically embedded, providing high-contrast energy accents. Intricate alien industrial surface details permeate the design, featuring segmented panels with subtle biological-mechanical curvature, recessed circular vents containing internal glowing filaments, and complex, almost organic-looking conduits that appear to channel exotic energies, all contributing to a rich, alien technological aesthetic."
+  ],
+  "finalImagePrompt": "Generate a perfectly tileable orthographic texture sheet for a futuristic red fast recon skimmer hull, completely flat with no perspective, baked lighting, or text overlay. The dominant material is rugged gunmetal rolled battle steel, showing clear signs of combat-scorched plating and meticulously detailed riveted armor plates. Dynamic, sharp crimson and vibrant orange emissive strips are strategically embedded, providing high-contrast energy accents. Intricate alien industrial surface details permeate the design, featuring segmented panels with subtle biological-mechanical curvature, recessed circular vents containing internal glowing filaments, and complex, almost organic-looking conduits that appear to channel exotic energies, all contributing to a rich, alien technological aesthetic.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

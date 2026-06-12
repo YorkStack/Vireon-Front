@@ -1,5 +1,5 @@
 // Blue support - faction visual variant.
-// Azure Concord: wheeled precision vehicles - disciplined, technical.
+// Azure Concord: wheeled precision vehicles - 6-wheel configuration, disciplined, technical.
 // Balance lives in src/data/unitClasses.ts ('support' template). This file only
 // shapes how this faction's support LOOKS and moves. Extract & edit freely:
 // chassis proportions, kit knobs, textureSetId - gameplay stats stay untouched

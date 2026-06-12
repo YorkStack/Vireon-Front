@@ -1,0 +1,37 @@
+{
+  "designBrief": {
+    "role": "mobile repair / logistics support",
+    "silhouette": "workshop body with repair dish and manipulator arms \u2014 must read as support",
+    "movementType": "hover/grav",
+    "weaponType": "none",
+    "requiredComponents": [
+      "repair dish/emitter",
+      "tool arms",
+      "workshop body"
+    ],
+    "forbiddenElements": [
+      "weapons",
+      "siege barrels"
+    ],
+    "palette": "deep moss-metal with green/teal emissive conduits",
+    "materialFamily": "alien composite shell, grown-metal surfaces",
+    "alienKeywords": [
+      "semi-organic",
+      "flowing conduits",
+      "chitinous panels",
+      "grav skirt glow"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a green faction mobile repair / logistics support in an alien RTS. Material: alien composite shell, grown-metal surfaces. Palette: deep moss-metal with green/teal emissive conduits, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: semi-organic, flowing conduits, chitinous panels, grav skirt glow. Faction markings as abstract glyphs and small stencil icons. Forbidden: weapons, siege barrels. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless, flat orthographic texture-sheet depicting a sci-fi vehicle hull, specifically for a green mobile repair/logistics support unit. The material is an alien composite shell, showcasing deep moss-metal with intricate, organically grown-metal surfaces that form complex bio-mechanical patterns and delicate lattice work. Bright green/teal emissive conduits glow intrinsically within recessed channels and between layered segments, highlighting utility ports, specialized tool integration points, and recessed sensor arrays, all rendered without perspective, baked lighting, or text, suitable for a raw, tileable texture map.",
+    "Generate a seamless, flat orthographic texture map for a sci-fi mobile repair/logistics vehicle hull, devoid of perspective, baked lighting, or text. The surface features a robust alien composite shell in deep moss-metal, interspersed with distinct areas of grown-metal exhibiting a subtle, almost crystalline texture. Bold green/teal emissive conduits trace intricate power pathways and highlight junction points, appearing as glowing intrinsic elements. Imaginative alien industrial details include heavy-duty manipulator attachment points, uniquely patterned ventilation grilles, modular access hatches with complex locking mechanisms, and structural reinforcement ribs that seamlessly merge into the grown-metal, creating a utilitarian yet exotic surface."
+  ],
+  "finalImagePrompt": "Generate a seamless, flat orthographic texture map for a sci-fi mobile repair/logistics vehicle hull, devoid of perspective, baked lighting, or text. The surface features a robust alien composite shell in deep moss-metal, interspersed with distinct areas of grown-metal exhibiting a subtle, almost crystalline texture. Bold green/teal emissive conduits trace intricate power pathways and highlight junction points, appearing as glowing intrinsic elements. Imaginative alien industrial details include heavy-duty manipulator attachment points, uniquely patterned ventilation grilles, modular access hatches with complex locking mechanisms, and structural reinforcement ribs that seamlessly merge into the grown-metal, creating a utilitarian yet exotic surface.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

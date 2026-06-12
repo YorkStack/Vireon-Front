@@ -1,0 +1,38 @@
+{
+  "designBrief": {
+    "role": "resource collector / hauler",
+    "silhouette": "bulky cargo body, visible hopper and frontal intake \u2014 must read as a hauler",
+    "movementType": "mono-wheel gyro platform",
+    "weaponType": "none",
+    "requiredComponents": [
+      "cargo hopper",
+      "frontal intake/scoop",
+      "small crew cab"
+    ],
+    "forbiddenElements": [
+      "cannons",
+      "missile pods",
+      "anything that reads as a combat unit"
+    ],
+    "palette": "dark ceramic with yellow/gold emissive accents",
+    "materialFamily": "iridescent ceramic-alloy, energy lattice inlays",
+    "alienKeywords": [
+      "gyroscopic",
+      "energy lattice",
+      "floating segments",
+      "solar-forged"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a yellow faction resource collector / hauler in an alien RTS. Material: iridescent ceramic-alloy, energy lattice inlays. Palette: dark ceramic with yellow/gold emissive accents, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: gyroscopic, energy lattice, floating segments, solar-forged. Faction markings as abstract glyphs and small stencil icons. Forbidden: cannons, missile pods, anything that reads as a combat unit. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless, orthographic texture-sheet for a sci-fi vehicle hull, depicting a dark ceramic-alloy surface with a subtle, shifting iridescent sheen that hints at deep blues and purples in its dark base. Intricate, glowing yellow-gold energy pathways and delicate energy lattice inlays are embedded just beneath the surface, some appearing as fine, glowing fissures and others as broader, pulsing conduits, suggesting vital internal energy flow for a resource collector. Alien industrial details manifest as asymmetrical panel lines, sparsely distributed eroded patches revealing a deeper metallic layer, and faint, non-descriptive glyph-like etchings, all rendered without perspective, baked lighting, or any text elements.",
+    "Generate a seamless, orthographic texture-sheet for a sci-fi vehicle hull, showcasing a robust, dark ceramic-alloy exterior with a pronounced iridescent quality that flashes from deep crimson to emerald green across its surface. The hull features distinct, modular plating, accented by bold, bright yellow and molten gold linear emissive strips and geometric energy fields that are integrated flush, like functional indicators for a heavy hauler. Highly detailed, circuit-board-like energy lattice inlays glow with a soft yellow light within specific armored segments, while imaginative alien industrial details include prominent yet non-functional alien fastening points, subtle textural variations between different plate materials, and abstract, non-readable alien warning symbols etched into the darkest ceramic areas. Maintain a flat, non-perspective view with no baked shadows, highlights, or text."
+  ],
+  "finalImagePrompt": "Generate a seamless, orthographic texture-sheet for a sci-fi vehicle hull, showcasing a robust, dark ceramic-alloy exterior with a pronounced iridescent quality that flashes from deep crimson to emerald green across its surface. The hull features distinct, modular plating, accented by bold, bright yellow and molten gold linear emissive strips and geometric energy fields that are integrated flush, like functional indicators for a heavy hauler. Highly detailed, circuit-board-like energy lattice inlays glow with a soft yellow light within specific armored segments, while imaginative alien industrial details include prominent yet non-functional alien fastening points, subtle textural variations between different plate materials, and abstract, non-readable alien warning symbols etched into the darkest ceramic areas. Maintain a flat, non-perspective view with no baked shadows, highlights, or text.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

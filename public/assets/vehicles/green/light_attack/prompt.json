@@ -1,0 +1,36 @@
+{
+  "designBrief": {
+    "role": "light attack vehicle / flanker",
+    "silhouette": "compact agile chassis with one small visible turret",
+    "movementType": "hover/grav",
+    "weaponType": "rapid autocannon",
+    "requiredComponents": [
+      "small top turret",
+      "thin autocannon barrel"
+    ],
+    "forbiddenElements": [
+      "bulky cargo body",
+      "long siege barrel"
+    ],
+    "palette": "deep moss-metal with green/teal emissive conduits",
+    "materialFamily": "alien composite shell, grown-metal surfaces",
+    "alienKeywords": [
+      "semi-organic",
+      "flowing conduits",
+      "chitinous panels",
+      "grav skirt glow"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi military vehicle hull texture sheet for a green faction light attack vehicle / flanker in an alien RTS. Material: alien composite shell, grown-metal surfaces. Palette: deep moss-metal with green/teal emissive conduits, with a subtle low-contrast camouflage pattern in the faction hue. Rich surface detail: riveted armor plates, weld seams, maintenance hatches and access panels, air intakes and cooling grilles, stowed spare parts (track links, tool boxes), strapped-down reserve fuel canisters, scuffed edges and oil stains. Alien design language: semi-organic, flowing conduits, chitinous panels, grav skirt glow. Faction markings as abstract glyphs and small stencil icons. Forbidden: bulky cargo body, long siege barrel. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless, flat orthographic texture sheet depicting a deep moss-metal sci-fi vehicle hull, showcasing an alien composite shell integrated with grown-metal surfaces. Intricate patterns of green and teal emissive conduits vein across the surface, appearing as fluidic, organic pipelines embedded within the dark, organic metallic structure. Surface details include delicate, bio-mechanical etchings, subtle layered plating resembling hardened chitin, and microscopic, luminous energy channels that subtly glow from beneath the primary hull material, all rendered without perspective, baked lighting, or text.",
+    "Generate a seamless, flat orthographic texture sheet for a sci-fi flanker vehicle hull, utilizing a deep moss-metal combined with an advanced alien composite shell. The texture features segmented, grown-metal panels that interlock seamlessly, punctuated by a dynamic network of green and teal emissive conduits that appear to pulse with internal energy. Surface detail incorporates complex, biomechanical vents resembling respiratory organs, subtle alien script integrated into the composite, and textural variations suggesting adaptive stealth plating, all presented as a pure PBR texture without perspective, baked lighting, or any visible text."
+  ],
+  "finalImagePrompt": "Generate a seamless, flat orthographic texture sheet for a sci-fi flanker vehicle hull, utilizing a deep moss-metal combined with an advanced alien composite shell. The texture features segmented, grown-metal panels that interlock seamlessly, punctuated by a dynamic network of green and teal emissive conduits that appear to pulse with internal energy. Surface detail incorporates complex, biomechanical vents resembling respiratory organs, subtle alien script integrated into the composite, and textural variations suggesting adaptive stealth plating, all presented as a pure PBR texture without perspective, baked lighting, or any visible text.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

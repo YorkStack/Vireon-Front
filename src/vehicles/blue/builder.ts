@@ -1,5 +1,5 @@
 // Blue builder - faction visual variant.
-// Azure Concord: wheeled precision vehicles - disciplined, technical.
+// Azure Concord: wheeled precision vehicles - 8-wheel configuration, disciplined, technical.
 // Balance lives in src/data/unitClasses.ts ('builder' template). This file only
 // shapes how this faction's builder LOOKS and moves. Extract & edit freely:
 // chassis proportions, kit knobs, textureSetId - gameplay stats stay untouched
@@ -10,7 +10,7 @@ export const blueBuilder: VehicleVariant = {
   classId: 'builder',
   factionId: 'blue',
   movementType: 'wheeled',
-  chassis: { style: 'wheeled', halfW: 0.85, len: 2.2, hullH: 0.6, wheelCount: 3, },
+  chassis: { style: 'wheeled', halfW: 0.85, len: 2.2, hullH: 0.6, wheelCount: 4, },
   textureSetId: 'blue/builder',
   artMetadataId: 'blue_builder',
   previewCamera: { distance: 7.3, height: 4.0 },

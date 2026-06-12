@@ -165,16 +165,14 @@ for (const faction of ['red', 'blue', 'green', 'yellow']) {
 }
 
 // ---- asset status ledger ----
-// Pro finals exist on disk for these sets (prompt.json beside each texture).
-// 'generated' = renderer loads them; flip to 'approved' after in-game review,
-// or 'needsRevision' to fall back to the procedural materials.
+// All 32 sets exist on disk (rich military-detail style: rivets, hatches,
+// intakes, camo, spares; 6 hero sets in Pro quality, rest Flash; prompt.json
+// beside each texture). 'generated' = renderer loads them; flip individual
+// ids to 'approved' after review or 'needsRevision' to fall back to the
+// procedural materials.
+for (const m of Object.values(ART_METADATA)) m.status = 'generated';
 const STATUS: Partial<Record<string, AssetStatus>> = {
-  red_harvester: 'generated',
-  red_builder: 'generated',
-  red_mediumTank: 'generated',
-  blue_mediumTank: 'generated',
-  green_mediumTank: 'generated',
-  yellow_mediumTank: 'generated',
+  // per-id overrides, z.B.: red_scout: 'needsRevision',
 };
 for (const [id, s] of Object.entries(STATUS)) if (ART_METADATA[id] && s) ART_METADATA[id].status = s;
 
