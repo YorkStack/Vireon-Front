@@ -6,13 +6,19 @@
 Echtzeit-Strategiespiel (RTS) im C&C-Stil auf dem feindlichen Kristallplaneten **Vireon**.
 Stack: **TypeScript + Three.js + Vite**. Läuft im Browser, 120 FPS auf M2.
 
+## Git-Repos
+- **Spiel:** `https://github.com/YorkStack/Vireon-Front` (**public**) — lokal hier. Branch `main`.
+- **Studio:** `https://github.com/YorkStack/Vireon-Design-Studio` (**private**) — lokal `../vireon-design-studio`. Branch `main`.
+- `gh` ist als `YorkStack` angemeldet. Commit-Messages enden mit `Co-Authored-By: Claude …`.
+
 ## Starten / Server
 - **`npm run dev` → http://localhost:5199`** (Port in package.json gepinnt — das ist die feste Adresse des Users).
 - Das Claude-Preview-Tool nutzt Port **5180** und hat einen **Canvas-Resize-Bug** (Screenshots oft abgeschnitten). Workaround: frischer `preview_start` + `desktop`-preset + im eval `renderer.setPixelRatio(1); setSize(innerWidth,innerHeight)`. Der User beurteilt Visuals selbst auf 5199.
 - Debug-Hook im Spiel: `window.__game` mit `.world`, `.map`, `.rig`, `.input` und `.step(secs)` (Sim vorspulen, für Verifikation ohne Klicken).
 
 ## Build / Verifikation
-- `npx tsc --noEmit` (Type-Check), `npm run build` (Production-Build). Beide aktuell sauber.
+- `npx tsc --noEmit` (Type-Check), `npm run build` (Production-Build), **`npm test` (Vitest, 19 Tests)**. Alle aktuell grün/sauber.
+- Vitest: Validator + Interpreter + Round-Trip (`happy-dom`-Env für Render-Tests, da `models.ts` beim Import Texturen lädt) + Import-Dry-Run. Studio hat eigene Tests (`npm test` dort).
 
 ---
 
@@ -70,6 +76,9 @@ public/assets/
    - **Felsverteilung**: Boden (Lvl 0) ~95 % steinfrei (sauberer Bauplatz), Mitte (Lvl 1) mittel + an Aufgängen geklumpt (`nearHigher`), Hoch (Lvl 2) dicht. Boulder-Skalierung breit gestreut (kleine Brocken bis sichtblockende Felsen). Pebbles auf Lvl 0 90 % reduziert.
    - **Biome-Texturen** neu (Flash): `ground_valley.png` = offenes Moosgras (eigener `grass`-Kind in `generate_asset.py`, OHNE Steinzwang, sonst kacheln Felsen ins Raster!), `ground_mid.png` = Misch (Gras+Riss-Stein), `ground_high.png` = dunkler Vulkanschiefer. Material-Tints auf nahezu neutral aufgehellt, UV-Footprint `/11` (weniger Kachel-Wiederholung).
    - **Kristalle**: prozedurale Oktaeder → **`icon_crystal.png` Sprite-Billboards** (`THREE.Sprite`, unlit = selbstleuchtend) in dichten Clustern + additive Teal-Glow-Plane. Depletion-Scaling/Click-Targeting unverändert kompatibel.
+10. **Asset-Ordner strukturiert** (`public/assets/{terrain,buildings,vehicles,people,ui}/…`); 3 Bodentexturen pro Höhe + Blend-Shader (weiche Übergänge statt Schachbrett); Vegetation-Sprites (Bäume/Büsche) + 4 Fels-Texturen auf Boulders; horizontaler **Domain-Warp** (`warpXZ`) gegen den quadratischen Map-Look.
+11. **Datengetriebene Fahrzeug-Architektur** (siehe eigene Sektion): Klassen-Templates + 32 Fraktions-Varianten-Dateien + Resolver + Balance-Validator + Unit Codex + KI-Rollen; prozedurale Geometrie v2 (gerundet, monoWheel v3, walker v2, halfTrack, +60 % Greeble); **alle 32 Fahrzeug-Texturen** im hellen Militär-Stil (Nieten/Luken/Lufteinlässe, vorher zu dunkel).
+12. **Vehicle Design Studio** (separates Repo) + **Spec-Import-Pipeline** (siehe Sektion unten): `vehicle-spec`-Schema, Interpreter, Few-Shot-Seeds, Catalog-Export, Import-Skript (Phase A, TDD); Studio-App mit Skizze→Geometrie→Textur→Export, fraktions-Prompts, Versions-Bibliothek, aufgeräumtem Log (Phase B). Vertikaler Schnitt end-to-end bewiesen.
 
 ---
 
@@ -82,6 +91,12 @@ Reihenfolge war **A→B→D→C** vereinbart; Terrain (Teil von A/C) gerade gema
 3. **Phase B — Vulkan + Spezial-Erz**: 1–2 seltene Vulkanzonen auf der Map, leuchtendes **Spezial-Erz mit 3× Wert**, Lava-Optik. (Map-Gen + Logik + Assets.) **Geplant, nicht begonnen.**
 4. **Phase C — Biome/Gegenden**: Flachland, Gebirge, **Seen** (Wasser-Hindernis), Wälder, Steppen, Wüsten als Regionen über die Höhenkarte; pro Biom Bodentextur + Vegetation. **Großes Feature, mehrere Sitzungen.** Bodentexturen pro Höhe sind als Vorarbeit schon da.
 5. **Phase D — mehr Gebäude-/Fahrzeug-Texturvarianten** falls gewünscht.
+
+### Studio / Fahrzeug-Pipeline (neu, teils offen)
+6. **Batch über alle 32** im Studio — Liste/Stapel-Generierung mit Approve-Gates pro Fahrzeug + `import:vehicle --all`. **Geplant, noch nicht gebaut** (vertikaler Schnitt für 1 Fahrzeug ist fertig). User wollte erst einzeln durchspielen.
+7. **Geometrie-Qualität iterieren** — Gemini-Specs sind grob; Hebel: stärkere Few-Shot-Auswahl, Notizfeld-Feedback, ggf. Pro-Modell für Geometrie, evtl. halb-manuelles Nachjustieren (Slider) als späterer Schritt.
+8. **Studio-Komfort offen:** Versionen vergleichen/löschen, Textur live auf das 3D-Modell mappen (aktuell nur Slot-Farben + Textur-Thumbnail), Emissive-Maps, Batch-Export. Catalog/Seeds müssen nach Spiel-Änderungen manuell ins Studio kopiert werden (könnte automatisiert werden).
+9. **Große Spiel-Lücken** (aus früherer Bestandsaufnahme, weiter offen): **Audio fehlt komplett**, **Fog-of-War/Aufklärung fehlt**, **Steuerungskomfort** (Kontrollgruppen 1–9, Rally-Points-UI, Bau-Queue-UI, Hotkeys), Speichern/Laden, Settings, KI-Schwierigkeitsgrade.
 
 ---
 
@@ -102,6 +117,34 @@ Reihenfolge war **A→B→D→C** vereinbart; Terrain (Teil von A/C) gerade gema
 
 **Neues Fahrzeug anlegen:** Template in `unitClasses.ts` (Balance) → 4 Dateien `src/vehicles/*/<id>.ts` + Registry-Eintrag in `src/vehicles/index.ts` → ggf. Kit in `vehicleModels.ts` → Brief-Eintrag in `artMetadata.ts`. **Ein Fahrzeug ändern:** nur seine eine Datei unter `src/vehicles/<fraktion>/` anfassen.
 
+---
+
+## Vehicle Design Studio (externes Programm) + Spec-Import-Pipeline
+
+Externe App, in der man pro Fraktion×Fahrzeug **Geometrie und Texturen mit Gemini/Nano-Banana entwirft** und als portables Bündel **zurück ins Spiel importiert**. Brainstorm/Spec/Plan liegen unter `docs/superpowers/{specs,plans}/2026-06-12-vehicle-design-studio*`.
+
+**Kernidee:** Gemini liefert keine 3D-Meshes → Geometrie = **parametrische Bauteil-Liste** (`vehicle-spec v1`, JSON). Das **Schema ist die Schnittstelle** zwischen den zwei separaten Repos; jede Seite implementiert es eigenständig.
+
+### Phase A — Spiel-Seite (fertig, TDD, `npm test` = vitest)
+- **`src/vehicles/spec/vehicleSpec.ts`** — `VehicleSpec`/`SpecPart`-Typen (prim box/cyl/sph/cone/torus/rbox; slot; pos/rot/scale; anim turret/spin/load). **`validate.ts`** — Validator (Enums, Arity, Turret-Pivot, Footprint-Clamp).
+- **`src/render/specInterpreter.ts`** `buildPartsFromSpec()` — Spec → die bestehenden `Part[]` (durch die unveränderte Mesh-Pipeline).
+- **Few-Shot-Konverter** `tools/convert_vehicle_to_spec.mjs` (`npm run seed:specs`) → `studio-seeds/*.json` (alle 32 prozeduralen Modelle als Spec-Vorlagen für Gemini). Mechanik: `GEO_SPEC`-WeakMap taggt Primitive, `P()` schreibt pos/rot/scale auf `part.spec`, `variantToSpec()` exportiert. Round-Trip-Test prüft BBox-Größentreue.
+- **Factory-Hook** (`models.ts#getVariantTemplate`) bevorzugt einen importierten Spec aus `src/vehicles/specs/<f>/<c>.json` (eager `import.meta.glob`), sonst prozedural. `importedStatus.json`-Overlay (letztes in `artMetadata.ts`): `needsRevision` = zurück auf prozedural.
+- **Catalog-Export** `scripts/export-catalog.mjs` (`npm run export:catalog`) → `studio-export/catalog.json` mit **größenkorrektem** `renderScale = UNIT_VISUAL_SCALE × silhouetteScale` (+ Briefs).
+- **Import** `scripts/import-vehicle.mjs` (`npm run import:vehicle -- <bündel> [--dry-run | --all <dir>]`): validiert → kopiert Geometrie/Texturen → Status. **Nach Import Dev-Server neu starten** (Glob ist build-time).
+
+### Phase B — Studio (separates privates Repo `YorkStack/Vireon-Design-Studio`, sibling-Ordner `../vireon-design-studio`)
+- Vite+TS+Three; **lokaler Node-Service** (`server/gemini.mjs`, in `vite.config.ts` als `/api`-Middleware) hält den Key serverseitig (`.env`, gitignored). Browser sieht den Key nie.
+- **Ablauf:** Fahrzeug wählen → **Skizze** (Nano Banana, fraktions-Prompt) → **Approve** → **Geometrie** (Gemini multimodal: Skizze + Größe + Few-Shot-Seeds → Spec) → Live-3D in echter Größe → **Textur** → **Export-Bündel** → Import ins Spiel.
+- **Prompts** in `src/prompts.ts`: pro Fraktion×Fahrzeug Basis-Prompt + gemeinsamer Skizzen-Suffix (Crimson=menschlich/militärisch, Azure=aquatisch, Verdant=insektoid, Solar=mikrobiell); Fraktions-Palette steuert Texturen.
+- **Versions-Bibliothek:** jede Geometrie-Generierung speichert automatisch eine nummerierte Version unter `library/<f>_<klasse>/vNNN/` (sketch+geometry+texture+meta); Versions-Liste im UI zum Durchsehen/Laden; man exportiert die **beste** Version. Endpunkte `/api/{sketch,geometry,texture,save,versions,version,export}`.
+- Headless-Treiber `tools/run-slice.mjs <faction:class>` (generische Prompts) für Schnelltests.
+- **Verifiziert:** voller Slice (Azure mediumTank: Skizze→73-Bauteil-Geometrie→Textur→Export→Import) rendert im Spiel in korrekter Größe; Crimson-Prompts liefern menschliche Militär-Panzer.
+
+**Bündel-Format:** `exports/<f>_<klasse>/{geometry.json, baseColor.png, sketch.png, meta.json}`.
+
+**Studio nutzen:** `cd ../vireon-design-studio && npm run dev` (Port 5188). Inputs aus dem Spiel aktuell halten: `npm run export:catalog` + `npm run seed:specs`, dann `catalog.json`/`seeds` nach `../vireon-design-studio/data/` kopieren.
+
 ## Wichtige Dateien
 - `src/render/terrain.ts` — Terrain-Mesh (Multi-Material, Höhen-Rippeln), Felsen, Props, Kristalle. Bodentexturen `GROUND_TEX`.
 - `src/render/models.ts` — prozedurale Modelle, Material-Slots (`body/dark/accent/light/smooth/roof`), Texturen (`buildingBodyMat`, `vehicleBodyMat`, `smoothMat`=Kuppel, `roofMat`=Dach), Fundament-Pad, Auswahlringe, Healthbars.
@@ -112,7 +155,11 @@ Reihenfolge war **A→B→D→C** vereinbart; Terrain (Teil von A/C) gerade gema
 - `src/ui/input.ts` — Selektion, Befehle, Platzierung, Kamera.
 - `src/ai/enemy.ts` — Gegner-KI (Bau, Ökonomie, Wellen).
 - `public/campaigns/` — Kampagnen/Missionen als JSON (datengetrieben, leicht erweiterbar).
-- `generate_asset.py` + `asset_cost_log.csv` — Asset-Pipeline.
+- `generate_asset.py` + `asset_cost_log.csv` — Asset-Pipeline (Spiel-Texturen; Studio nutzt eigenen Node-Service).
+- `src/data/{unitClasses,weapons,armor,movementProfiles,artMetadata}.ts` — datengetriebene Fahrzeug-Definitionen + Briefs.
+- `src/vehicles/` — `<fraktion>/<klasse>.ts` (32 Varianten), `index.ts` (Registry), `spec/` (vehicle-spec-Schema+Validator), `importedSpecs.ts` (Factory-Glob), `specs/` (importierte Geometrie).
+- `src/systems/{unitFactory,balanceValidation}.ts`, `src/render/{vehicleModels,specInterpreter}.ts`, `src/ui/unitCodex.ts`.
+- `scripts/{export-catalog,import-vehicle,validate-balance,export-artmeta}.mjs`, `tools/{vehicle_texture.py,convert_vehicle_to_spec.mjs}`.
 
 ## Gameplay-Grundloop (funktioniert, verifiziert)
 Fabricator → Command Nexus → Refinery → Spire → Foundry/Barracks → Harvester (auto-erntet) → Armee → Gegner-Nexus zerstören. Sieg/Niederlage = Command Nexus + Fabricator beider Seiten. KI baut Basis, sammelt, produziert, greift in eskalierenden Wellen an.
