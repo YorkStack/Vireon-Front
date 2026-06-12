@@ -2,7 +2,7 @@
 // plans copies (spec -> src/vehicles/specs, textures -> public/assets) and a
 // status flip, then applies them. Pure `planImport` is unit-tested; `applyImport`
 // does the filesystem writes. CLI wrapper: scripts/import-vehicle.mjs.
-import { readFileSync, existsSync, mkdirSync, copyFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, copyFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
 import { validateSpec } from '../src/vehicles/spec/validate';
 import type { VehicleSpec } from '../src/vehicles/spec/vehicleSpec';
@@ -24,6 +24,7 @@ export interface ImportPlan {
   classId: string;
   statusId: string;
   classDef?: CustomClassDef;   // present when importing a studio-authored custom class
+  slotTextures?: Record<string, string>;   // slot -> public asset URL (component textures)
   actions: { copy: { from: string; to: string }[]; statusFlip: { id: string; to: string } };
 }
 
@@ -52,6 +53,15 @@ export function planImport(bundleDir: string): ImportPlan {
     const p = join(bundleDir, tex);
     if (existsSync(p)) copy.push({ from: p, to: `public/assets/vehicles/${faction}/${snake}/${tex}` });
   }
+  // Per-slot component textures (slot_<slot>.png) → assets + a slot→URL map for the renderer.
+  const slotTextures: Record<string, string> = {};
+  for (const f of readdirSync(bundleDir)) {
+    const m = /^slot_(.+)\.png$/.exec(f);
+    if (!m) continue;
+    const url = `/assets/vehicles/${faction}/${snake}/${f}`;
+    copy.push({ from: join(bundleDir, f), to: `public${url}` });
+    slotTextures[m[1]] = url;
+  }
 
   // A custom (non-built-in) class carries its definition in meta.json so the game
   // can register it as a static unit.
@@ -65,6 +75,7 @@ export function planImport(bundleDir: string): ImportPlan {
   }
 
   return { ok: true, errors: [], faction, classId, statusId: id, classDef,
+    slotTextures: Object.keys(slotTextures).length ? slotTextures : undefined,
     actions: { copy, statusFlip: { id, to: 'generated' } } };
 }
 
@@ -74,7 +85,14 @@ export function applyImport(plan: ImportPlan, repoRoot = '.'): void {
   for (const { from, to } of plan.actions.copy) {
     const dest = resolve(repoRoot, to);
     mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(from, dest);
+    // Inject the component-texture map into the spec JSON as it's written.
+    if (to.endsWith('.json') && plan.slotTextures) {
+      const spec = JSON.parse(readFileSync(from, 'utf8'));
+      spec.slotTextures = plan.slotTextures;
+      writeFileSync(dest, JSON.stringify(spec, null, 2));
+    } else {
+      copyFileSync(from, dest);
+    }
   }
   const sp = resolve(repoRoot, 'src/data/importedStatus.json');
   mkdirSync(dirname(sp), { recursive: true });

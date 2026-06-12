@@ -57,6 +57,28 @@ describe('planImport', () => {
     expect(planImport(bundle).classDef).toBeUndefined();
   });
 
+  it('detects component (per-slot) textures and injects them into the imported spec', () => {
+    const b = mkdtempSync(join(tmpdir(), 'veh-slot-'));
+    writeFileSync(join(b, 'geometry.json'), JSON.stringify(spec));
+    writeFileSync(join(b, 'slot_dark.png'), 'PNG-TRACKS');
+    writeFileSync(join(b, 'slot_body.png'), 'PNG-HULL');
+    const p = planImport(b);
+    expect(p.ok).toBe(true);
+    expect(p.slotTextures).toEqual({
+      dark: '/assets/vehicles/blue/medium_tank/slot_dark.png',
+      body: '/assets/vehicles/blue/medium_tank/slot_body.png',
+    });
+    const dests = p.actions.copy.map((c) => c.to);
+    expect(dests).toContain('public/assets/vehicles/blue/medium_tank/slot_dark.png');
+
+    const repo = mkdtempSync(join(tmpdir(), 'veh-slotrepo-'));
+    applyImport(p, repo);
+    const written = JSON.parse(readFileSync(join(repo, 'src/vehicles/specs/blue/mediumTank.json'), 'utf8'));
+    expect(written.slotTextures.dark).toBe('/assets/vehicles/blue/medium_tank/slot_dark.png');
+    expect(existsSync(join(repo, 'public/assets/vehicles/blue/medium_tank/slot_dark.png'))).toBe(true);
+    rmSync(b, { recursive: true, force: true }); rmSync(repo, { recursive: true, force: true });
+  });
+
   it('registers a custom class into customClasses.json on apply (idempotent)', () => {
     const repo = mkdtempSync(join(tmpdir(), 'veh-repo-'));
     const b = mkdtempSync(join(tmpdir(), 'veh-apply-'));

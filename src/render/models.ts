@@ -130,6 +130,26 @@ function vehicleHullMat(defId: string, visual?: UnitVisual): HullMats {
   }
   return VEH_ROLE_MAT[CLASS_ROLE_FALLBACK[defId] ?? 'attack'];
 }
+
+// Per-slot component textures (studio-designed, imported into the spec): each slot
+// can carry its own texture (tracks/legs = 'dark', scales = 'body', …).
+const slotMatCache = new Map<string, Record<string, THREE.MeshStandardMaterial>>();
+function slotOverrideMat(slot: string, url: string): THREE.MeshStandardMaterial {
+  const map = loadTex(url, 2);
+  if (slot === 'accent') return new THREE.MeshStandardMaterial({ color: '#ffffff', map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.55, roughness: 0.5, metalness: 0.3 });
+  if (slot === 'light') return new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: 0.3, metalness: 0.2 });
+  return new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: slot === 'dark' ? 0.62 : 0.55, metalness: 0.45 });
+}
+function importedSlotMats(faction: string, classId: string): Record<string, THREE.MeshStandardMaterial> {
+  const key = `${faction}:${classId}`;
+  let m = slotMatCache.get(key);
+  if (m) return m;
+  m = {};
+  const st = importedSpecFor(faction, classId)?.slotTextures;
+  if (st) for (const slot of Object.keys(st)) { const url = st[slot as keyof typeof st]; if (url) m[slot] = slotOverrideMat(slot, url); }
+  slotMatCache.set(key, m);
+  return m;
+}
 // Fundament-Pad. Waehrend des Baus: Riffelblech mit gelb-grünem Warnrand.
 // Fertig: dezente dunkle Metallplatte (hull dunkel getoent, kein Warnrand).
 export const foundationBuildMat = new THREE.MeshStandardMaterial({
@@ -610,22 +630,24 @@ const UNIT_VISUAL_SCALE = 1.28; // visual-only: sim radius and collision stay da
 function meshesFor(
   sg: SlotGeos, accentHex: string, kind: 'unit' | 'building',
   vehicle = false, vehMat?: { body: THREE.MeshStandardMaterial; dark: THREE.MeshStandardMaterial },
+  slotMats?: Record<string, THREE.MeshStandardMaterial>,
 ): THREE.Mesh[] {
   const out: THREE.Mesh[] = [];
   // Buildings carry the sci-fi textures; vehicles a role-specific hull (body +
-  // darker panels both textured); infantry flat.
+  // darker panels both textured); infantry flat. A studio-designed per-slot
+  // component texture (slotMats) overrides the default for that slot.
   const bMat = kind === 'building'
     ? buildingBodyMat
     : (vehicle ? (vehMat?.body ?? vehicleBodyMat ?? bodyMat) : bodyMat);
   const dMat = kind === 'building'
     ? buildingDarkMat
     : (vehicle && vehMat ? vehMat.dark : darkMat);
-  if (sg.body) { const m = new THREE.Mesh(sg.body, bMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
-  if (sg.dark) { const m = new THREE.Mesh(sg.dark, dMat); m.castShadow = true; out.push(m); }
-  if (sg.accent) { const m = new THREE.Mesh(sg.accent, accentMat(accentHex)); m.castShadow = kind === 'building'; out.push(m); }
-  if (sg.light) { out.push(new THREE.Mesh(sg.light, lightMat)); }
-  if (sg.smooth) { const m = new THREE.Mesh(sg.smooth, smoothMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
-  if (sg.roof) { const m = new THREE.Mesh(sg.roof, kind === 'building' ? roofMat : bMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
+  if (sg.body) { const m = new THREE.Mesh(sg.body, slotMats?.body ?? bMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
+  if (sg.dark) { const m = new THREE.Mesh(sg.dark, slotMats?.dark ?? dMat); m.castShadow = true; out.push(m); }
+  if (sg.accent) { const m = new THREE.Mesh(sg.accent, slotMats?.accent ?? accentMat(accentHex)); m.castShadow = kind === 'building'; out.push(m); }
+  if (sg.light) { out.push(new THREE.Mesh(sg.light, slotMats?.light ?? lightMat)); }
+  if (sg.smooth) { const m = new THREE.Mesh(sg.smooth, slotMats?.smooth ?? smoothMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
+  if (sg.roof) { const m = new THREE.Mesh(sg.roof, slotMats?.roof ?? (kind === 'building' ? roofMat : bMat)); m.castShadow = true; m.receiveShadow = true; out.push(m); }
   return out;
 }
 
@@ -643,13 +665,16 @@ export function makeEntityGroup(
   const t = variantT ?? getTemplate(kind, defId);
   const pivotKey = variantT ? `unit:${visual!.factoryId}` : `${kind}:${defId}`;
   const vehMat = vehicle ? vehicleHullMat(visual?.factoryId?.split(':')[1] ?? defId, visual) : undefined;
+  // Studio-designed per-slot component textures (if this imported spec has any).
+  let slotMats: Record<string, THREE.MeshStandardMaterial> | undefined;
+  if (variantT && visual) { const [fId, cId] = visual.factoryId.split(':'); slotMats = importedSlotMats(fId, cId); }
   const outer = new THREE.Group();
   const inner = new THREE.Group();
-  for (const m of meshesFor(t.static, accentHex, kind, vehicle, vehMat)) inner.add(m);
+  for (const m of meshesFor(t.static, accentHex, kind, vehicle, vehMat, slotMats)) inner.add(m);
   const anim: Record<string, THREE.Group> = {};
   for (const [name, sg] of Object.entries(t.anims)) {
     const g = new THREE.Group();
-    for (const m of meshesFor(sg, accentHex, kind, vehicle, vehMat)) g.add(m);
+    for (const m of meshesFor(sg, accentHex, kind, vehicle, vehMat, slotMats)) g.add(m);
     if (name === 'turret') {
       const pv = TURRET_PIVOTS[pivotKey] ?? [0, 0, 0];
       g.position.set(pv[0], pv[1], pv[2]);

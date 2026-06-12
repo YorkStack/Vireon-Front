@@ -25,6 +25,8 @@ export interface VehicleSpec {
   footprint: { w: number; h: number; l: number };   // model-local units (same space as vehicleModels.ts)
   turretPivot?: [number, number, number];           // required iff a part has anim:"turret"
   parts: SpecPart[];
+  /** Optional per-slot component textures, injected on import: slot -> public asset URL. */
+  slotTextures?: Partial<Record<SpecSlot, string>>;
 }
 
 /** Required `size` length per primitive (mirrors vehicleModels.ts helpers). */
