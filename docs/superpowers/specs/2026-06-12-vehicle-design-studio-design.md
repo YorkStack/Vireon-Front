@@ -57,12 +57,17 @@ A versioned, documented JSON schema both repos implement independently.
 **Primitive arg vectors** (mirror `vehicleModels.ts` helpers):
 `box=[w,h,d]`, `cyl=[rTop,rBottom,h]`, `sph=[r]`, `cone=[r,h]`,
 `torus=[r,tube]`, `rbox=[w,h,d]` (+ `round`).
+Segment counts (`cyl`/`sph`/`cone`) are **interpreter defaults, not authored by
+Gemini** — the schema deliberately omits them so the LLM never has to reason
+about tessellation; the interpreter applies the same defaults as `models.ts`.
 
-**Units:** model-local — the exact space the current `Part[]` code uses, which
-the game then multiplies by `UNIT_VISUAL_SCALE` (1.28) and faction
-`silhouetteScale`. Specs therefore do not bake in the visual scale; they bake
-in the model-local footprint. The catalog (§4) gives Gemini the model-local
-target derived from the in-game world size.
+**Units:** model-local — the exact space the current `Part[]` code uses. The
+game renders every unit at `scale = UNIT_VISUAL_SCALE (1.28) × silhouetteScale`
+(per-variant; default 1) — see `src/render/models.ts` `makeEntityGroup`. Specs
+do **not** bake in that render scale; they bake in the model-local footprint.
+The catalog (§4) derives the model-local target from the in-game world size by
+dividing out the **full** render scale (both factors), so a variant with
+`silhouetteScale ≠ 1` still gets the correct size to Gemini.
 
 **Validation:** a shared-shape validator on both sides — checks enums, arg-vector
 arity per prim, finite numbers, `turretPivot` presence when a `turret` part
@@ -78,9 +83,10 @@ The game exports `catalog.json` (one entry per faction × class):
 {
   "blue:mediumTank": {
     "displayName": "Vanguard", "role": "tank", "techTier": 2,
-    "worldFootprint": { "w": 2.56, "h": 2.43, "l": 2.94 },  // collisionRadius/chassis-derived * UNIT_VISUAL_SCALE
+    "renderScale": 1.28,                                    // UNIT_VISUAL_SCALE * silhouetteScale (1.0 here)
+    "worldFootprint": { "w": 2.56, "h": 2.43, "l": 2.94 },  // localFootprint * renderScale — the size players see
     "tilesWide": 1.28, "tileSize": 2.0,
-    "localFootprint": { "w": 2.0, "h": 1.9, "l": 2.3 },     // worldFootprint / UNIT_VISUAL_SCALE — what specs author in
+    "localFootprint": { "w": 2.0, "h": 1.9, "l": 2.3 },     // worldFootprint / renderScale — what specs author in
     "movementType": "wheeled",
     "designBrief": { /* from src/data/artMetadata.ts: silhouette, components, palette, alienKeywords, forbidden, rtsReadabilityNotes */ }
   }
@@ -88,10 +94,11 @@ The game exports `catalog.json` (one entry per faction × class):
 ```
 
 Generation source: `collisionRadius` (template), chassis `halfW/len/hullH`
-(variant), `UNIT_VISUAL_SCALE`, `TILE`, plus `ART_METADATA` briefs. The studio
-injects size into **every** prompt — sketch *and* geometry — e.g. "this vehicle
-is ~2.6×2.9 world units, about 1.3 tiles wide; design at this scale; keep detail
-readable at RTS camera distance."
+(variant), `UNIT_VISUAL_SCALE`, **`silhouetteScale`** (variant; folded into
+`renderScale`), `TILE`, plus `ART_METADATA` briefs. The studio injects size into
+**every** prompt — sketch *and* geometry — e.g. "this vehicle is ~2.6×2.9 world
+units, about 1.3 tiles wide; design at this scale; keep detail readable at RTS
+camera distance."
 
 ## 5. Gemini pipeline (studio side)
 
@@ -137,7 +144,10 @@ Self-contained and portable; no path assumptions about the game repo.
 - **Factory hook:** `getVariantTemplate` prefers an imported spec at
   `src/vehicles/specs/<faction>/<class>.json` when present and the art status
   allows; otherwise falls back to today's procedural `buildVehicleParts`. So
-  studio-designed vehicles override; undesigned ones are unaffected.
+  studio-designed vehicles override; undesigned ones are unaffected. The new
+  `src/vehicles/specs/` subdir is intentional and separate from the existing
+  per-vehicle `src/vehicles/<faction>/<class>.ts` modules (which keep the
+  visual-variant metadata + procedural fallback); the two never collide.
 - **Import script** `npm run import:vehicle -- <bundle-dir>` (and an
   `--all <dir>` form): validates the bundle, copies `geometry.json` →
   `src/vehicles/specs/...`, textures → `public/assets/vehicles/<faction>/<class>/`,
@@ -202,5 +212,9 @@ to all 32 (list + batch).
   reference + few-shot real examples + live preview + feedback loop + validation
   clamp. If still insufficient, fallback is option C (semi-manual block nudging)
   — a later increment, not this slice.
-- **Unit/scale mismatch** between spec (model-local) and game (×scale) — pinned
-  by authoring specs in model-local units and verifying via the round-trip test.
+- **Unit/scale mismatch** between spec (model-local) and game
+  (×`UNIT_VISUAL_SCALE`×`silhouetteScale`) — pinned by authoring specs in
+  model-local units, dividing out the **full** render scale (both factors) in
+  the catalog, and verifying via the round-trip test (which asserts the imported
+  spec's world bbox matches the procedural model's within tolerance, including
+  `silhouetteScale`).
