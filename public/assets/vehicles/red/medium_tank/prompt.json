@@ -1,0 +1,38 @@
+{
+  "designBrief": {
+    "role": "armored frontline combat vehicle",
+    "silhouette": "broad low chassis, obvious rotating turret, single main cannon",
+    "movementType": "heavy tracked",
+    "weaponType": "direct-fire ballistic cannon",
+    "requiredComponents": [
+      "main turret",
+      "long cannon barrel",
+      "armored glacis"
+    ],
+    "forbiddenElements": [
+      "crane arms",
+      "cargo hoppers",
+      "multiple long barrels"
+    ],
+    "palette": "gunmetal with crimson/orange emissive accent strips",
+    "materialFamily": "rolled battle steel, scorched plating, riveted armor",
+    "alienKeywords": [
+      "brutalist",
+      "asymmetric reinforcement",
+      "battle wear",
+      "non-human panel language"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi vehicle hull texture sheet for a red faction armored frontline combat vehicle in an alien RTS. Material: rolled battle steel, scorched plating, riveted armor. Palette: gunmetal with crimson/orange emissive accent strips. Alien design language: brutalist, asymmetric reinforcement, battle wear, non-human panel language. Include armor panel lines, subtle wear, faction markings as abstract glyphs. Forbidden: crane arms, cargo hoppers, multiple long barrels. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless orthographic texture sheet, depicting the hull of a red armored frontline combat vehicle. The surface is composed of heavily rolled battle steel, rendered in a deep, grimy gunmetal, with extensive patches of scorched plating and battle-wear. Riveted armor plates create a layered, robust surface. Intricate patterns of crimson and orange emissive accent strips glow subtly, highlighting integrated alien industrial surface details that resemble complex circuit tracery and glowing pressure points, fused directly into the steel. The texture must be flat, with no perspective, no baked lighting, and no text.",
+    "Generate a seamless orthographic texture sheet depicting the hull of a red armored frontline combat vehicle. The surface is predominantly thick, gunmetal-colored riveted armor, displaying extreme scoring, deep heat distortion, and heavy impact marks. Bold crimson and orange emissive accent strips run along the edges of the overlapping armor panels and delineate strange, almost biomechanical alien industrial patterns: a network of organic-looking conduits and crystalline vents integrated within the plating. The texture must be perfectly flat, orthographic, with no perspective, no baked lighting, and no text."
+  ],
+  "finalImagePrompt": "Generate a seamless orthographic texture sheet depicting the hull of a red armored frontline combat vehicle. The surface is predominantly thick, gunmetal-colored riveted armor, displaying extreme scoring, deep heat distortion, and heavy impact marks. Bold crimson and orange emissive accent strips run along the edges of the overlapping armor panels and delineate strange, almost biomechanical alien industrial patterns: a network of organic-looking conduits and crystalline vents integrated within the plating. The texture must be perfectly flat, orthographic, with no perspective, no baked lighting, and no text.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

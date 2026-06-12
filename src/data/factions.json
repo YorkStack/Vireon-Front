@@ -1,0 +1,48 @@
+{
+  "red": {
+    "name": "Crimson Pact",
+    "color": "#ff3b30",
+    "emissive": "#ff5c4d",
+    "tagline": "Iron columns. Forward, always.",
+    "perks": ["Vehicle weapons +15% damage", "Vehicles cost +10%"],
+    "modifiers": {
+      "vehicleDamage": 1.15,
+      "vehicleCost": 1.10
+    }
+  },
+  "blue": {
+    "name": "Azure Concord",
+    "color": "#2f7cff",
+    "emissive": "#4d8cff",
+    "tagline": "The shield that does not break.",
+    "perks": ["Units & buildings +15% hull", "Construction 12% slower"],
+    "modifiers": {
+      "hp": 1.15,
+      "buildTime": 1.12
+    }
+  },
+  "green": {
+    "name": "Verdant Swarm",
+    "color": "#2ecc40",
+    "emissive": "#49e85d",
+    "tagline": "We are many. We are fast.",
+    "perks": ["Infantry +15% speed, -15% cost", "All units -10% hull"],
+    "modifiers": {
+      "infantrySpeed": 1.15,
+      "infantryCost": 0.85,
+      "unitHp": 0.90
+    }
+  },
+  "yellow": {
+    "name": "Solar Dominion",
+    "color": "#ffcc00",
+    "emissive": "#ffd84d",
+    "tagline": "Light, weaponized.",
+    "perks": ["Energy weapons +20% damage, turrets +1 range", "Buildings use +25% power"],
+    "modifiers": {
+      "energyDamage": 1.20,
+      "turretRange": 1,
+      "powerUse": 1.25
+    }
+  }
+}

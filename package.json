@@ -1,0 +1,27 @@
+{
+  "name": "vireon-front",
+  "version": "0.1.0",
+  "description": "Vireon Front - a stylized 3D RTS on a hostile alien planet",
+  "scripts": {
+    "dev": "vite --port 5199",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "check": "tsc --noEmit",
+    "validate:balance": "node scripts/validate-balance.mjs",
+    "export:artmeta": "node scripts/export-artmeta.mjs",
+    "generate:texture": "node scripts/export-artmeta.mjs && venv/bin/python tools/vehicle_texture.py"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "private": true
+}

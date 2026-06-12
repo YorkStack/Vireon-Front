@@ -1,0 +1,38 @@
+{
+  "designBrief": {
+    "role": "armored frontline combat vehicle",
+    "silhouette": "broad low chassis, obvious rotating turret, single main cannon",
+    "movementType": "mono-wheel gyro platform",
+    "weaponType": "direct-fire ballistic cannon",
+    "requiredComponents": [
+      "main turret",
+      "long cannon barrel",
+      "armored glacis"
+    ],
+    "forbiddenElements": [
+      "crane arms",
+      "cargo hoppers",
+      "multiple long barrels"
+    ],
+    "palette": "dark ceramic with yellow/gold emissive accents",
+    "materialFamily": "iridescent ceramic-alloy, energy lattice inlays",
+    "alienKeywords": [
+      "gyroscopic",
+      "energy lattice",
+      "floating segments",
+      "solar-forged"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi vehicle hull texture sheet for a yellow faction armored frontline combat vehicle in an alien RTS. Material: iridescent ceramic-alloy, energy lattice inlays. Palette: dark ceramic with yellow/gold emissive accents. Alien design language: gyroscopic, energy lattice, floating segments, solar-forged. Include armor panel lines, subtle wear, faction markings as abstract glyphs. Forbidden: crane arms, cargo hoppers, multiple long barrels. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless, flat orthographic texture sheet for a sci-fi vehicle hull, depicting a robust, dark iridescent ceramic-alloy material. The dominant surface is a deep, obsidian-like ceramic, interspersed with vivid yellow and golden emissive accents that manifest as glowing energy lattice inlays, pulsing with an inner light, and defining structural lines. Imaginative alien industrial details cover the surface: a subtle, almost microscopic web of crystalline erosion marks suggesting ancient energy flow, irregularly shaped panels with raised, alien-script-like glyphs, and integrated, subtly convex vents designed for extreme thermal regulation, all meticulously rendered with no perspective, no baked lighting, and no text, perfect for the armored plates of a frontline combat vehicle.",
+    "Generate a seamless, flat orthographic texture sheet for a combat vehicle hull, showcasing an advanced, iridescent dark ceramic-alloy. The primary surface is a deep, near-black ceramic, through which bold yellow and gold emissive energy lattice inlays glow with a constant, warm light, forming complex, non-Euclidean patterns that suggest internal power routing. Alien industrial surface details are prominent: fine, interwoven fibrous strands of an unknown material reinforce key stress points, subtle heat-scarred patches reveal areas of past intense energy expenditure, and microscopic kinetic dampening fields are subtly indicated by a recurring pattern of raised, asymmetric micro-filaments, all presented without any perspective distortion, baked lighting, or superimposed text, optimized for the resilient armor of a frontline vehicle."
+  ],
+  "finalImagePrompt": "Generate a seamless, flat orthographic texture sheet for a combat vehicle hull, showcasing an advanced, iridescent dark ceramic-alloy. The primary surface is a deep, near-black ceramic, through which bold yellow and gold emissive energy lattice inlays glow with a constant, warm light, forming complex, non-Euclidean patterns that suggest internal power routing. Alien industrial surface details are prominent: fine, interwoven fibrous strands of an unknown material reinforce key stress points, subtle heat-scarred patches reveal areas of past intense energy expenditure, and microscopic kinetic dampening fields are subtly indicated by a recurring pattern of raised, asymmetric micro-filaments, all presented without any perspective distortion, baked lighting, or superimposed text, optimized for the resilient armor of a frontline vehicle.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

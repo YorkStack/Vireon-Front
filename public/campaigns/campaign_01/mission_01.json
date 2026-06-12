@@ -1,0 +1,36 @@
+{
+  "id": "mission_01",
+  "name": "Foothold",
+  "briefing": "Commander, your drop pod made it down in one piece - barely. A rival expedition has landed across the plateau and is already digging in. Deploy your Fabricator, raise a base around a Command Nexus, harvest the vire crystal fields, and field an army. Destroy their Command Nexus before they destroy yours.",
+  "map": { "seed": 1337, "size": 96 },
+  "playerFaction": null,
+  "enemyFaction": "auto",
+  "startingResources": 6000,
+  "enemyStartingResources": 6000,
+  "startingUnits": [
+    { "type": "fabricator", "offset": [0, 0] },
+    { "type": "lancer", "offset": [2, 1] },
+    { "type": "lancer", "offset": [-2, 1] }
+  ],
+  "enemyStartingUnits": [
+    { "type": "fabricator", "offset": [0, 0] },
+    { "type": "lancer", "offset": [2, 1] },
+    { "type": "lancer", "offset": [-2, 1] }
+  ],
+  "objectives": [
+    "Build a Command Nexus and establish your base",
+    "Harvest vire crystal to fund your war effort",
+    "Destroy the enemy Command Nexus"
+  ],
+  "winCondition": "enemy_nexus_destroyed",
+  "loseCondition": "player_nexus_destroyed",
+  "aiProfile": {
+    "name": "standard",
+    "firstWaveAt": 210,
+    "waveInterval": 150,
+    "waveGrowth": 1.35,
+    "maxArmy": 26,
+    "harvesters": 2,
+    "rebuilds": true
+  }
+}

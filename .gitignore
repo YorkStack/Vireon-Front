@@ -1,0 +1,10 @@
+node_modules/
+dist/
+venv/
+.tmp/
+.DS_Store
+# API keys & secrets — never commit
+.env
+.gemini_key/
+tools/art_metadata.json
+.claude/settings.local.json

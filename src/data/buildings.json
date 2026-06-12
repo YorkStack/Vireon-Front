@@ -1,0 +1,99 @@
+{
+  "nexus": {
+    "name": "Command Nexus",
+    "cost": 2000,
+    "buildTime": 30,
+    "hp": 3000,
+    "footprint": [3, 3],
+    "power": 20,
+    "vision": 12,
+    "critical": true,
+    "buildSource": true,
+    "prereq": [],
+    "description": "Your command structure. If it falls, the campaign is lost."
+  },
+  "refinery": {
+    "name": "Refinery",
+    "cost": 900,
+    "buildTime": 16,
+    "hp": 1100,
+    "footprint": [3, 2],
+    "power": -10,
+    "vision": 8,
+    "dropoff": true,
+    "prereq": [],
+    "description": "Harvesters deliver vire crystal here for processing."
+  },
+  "spire": {
+    "name": "Power Spire",
+    "cost": 450,
+    "buildTime": 10,
+    "hp": 650,
+    "footprint": [2, 2],
+    "power": 50,
+    "vision": 7,
+    "prereq": [],
+    "description": "Geothermal tap. Powers your base - keep output above usage."
+  },
+  "barracks": {
+    "name": "Barracks",
+    "cost": 700,
+    "buildTime": 14,
+    "hp": 1000,
+    "footprint": [2, 2],
+    "power": -15,
+    "vision": 8,
+    "produces": "infantry",
+    "prereq": ["spire"],
+    "description": "Trains infantry squads."
+  },
+  "foundry": {
+    "name": "Vehicle Foundry",
+    "cost": 1200,
+    "buildTime": 20,
+    "hp": 1400,
+    "footprint": [3, 3],
+    "power": -25,
+    "vision": 8,
+    "produces": "vehicle",
+    "prereq": ["refinery"],
+    "description": "Assembles vehicles, harvesters and fabricators."
+  },
+  "wall": {
+    "name": "Barrier Segment",
+    "cost": 60,
+    "buildTime": 2,
+    "hp": 500,
+    "footprint": [1, 1],
+    "power": 0,
+    "vision": 2,
+    "wall": true,
+    "prereq": [],
+    "description": "Cheap crystalline barrier. Slows down attackers."
+  },
+  "cannon": {
+    "name": "Bastion Cannon",
+    "cost": 500,
+    "buildTime": 10,
+    "hp": 750,
+    "footprint": [1, 1],
+    "power": -8,
+    "vision": 10,
+    "prereq": ["barracks"],
+    "weapon": { "damage": 40, "damageType": "ballistic", "range": 9, "cooldown": 1.7, "projectile": "shell" },
+    "description": "Automated cannon turret. Solid all-round defense."
+  },
+  "lance": {
+    "name": "Pulse Lance",
+    "cost": 800,
+    "buildTime": 13,
+    "hp": 600,
+    "footprint": [1, 1],
+    "power": -20,
+    "vision": 11,
+    "needsPower": true,
+    "prereq": ["foundry"],
+    "weapon": { "damage": 55, "damageType": "energy", "range": 10.5, "cooldown": 1.9, "projectile": "laser" },
+    "description": "Energy turret. Devastating, but offline when power is short."
+  }
+}

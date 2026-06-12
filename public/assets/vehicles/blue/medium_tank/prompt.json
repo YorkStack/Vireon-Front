@@ -1,0 +1,38 @@
+{
+  "designBrief": {
+    "role": "armored frontline combat vehicle",
+    "silhouette": "broad low chassis, obvious rotating turret, single main cannon",
+    "movementType": "wheeled (multi-axle)",
+    "weaponType": "direct-fire ballistic cannon",
+    "requiredComponents": [
+      "main turret",
+      "long cannon barrel",
+      "armored glacis"
+    ],
+    "forbiddenElements": [
+      "crane arms",
+      "cargo hoppers",
+      "multiple long barrels"
+    ],
+    "palette": "cool steel blue with blue/white emissive accents",
+    "materialFamily": "precision-machined composite, clean panel seams",
+    "alienKeywords": [
+      "modular",
+      "sensor-studded",
+      "ordered geometry",
+      "shield emitter nodes"
+    ],
+    "rtsReadabilityNotes": "Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text."
+  },
+  "promptCandidates": [
+    "Stylized seamless sci-fi vehicle hull texture sheet for a blue faction armored frontline combat vehicle in an alien RTS. Material: precision-machined composite, clean panel seams. Palette: cool steel blue with blue/white emissive accents. Alien design language: modular, sensor-studded, ordered geometry, shield emitter nodes. Include armor panel lines, subtle wear, faction markings as abstract glyphs. Forbidden: crane arms, cargo hoppers, multiple long barrels. Must stay readable from an isometric RTS camera at distance; no noisy micro-detail that shimmers; faction accent visible but not overwhelming; no text.",
+    "A seamless, tiling texture sheet for a sci-fi frontline combat vehicle hull, depicting precision-machined composite armor in a deep, cool steel blue with a subtle, matte finish. The surface features incredibly clean, hairline panel seams and is adorned with intricate alien industrial details: hexagonal and triangular recessed sections filled with glowing blue and bright white data-stream conduits, interwoven with microscopic etched glyphs that hint at embedded power grids. Subtle, raised organic ribbing periodically breaks the flatness without introducing depth. The overall style is flat orthographic, with no perspective, no baked lighting, and no text, suitable for a diffuse map.",
+    "Generate a seamless, tiling texture panel for a rugged sci-fi combat vehicle hull, rendered in a cool steel blue precision-machined composite with a resilient, satiny sheen. The design incorporates ultra-clean, laser-cut panel seams and distinct alien industrial surface detailing: asymmetrical, stylized ventilation grilles that glow vibrantly in blue and stark white, integrated flush with the hull. Subtly raised, alien-scripted warning indicators and energy conduit pathways are subtly embossed across the surface, conveying robust functionality. The imagery must be strictly flat orthographic, without any perspective distortion, baked shadows, or textual elements, ideal for a repeating material texture."
+  ],
+  "finalImagePrompt": "Generate a seamless, tiling texture panel for a rugged sci-fi combat vehicle hull, rendered in a cool steel blue precision-machined composite with a resilient, satiny sheen. The design incorporates ultra-clean, laser-cut panel seams and distinct alien industrial surface detailing: asymmetrical, stylized ventilation grilles that glow vibrantly in blue and stark white, integrated flush with the hull. Subtly raised, alien-scripted warning indicators and energy conduit pathways are subtly embossed across the surface, conveying robust functionality. The imagery must be strictly flat orthographic, without any perspective distortion, baked shadows, or textual elements, ideal for a repeating material texture.",
+  "generationDate": "2026-06-12",
+  "model": "gemini-2.5-flash-image",
+  "quality": "draft",
+  "approvalStatus": "pending-review",
+  "notes": "Gameplay stats are defined in src/data/unitClasses.ts and were not touched."
+}

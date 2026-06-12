@@ -1,0 +1,8 @@
+{
+  "id": "campaign_01",
+  "name": "Shards of Vireon",
+  "description": "First contact on the crystal world of Vireon. Establish a foothold and drive the rival expedition off the plateau.",
+  "missions": [
+    { "id": "mission_01", "name": "Foothold", "file": "mission_01.json" }
+  ]
+}
