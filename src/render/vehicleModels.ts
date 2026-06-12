@@ -16,7 +16,7 @@ import type { ChassisSpec, VehicleVariant } from '../vehicles/types';
 
 /** Rounded (chamfered) box — hulls, turrets and cabs use this so vehicles
  * read as machined armor instead of raw voxels. Radius scales with size. */
-const rbox = (w: number, h: number, d: number, r?: number) =>
+export const rbox = (w: number, h: number, d: number, r?: number) =>
   new RoundedBoxGeometry(w, h, d, 2, r ?? Math.min(0.09, Math.min(w, h, d) * 0.22));
 
 export interface VehicleBuild {

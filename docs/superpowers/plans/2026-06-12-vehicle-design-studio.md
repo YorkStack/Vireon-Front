@@ -64,8 +64,9 @@ Then add to `package.json` `scripts`: `"test": "vitest run"`, `"test:watch": "vi
 - [ ] **Step 2: Vitest config (node env).** Create `vitest.config.ts`:
 ```ts
 import { defineConfig } from 'vitest/config';
-export default defineConfig({ test: { environment: 'node', include: ['src/**/*.test.ts'] } });
+export default defineConfig({ test: { environment: 'node', include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'tools/**/*.test.ts'] } });
 ```
+(Node-script tests are written as `.ts` so this single include covers them — no later afterthought.)
 
 - [ ] **Step 3: Write the spec types.** Create `src/vehicles/spec/vehicleSpec.ts`:
 ```ts
@@ -80,7 +81,8 @@ export interface SpecPart {
   round?: number;        // rbox only
   slot: SpecSlot;
   pos: [number, number, number];
-  rot?: [number, number, number];   // euler radians, default [0,0,0]
+  rot?: [number, number, number];     // euler radians, default [0,0,0]
+  scale?: [number, number, number];   // default [1,1,1] — some procedural parts use non-uniform scale (e.g. domes); must round-trip
   anim?: SpecAnim;       // default null
 }
 export interface VehicleSpec {
@@ -179,6 +181,7 @@ export function validateSpec(spec: VehicleSpec): { ok: boolean; errors: string[]
     if (!Array.isArray(p.pos) || p.pos.length !== 3 || !p.pos.every(fin))
       e.push(`part[${i}] pos must be 3 finite numbers`);
     if (p.rot && (p.rot.length !== 3 || !p.rot.every(fin))) e.push(`part[${i}] rot invalid`);
+    if (p.scale && (p.scale.length !== 3 || !p.scale.every(fin))) e.push(`part[${i}] scale invalid`);
     if (p.anim === 'turret') hasTurret = true;
     if (Array.isArray(p.pos) && p.pos.some((v) => Math.abs(v) > maxR))
       e.push(`part[${i}] center outside 1.5x footprint`);
