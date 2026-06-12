@@ -58,3 +58,9 @@ vehicles/red/medium_tank/baseColor_draft.png,gemini-2.5-flash-image,201,1290,0.0
 vehicles/blue/medium_tank/baseColor_draft.png,gemini-2.5-flash-image,222,1291,0.0388
 vehicles/green/medium_tank/baseColor_draft.png,gemini-2.5-flash-image,249,1290,0.0388
 vehicles/yellow/medium_tank/baseColor_draft.png,gemini-2.5-flash-image,243,1290,0.0388
+vehicles/red/harvester/baseColor.png,gemini-3-pro-image-preview,269,1337,0.1610
+vehicles/red/builder/baseColor.png,gemini-3-pro-image-preview,212,1272,0.1531
+vehicles/red/medium_tank/baseColor.png,gemini-3-pro-image-preview,238,1286,0.1548
+vehicles/blue/medium_tank/baseColor.png,gemini-3-pro-image-preview,229,1287,0.1549
+vehicles/green/medium_tank/baseColor.png,gemini-3-pro-image-preview,226,1298,0.1562
+vehicles/yellow/medium_tank/baseColor.png,gemini-3-pro-image-preview,231,1292,0.1555

@@ -164,6 +164,20 @@ for (const faction of ['red', 'blue', 'green', 'yellow']) {
   }
 }
 
+// ---- asset status ledger ----
+// Pro finals exist on disk for these sets (prompt.json beside each texture).
+// 'generated' = renderer loads them; flip to 'approved' after in-game review,
+// or 'needsRevision' to fall back to the procedural materials.
+const STATUS: Partial<Record<string, AssetStatus>> = {
+  red_harvester: 'generated',
+  red_builder: 'generated',
+  red_mediumTank: 'generated',
+  blue_mediumTank: 'generated',
+  green_mediumTank: 'generated',
+  yellow_mediumTank: 'generated',
+};
+for (const [id, s] of Object.entries(STATUS)) if (ART_METADATA[id] && s) ART_METADATA[id].status = s;
+
 /** True when the generated texture set may be loaded by the renderer. */
 export function textureSetUsable(artMetadataId: string | undefined): boolean {
   if (!artMetadataId) return false;

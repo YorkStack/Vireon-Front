@@ -11,7 +11,7 @@ import type { MovementType } from '../data/movementProfiles';
 
 /** Chassis = running gear + base hull proportions (procedural model input). */
 export interface ChassisSpec {
-  style: 'tracked' | 'wheeled' | 'hover' | 'monoWheel';
+  style: 'tracked' | 'wheeled' | 'hover' | 'monoWheel' | 'walker';
   /** Hull half-width / length / hull top height — tune the silhouette here. */
   halfW: number;
   len: number;
@@ -20,6 +20,7 @@ export interface ChassisSpec {
   wheelCount?: number;      // wheeled: wheels per side
   skirtGlow?: boolean;      // hover: emissive underside strip
   wheelRadius?: number;     // monoWheel: central wheel size
+  legCount?: 4 | 6;         // walker: number of legs
 }
 
 export interface BalanceOverride {

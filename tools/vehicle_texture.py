@@ -51,6 +51,16 @@ SNAKE_TO_CLASS = {
 }
 
 
+def _ensure_png(path: Path) -> None:
+    """Pro returns JPEG; the renderer loads .png — convert in place if needed."""
+    if path.suffix.lower() != ".png":
+        from PIL import Image
+        png = path.with_suffix(".png")
+        Image.open(path).convert("RGB").save(png)
+        path.unlink()
+        print(f"  -> als PNG konvertiert: {png.name}")
+
+
 def load_meta() -> dict:
     if not META_PATH.exists():
         sys.exit("tools/art_metadata.json fehlt - erst `npm run export:artmeta` ausfuehren.")
@@ -116,17 +126,19 @@ def generate_set(faction: str, unit_snake: str, *, final: bool, variants: int,
     for v in range(variants):
         vtag = f"_v{v + 1}" if variants > 1 else ""
         name = f"vehicles/{faction}/{unit_snake}/baseColor{vtag}{suffix}.png"
-        ga.create_game_asset(prompt=chosen, filename=name, is_sprite_sheet=False,
-                             client=client, model=model, transparent=False, kind="texture")
+        path = ga.create_game_asset(prompt=chosen, filename=name, is_sprite_sheet=False,
+                                    client=client, model=model, transparent=False, kind="texture")
+        _ensure_png(path)
     if with_emissive:
         em_prompt = (
             f"{chosen} Emissive mask variant: mostly black surface with only the glowing "
             f"accent strips, conduits and markings in {meta['designBrief']['palette'].split(' with ')[-1]}."
         )
-        ga.create_game_asset(prompt=em_prompt,
-                             filename=f"vehicles/{faction}/{unit_snake}/emissive{suffix}.png",
-                             is_sprite_sheet=False, client=client, model=model,
-                             transparent=False, kind="texture")
+        em_path = ga.create_game_asset(prompt=em_prompt,
+                                       filename=f"vehicles/{faction}/{unit_snake}/emissive{suffix}.png",
+                                       is_sprite_sheet=False, client=client, model=model,
+                                       transparent=False, kind="texture")
+        _ensure_png(em_path)
 
     # Stage 4: reproducibility record next to the textures.
     record = {

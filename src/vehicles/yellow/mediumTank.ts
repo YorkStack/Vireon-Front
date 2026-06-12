@@ -1,5 +1,5 @@
 // Yellow mediumTank - faction visual variant.
-// Solar Dominion: exotic mono-wheel platforms - unusual alien mechanics.
+// Solar Dominion: gyro mono-wheel - dominant armored ring, hub cab inside, no outriggers (concept sheet).
 // Balance lives in src/data/unitClasses.ts ('mediumTank' template). This file only
 // shapes how this faction's mediumTank LOOKS and moves. Extract & edit freely:
 // chassis proportions, kit knobs, textureSetId - gameplay stats stay untouched
@@ -10,7 +10,7 @@ export const yellowMediumTank: VehicleVariant = {
   classId: 'mediumTank',
   factionId: 'yellow',
   movementType: 'monoWheel',
-  chassis: { style: 'monoWheel', halfW: 0.72, len: 2.1, hullH: 0.5, wheelRadius: 0.62, },
+  chassis: { style: 'monoWheel', halfW: 0.72, len: 2.1, hullH: 0.5, wheelRadius: 0.72, },
   textureSetId: 'yellow/medium_tank',
   artMetadataId: 'yellow_mediumTank',
   previewCamera: { distance: 7.0, height: 3.9 },

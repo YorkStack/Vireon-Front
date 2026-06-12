@@ -1,5 +1,5 @@
 // Yellow lightAttack - faction visual variant.
-// Solar Dominion: exotic mono-wheel platforms - unusual alien mechanics.
+// Solar Dominion: gyro mono-wheel - dominant armored ring, hub cab inside, no outriggers (concept sheet).
 // Balance lives in src/data/unitClasses.ts ('lightAttack' template). This file only
 // shapes how this faction's lightAttack LOOKS and moves. Extract & edit freely:
 // chassis proportions, kit knobs, textureSetId - gameplay stats stay untouched

@@ -1,5 +1,5 @@
 // Yellow builder - faction visual variant.
-// Solar Dominion: exotic mono-wheel platforms - unusual alien mechanics.
+// Solar Dominion: gyro mono-wheel - dominant armored ring, hub cab inside, no outriggers (concept sheet).
 // Balance lives in src/data/unitClasses.ts ('builder' template). This file only
 // shapes how this faction's builder LOOKS and moves. Extract & edit freely:
 // chassis proportions, kit knobs, textureSetId - gameplay stats stay untouched
@@ -10,7 +10,7 @@ export const yellowBuilder: VehicleVariant = {
   classId: 'builder',
   factionId: 'yellow',
   movementType: 'monoWheel',
-  chassis: { style: 'monoWheel', halfW: 0.75, len: 2.2, hullH: 0.6, wheelRadius: 0.62, },
+  chassis: { style: 'monoWheel', halfW: 0.75, len: 2.2, hullH: 0.6, wheelRadius: 0.74, },
   textureSetId: 'yellow/builder',
   artMetadataId: 'yellow_builder',
   previewCamera: { distance: 7.3, height: 4.0 },

@@ -896,7 +896,11 @@ export class World {
         u.visRoll += (wantRoll - u.visRoll) * Math.min(1, dt * 6);
         inner.rotation.z = u.visRoll;
         const bob = prof.bobAmp ? Math.sin(this.time * prof.bobFreq + u.id) * prof.bobAmp : 0;
-        inner.position.y = prof.rideHeight + bob;
+        // Walkers bounce with their stride while actually moving.
+        const moving = !!u.path && u.path.length > 0;
+        const step = prof.stepBounce && moving
+          ? Math.abs(Math.sin(this.time * 7 + u.id)) * prof.stepBounce : 0;
+        inner.position.y = prof.rideHeight + bob + step;
       }
     }
     if (!anim) return;
