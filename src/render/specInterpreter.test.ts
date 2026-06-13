@@ -31,6 +31,25 @@ describe('buildPartsFromSpec', () => {
     expect(() => buildPartsFromSpec({ ...spec, parts: [] } as VehicleSpec)).toThrow();
   });
 
+  it('defaults texGroup to the slot, and carries an explicit normalized texGroup', () => {
+    const s: VehicleSpec = {
+      ...spec, parts: [
+        { prim: 'box', size: [1, 0.5, 2], slot: 'body', pos: [0, 0.5, 0] },                            // group defaults to 'body'
+        { prim: 'trap', size: [1.6, 2.0, 0.5, 0.4], slot: 'dark', texGroup: ' Track ', pos: [0.8, 0.3, 0] }, // -> 'track'
+        { prim: 'cyl', size: [0.1, 0.1, 1.4], slot: 'dark', texGroup: 'barrel', pos: [0, 1, 0.8], anim: 'turret' },
+      ],
+    };
+    const { parts } = buildPartsFromSpec(s);
+    expect(parts.map((p) => p.group)).toEqual(['body', 'track', 'barrel']);
+  });
+
+  it('builds a trap (trapezoid prism) part', () => {
+    const s: VehicleSpec = { ...spec, parts: [{ prim: 'trap', size: [1.6, 2.0, 0.5, 0.4], slot: 'dark', pos: [0, 0.3, 0] }] };
+    const { parts } = buildPartsFromSpec(s);
+    expect(parts).toHaveLength(1);
+    expect((parts[0].geo.getAttribute('position') as { count: number }).count).toBeGreaterThan(0);
+  });
+
   it('round-trips a real procedural variant: valid, same parts/slots, bbox within tolerance', async () => {
     const THREE = await import('three');
     const { getVariant } = await import('../vehicles');

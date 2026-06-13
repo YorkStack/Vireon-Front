@@ -22,7 +22,7 @@ export type Slot = 'body' | 'dark' | 'accent' | 'light' | 'smooth' | 'roof';
 export type AnimName = 'turret' | 'spin' | 'load';
 /** Pre-transform geometry spec, captured so a Part can be exported to vehicle-spec. */
 export interface PartSpecMeta { prim: string; size: number[]; round?: number; pos: number[]; rot: number[]; scale: number[] }
-export interface Part { geo: THREE.BufferGeometry; slot: Slot; anim?: AnimName; spec?: PartSpecMeta }
+export interface Part { geo: THREE.BufferGeometry; slot: Slot; group?: string; anim?: AnimName; spec?: PartSpecMeta }
 
 // Tags each primitive geometry with the prim + args it was built from, so P()
 // can record a Part's full vehicle-spec description before the transform is
@@ -131,24 +131,22 @@ function vehicleHullMat(defId: string, visual?: UnitVisual): HullMats {
   return VEH_ROLE_MAT[CLASS_ROLE_FALLBACK[defId] ?? 'attack'];
 }
 
-// Per-slot component textures (studio-designed, imported into the spec): each slot
-// can carry its own texture (tracks/legs = 'dark', scales = 'body', …).
-const slotMatCache = new Map<string, Record<string, THREE.MeshStandardMaterial>>();
-function slotOverrideMat(slot: string, url: string): THREE.MeshStandardMaterial {
-  const map = loadTex(url, 2);
-  if (slot === 'accent') return new THREE.MeshStandardMaterial({ color: '#ffffff', map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0.55, roughness: 0.5, metalness: 0.3 });
-  if (slot === 'light') return new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: 0.3, metalness: 0.2 });
-  return new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: slot === 'dark' ? 0.62 : 0.55, metalness: 0.45 });
-}
-function importedSlotMats(faction: string, classId: string): Record<string, THREE.MeshStandardMaterial> {
-  const key = `${faction}:${classId}`;
-  let m = slotMatCache.get(key);
+// Per-component textures (studio-designed, imported into the spec): each texGroup
+// can carry its own texture (e.g. tracks vs cutter vs barrel, all slot 'dark').
+// The texture is keyed by GROUP; the material kind still comes from the SLOT.
+const overrideMatCache = new Map<string, THREE.MeshStandardMaterial>();
+function overrideMat(slot: string, url: string): THREE.MeshStandardMaterial {
+  const cacheKey = `${slot}|${url}`;
+  let m = overrideMatCache.get(cacheKey);
   if (m) return m;
-  m = {};
-  const st = importedSpecFor(faction, classId)?.slotTextures;
-  if (st) for (const slot of Object.keys(st)) { const url = st[slot as keyof typeof st]; if (url) m[slot] = slotOverrideMat(slot, url); }
-  slotMatCache.set(key, m);
+  const map = loadTex(url, 2);
+  m = new THREE.MeshStandardMaterial({ color: '#ffffff', map, roughness: slot === 'dark' ? 0.62 : 0.55, metalness: 0.45 });
+  overrideMatCache.set(cacheKey, m);
   return m;
+}
+/** group → texture url for an imported spec (slotTextures keys are groups; group defaults to slot). */
+function importedGroupTex(faction: string, classId: string): Record<string, string> {
+  return (importedSpecFor(faction, classId)?.slotTextures as Record<string, string> | undefined) ?? {};
 }
 // Fundament-Pad. Waehrend des Baus: Riffelblech mit gelb-grünem Warnrand.
 // Fertig: dezente dunkle Metallplatte (hull dunkel getoent, kein Warnrand).
@@ -225,8 +223,30 @@ export const sph = (r: number, seg = 12) => tagGeo(new THREE.SphereGeometry(r, s
 export const cone = (r: number, h: number, seg = 8) => tagGeo(new THREE.ConeGeometry(r, h, seg), 'cone', [r, h]);
 export const octa = (r: number) => new THREE.OctahedronGeometry(r); // buildings only; not a vehicle-spec prim
 export const torus = (r: number, t: number) => tagGeo(new THREE.TorusGeometry(r, t, 8, 20), 'torus', [r, t]);
+/** Trapezoidal prism: trapezoid profile in Z (length) × Y (height), extruded along
+ *  X (thickness) by d, centred. wTop/wBottom = top/bottom length along Z (either
+ *  order valid). Natural tank-track shape. Mirrors SpecRenderer.geoFor in the studio. */
+export function trapGeometry(wTop: number, wBottom: number, h: number, d: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape();
+  shape.moveTo(-wBottom / 2, -h / 2);
+  shape.lineTo(wBottom / 2, -h / 2);
+  shape.lineTo(wTop / 2, h / 2);
+  shape.lineTo(-wTop / 2, h / 2);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+  geo.translate(0, 0, -d / 2);   // centre the extrusion (local +Z 0..d) before orienting
+  geo.rotateY(Math.PI / 2);      // local Z (thickness) → world X; local X (length) → world Z
+  return geo;
+}
+export const trap = (wTop: number, wBottom: number, h: number, d: number) =>
+  tagGeo(trapGeometry(wTop, wBottom, h, d), 'trap', [wTop, wBottom, h, d]);
 
-interface SlotGeos { body: THREE.BufferGeometry | null; dark: THREE.BufferGeometry | null; accent: THREE.BufferGeometry | null; light: THREE.BufferGeometry | null; smooth: THREE.BufferGeometry | null; roof: THREE.BufferGeometry | null }
+// Two-level merge: per slot (material kind), a list of {group, merged-geometry}.
+// A part's group defaults to its slot, so a no-group model has exactly one entry
+// per slot → byte-identical to the old per-slot merge.
+const SLOT_KEYS: Slot[] = ['body', 'dark', 'accent', 'light', 'smooth', 'roof'];
+const TEXTURED_SLOTS = new Set<Slot>(['body', 'dark', 'smooth', 'roof']); // accent/light keep their special material
+type SlotGeos = Record<Slot, { group: string; geo: THREE.BufferGeometry }[]>;
 export interface Template {
   static: SlotGeos;
   anims: Partial<Record<AnimName, SlotGeos>>;
@@ -241,18 +261,26 @@ const TURRET_PIVOTS: Record<string, [number, number, number]> = {
   'building:cannon': [0, 1.45, 0],
 };
 
-function mergeSlots(parts: Part[]): SlotGeos {
-  const by: Record<Slot, THREE.BufferGeometry[]> = { body: [], dark: [], accent: [], light: [], smooth: [], roof: [] };
-  for (const p of parts) by[p.slot].push(p.geo);
-  const merge = (gs: THREE.BufferGeometry[]) => (gs.length ? mergeGeometries(gs) : null);
-  return { body: merge(by.body), dark: merge(by.dark), accent: merge(by.accent), light: merge(by.light), smooth: merge(by.smooth), roof: merge(by.roof) };
+function mergeSlotGroups(parts: Part[]): SlotGeos {
+  const out: SlotGeos = { body: [], dark: [], accent: [], light: [], smooth: [], roof: [] };
+  const buckets: Record<Slot, Map<string, THREE.BufferGeometry[]>> =
+    { body: new Map(), dark: new Map(), accent: new Map(), light: new Map(), smooth: new Map(), roof: new Map() };
+  for (const p of parts) {
+    const group = p.group ?? p.slot;
+    const m = buckets[p.slot];
+    (m.get(group) ?? m.set(group, []).get(group)!).push(p.geo);
+  }
+  for (const slot of SLOT_KEYS)
+    for (const [group, gs] of buckets[slot])
+      out[slot].push({ group, geo: mergeGeometries(gs)! });
+  return out;
 }
 
 function makeTemplate(key: string, parts: Part[]): Template {
   const cached = templateCache.get(key);
   if (cached) return cached;
   const staticParts = parts.filter(p => !p.anim);
-  const t: Template = { static: mergeSlots(staticParts), anims: {}, topY: 0 };
+  const t: Template = { static: mergeSlotGroups(staticParts), anims: {}, topY: 0 };
   for (const anim of ['turret', 'spin', 'load'] as AnimName[]) {
     const ap = parts.filter(p => p.anim === anim);
     if (!ap.length) continue;
@@ -261,11 +289,10 @@ function makeTemplate(key: string, parts: Part[]): Template {
       const m = new THREE.Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]);
       for (const p of ap) p.geo.applyMatrix4(m);
     }
-    t.anims[anim] = mergeSlots(ap);
+    t.anims[anim] = mergeSlotGroups(ap);
   }
   const scan = (sg: SlotGeos, lift = 0) => {
-    for (const g of [sg.body, sg.dark, sg.accent, sg.light, sg.smooth, sg.roof]) {
-      if (!g) continue;
+    for (const slot of SLOT_KEYS) for (const { geo: g } of sg[slot]) {
       g.computeBoundingBox();
       t.topY = Math.max(t.topY, g.boundingBox!.max.y + lift);
     }
@@ -630,24 +657,38 @@ const UNIT_VISUAL_SCALE = 1.28; // visual-only: sim radius and collision stay da
 function meshesFor(
   sg: SlotGeos, accentHex: string, kind: 'unit' | 'building',
   vehicle = false, vehMat?: { body: THREE.MeshStandardMaterial; dark: THREE.MeshStandardMaterial },
-  slotMats?: Record<string, THREE.MeshStandardMaterial>,
+  groupTex?: Record<string, string>,
 ): THREE.Mesh[] {
   const out: THREE.Mesh[] = [];
   // Buildings carry the sci-fi textures; vehicles a role-specific hull (body +
-  // darker panels both textured); infantry flat. A studio-designed per-slot
-  // component texture (slotMats) overrides the default for that slot.
+  // darker panels both textured); infantry flat. Material kind is chosen by SLOT;
+  // a studio-designed per-component texture (keyed by GROUP) overrides the map on
+  // the textured slots (body/dark/smooth/roof) — accent glow / glass are kept.
   const bMat = kind === 'building'
     ? buildingBodyMat
     : (vehicle ? (vehMat?.body ?? vehicleBodyMat ?? bodyMat) : bodyMat);
   const dMat = kind === 'building'
     ? buildingDarkMat
     : (vehicle && vehMat ? vehMat.dark : darkMat);
-  if (sg.body) { const m = new THREE.Mesh(sg.body, slotMats?.body ?? bMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
-  if (sg.dark) { const m = new THREE.Mesh(sg.dark, slotMats?.dark ?? dMat); m.castShadow = true; out.push(m); }
-  if (sg.accent) { const m = new THREE.Mesh(sg.accent, slotMats?.accent ?? accentMat(accentHex)); m.castShadow = kind === 'building'; out.push(m); }
-  if (sg.light) { out.push(new THREE.Mesh(sg.light, slotMats?.light ?? lightMat)); }
-  if (sg.smooth) { const m = new THREE.Mesh(sg.smooth, slotMats?.smooth ?? smoothMat); m.castShadow = true; m.receiveShadow = true; out.push(m); }
-  if (sg.roof) { const m = new THREE.Mesh(sg.roof, slotMats?.roof ?? (kind === 'building' ? roofMat : bMat)); m.castShadow = true; m.receiveShadow = true; out.push(m); }
+  // Per-slot base material + shadow flags (unchanged behaviour).
+  const cfg: Record<Slot, { mat: THREE.Material; cast: boolean; receive: boolean }> = {
+    body: { mat: bMat, cast: true, receive: true },
+    dark: { mat: dMat, cast: true, receive: false },
+    accent: { mat: accentMat(accentHex), cast: kind === 'building', receive: false },
+    light: { mat: lightMat, cast: false, receive: false },
+    smooth: { mat: smoothMat, cast: true, receive: true },
+    roof: { mat: kind === 'building' ? roofMat : bMat, cast: true, receive: true },
+  };
+  for (const slot of SLOT_KEYS) {
+    const c = cfg[slot];
+    for (const { group, geo } of sg[slot]) {
+      const url = groupTex?.[group];
+      const mat = (url && TEXTURED_SLOTS.has(slot)) ? overrideMat(slot, url) : c.mat;
+      const m = new THREE.Mesh(geo, mat);
+      m.castShadow = c.cast; m.receiveShadow = c.receive;
+      out.push(m);
+    }
+  }
   return out;
 }
 
@@ -665,16 +706,16 @@ export function makeEntityGroup(
   const t = variantT ?? getTemplate(kind, defId);
   const pivotKey = variantT ? `unit:${visual!.factoryId}` : `${kind}:${defId}`;
   const vehMat = vehicle ? vehicleHullMat(visual?.factoryId?.split(':')[1] ?? defId, visual) : undefined;
-  // Studio-designed per-slot component textures (if this imported spec has any).
-  let slotMats: Record<string, THREE.MeshStandardMaterial> | undefined;
-  if (variantT && visual) { const [fId, cId] = visual.factoryId.split(':'); slotMats = importedSlotMats(fId, cId); }
+  // Studio-designed per-component textures (group → url) if this imported spec has any.
+  let groupTex: Record<string, string> | undefined;
+  if (variantT && visual) { const [fId, cId] = visual.factoryId.split(':'); groupTex = importedGroupTex(fId, cId); }
   const outer = new THREE.Group();
   const inner = new THREE.Group();
-  for (const m of meshesFor(t.static, accentHex, kind, vehicle, vehMat, slotMats)) inner.add(m);
+  for (const m of meshesFor(t.static, accentHex, kind, vehicle, vehMat, groupTex)) inner.add(m);
   const anim: Record<string, THREE.Group> = {};
   for (const [name, sg] of Object.entries(t.anims)) {
     const g = new THREE.Group();
-    for (const m of meshesFor(sg, accentHex, kind, vehicle, vehMat, slotMats)) g.add(m);
+    for (const m of meshesFor(sg, accentHex, kind, vehicle, vehMat, groupTex)) g.add(m);
     if (name === 'turret') {
       const pv = TURRET_PIVOTS[pivotKey] ?? [0, 0, 0];
       g.position.set(pv[0], pv[1], pv[2]);
@@ -704,8 +745,8 @@ export function makeGhost(defId: string, fw: number, fh: number): THREE.Group {
   const g = new THREE.Group();
   const ghostMeshes: THREE.Mesh[] = [];
   for (const sg of [t.static, ...Object.values(t.anims)]) {
-    for (const geo of [sg.body, sg.dark, sg.accent, sg.light, sg.smooth, sg.roof]) {
-      if (geo) { const m = new THREE.Mesh(geo, ghostOk); ghostMeshes.push(m); g.add(m); }
+    for (const slot of SLOT_KEYS) for (const { geo } of sg[slot]) {
+      const m = new THREE.Mesh(geo, ghostOk); ghostMeshes.push(m); g.add(m);
     }
   }
   const padGeo = new THREE.PlaneGeometry(fw * TILE, fh * TILE);

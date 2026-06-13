@@ -18,6 +18,8 @@ export function validateSpec(spec: VehicleSpec): { ok: boolean; errors: string[]
   (spec?.parts ?? []).forEach((p, i) => {
     if (!PRIMS.includes(p.prim)) { e.push(`part[${i}] prim invalid: ${p.prim}`); return; }
     if (!SLOTS.includes(p.slot)) e.push(`part[${i}] slot invalid: ${p.slot}`);
+    if (p.texGroup !== undefined && (typeof p.texGroup !== 'string' || !p.texGroup.trim()))
+      e.push(`part[${i}] texGroup must be a non-empty string`);
     if (!Array.isArray(p.size) || p.size.length !== ARG_ARITY[p.prim] || !p.size.every(fin))
       e.push(`part[${i}] size must be ${ARG_ARITY[p.prim]} finite numbers for ${p.prim}`);
     if (!triple(p.pos)) e.push(`part[${i}] pos must be 3 finite numbers`);

@@ -19,6 +19,15 @@ describe('validateSpec', () => {
     const bad = { ...base, parts: [{ ...base.parts[0], size: [1, 2] }] };
     expect(validateSpec(bad as VehicleSpec).ok).toBe(false);
   });
+  it('accepts a trap prim with 4 args and an optional texGroup', () => {
+    const ok = { ...base, parts: [{ prim: 'trap' as const, size: [1.6, 2.0, 0.5, 0.4], slot: 'dark' as const, texGroup: 'track', pos: [0.8, 0.3, 0] as [number, number, number] }] };
+    expect(validateSpec(ok).ok).toBe(true);
+    const badArity = { ...base, parts: [{ ...ok.parts[0], size: [1, 2, 3] }] };
+    expect(validateSpec(badArity as VehicleSpec).ok).toBe(false);
+  });
+  it('rejects an empty/blank texGroup', () => {
+    expect(validateSpec({ ...base, parts: [{ ...base.parts[0], texGroup: '   ' }] } as VehicleSpec).ok).toBe(false);
+  });
   it('rejects unknown slot/prim/faction', () => {
     expect(validateSpec({ ...base, faction: 'purple' as never }).ok).toBe(false);
     expect(validateSpec({ ...base, parts: [{ ...base.parts[0], slot: 'x' as never }] }).ok).toBe(false);

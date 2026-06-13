@@ -2,7 +2,7 @@
 // Vehicle Design Studio. See docs/superpowers/specs/2026-06-12-...-design.md §3.
 // Both repos implement this shape independently; the schema is the interface.
 
-export type SpecPrim = 'box' | 'cyl' | 'sph' | 'cone' | 'torus' | 'rbox';
+export type SpecPrim = 'box' | 'cyl' | 'sph' | 'cone' | 'torus' | 'rbox' | 'trap';
 export type SpecSlot = 'body' | 'dark' | 'accent' | 'light' | 'smooth' | 'roof';
 export type SpecAnim = null | 'turret' | 'spin' | 'load';
 
@@ -11,6 +11,7 @@ export interface SpecPart {
   size: number[];                     // arity per ARG_ARITY
   round?: number;                     // rbox only: chamfer radius
   slot: SpecSlot;
+  texGroup?: string;                  // texture unit (component); default = slot. normalized lowercase
   pos: [number, number, number];
   rot?: [number, number, number];     // euler radians, default [0,0,0]
   scale?: [number, number, number];   // default [1,1,1] — some parts use non-uniform scale; must round-trip
@@ -31,8 +32,8 @@ export interface VehicleSpec {
 
 /** Required `size` length per primitive (mirrors vehicleModels.ts helpers). */
 export const ARG_ARITY: Record<SpecPrim, number> = {
-  box: 3, cyl: 3, sph: 1, cone: 2, torus: 2, rbox: 3,
+  box: 3, cyl: 3, sph: 1, cone: 2, torus: 2, rbox: 3, trap: 4,
 };
 export const SLOTS: SpecSlot[] = ['body', 'dark', 'accent', 'light', 'smooth', 'roof'];
-export const PRIMS: SpecPrim[] = ['box', 'cyl', 'sph', 'cone', 'torus', 'rbox'];
+export const PRIMS: SpecPrim[] = ['box', 'cyl', 'sph', 'cone', 'torus', 'rbox', 'trap'];
 export const FACTIONS = ['red', 'blue', 'green', 'yellow'];
