@@ -2,6 +2,14 @@
 
 > Stand: Übergabe vor /compact. Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
+## ⏱️ Jüngster Stand (Fortsetzung nach /compact)
+- **Beide Repos committet & gepusht, Arbeitsbäume sauber:** Spiel `main` @ `8d202ba`, Studio `main` @ `45700ac`.
+- **Worauf zuletzt gearbeitet wurde — Vehicle Design Studio reift stark:** editierbare Original-Prompts pro Fraktion×Fahrzeug (Skizze/Geometrie/Textur, Prompt-Pack als Default, pro Version gespeichert), Prompt-Feld direkt über jedem Erzeugen-Button; **Batch-Modus** (Header „⚙ Batch all") mit **anklickbarem Auswahl-Raster** (Zelle/Fraktion/Klasse), Resume, Export-pro-Fahrzeug, optionale Multi-Pass-Komponenten-Texturen, robustem Stop/Cancel; **Overview-Seite** (Header „📋 Overview") mit Bulk-Export/-Delete; **Texturen aus der Skizze sampeln** (Gemini-Vision → ziehbare Crop-Box → img2img); **2-Pass-Geometrie** (Technical-Artist-System-Prompt + Phase-1-Analyse) — auch im Batch.
+- **Zuletzt fertiggestellt (dieses Thema):** **Komponenten-Textur-Gruppen** (`texGroup` pro Bauteil; Textur pro Gruppe, Material pro Slot; zweistufiger Renderer; keine Migration) + **`trap`-Primitive** (Trapezprisma für Panzerketten); **Phase 2 Preset-Bibliothek** (Rezept + optionales PNG, 10 Seeds, Apply/Save); **GUI-Überarbeitung**: Komponenten-Panel = aufklappbare **Karte pro Gruppe** mit eigenem Prompt + Generate/Sample/Preset/Clear/Rename/Move inline. Spec: `docs/superpowers/specs/2026-06-13-component-textures-design.md`. Tests: Spiel **27 grün**, Studio-Build sauber.
+- **NÄCHSTER offener Punkt (vom User gewünscht):** **Phase 3 — per-Fläche-Texturen** (Profil oben vs. Rollen seitlich am selben Teil). Bewusst zurückgestellt: großer Cross-Engine-Render-Umbau (Un-Merge + Material-Arrays je Primitive: Box 6 / Zylinder Seite-oben-unten / `trap` Wände-Deckel + Flächen-Picking-UI + Spec/Validator/Tests). Haupt-Use-Case „Kette oben vs. Seiten" ist über Phase 1 (getrennte `trap`-„track" + `cyl`-„roadwheel"-Gruppen) bereits abgedeckt — Phase 3 ist die granulare Kür. User sagte „mach Phase 3" → als eigener, voll getesteter Pass starten.
+- **Weitere offene Studio-/Spiel-Punkte:** siehe Sektionen „OFFENE PUNKTE / PLAN" und „Vehicle Design Studio" unten (u. a. Geometrie-Qualität iterieren; große Spiel-Lücken: Audio, Fog-of-War, Steuerungskomfort, Speichern/Laden, KI-Schwierigkeit).
+- **Studio läuft** auf Port **5188** (`cd ../vireon-design-studio && npm run dev`); Spiel auf **5199**. `GEMINI_API_KEY` liegt lokal (Spiel `.gemini_key/.env`, Studio `.env`) — gitignored, auf neuem Rechner nötig.
+
 ## Was das ist
 Echtzeit-Strategiespiel (RTS) im C&C-Stil auf dem feindlichen Kristallplaneten **Vireon**.
 Stack: **TypeScript + Three.js + Vite**. Läuft im Browser, 120 FPS auf M2.
@@ -17,7 +25,7 @@ Stack: **TypeScript + Three.js + Vite**. Läuft im Browser, 120 FPS auf M2.
 - Debug-Hook im Spiel: `window.__game` mit `.world`, `.map`, `.rig`, `.input` und `.step(secs)` (Sim vorspulen, für Verifikation ohne Klicken).
 
 ## Build / Verifikation
-- `npx tsc --noEmit` (Type-Check), `npm run build` (Production-Build), **`npm test` (Vitest, 19 Tests)**. Alle aktuell grün/sauber.
+- `npx tsc --noEmit` (Type-Check), `npm run build` (Production-Build), **`npm test` (Vitest, 27 Tests)**. Alle aktuell grün/sauber.
 - Vitest: Validator + Interpreter + Round-Trip (`happy-dom`-Env für Render-Tests, da `models.ts` beim Import Texturen lädt) + Import-Dry-Run. Studio hat eigene Tests (`npm test` dort).
 
 ---
