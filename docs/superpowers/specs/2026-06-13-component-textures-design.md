@@ -1,136 +1,182 @@
 # Component Textures, Texture Library & Trapezoid Primitive — Design
 
-> Status: approved direction (brainstorm 2026-06-13). Spans both repos: the game
-> (`Vireon Front`) and the studio (`vireon-design-studio`). The `vehicle-spec`
-> schema is the contract between them; each side implements it independently.
+> Status: approved direction (brainstorm 2026-06-13); revised after adversarial
+> spec review. Spans both repos: the game (`Vireon Front`) and the studio
+> (`vireon-design-studio`). The `vehicle-spec` schema is the contract between them.
 
 ## Problem
 Texturing is per **slot** (`body/dark/accent/light/smooth/roof`). A slot is a
 *material category*, not a *component*: tracks, the harvester cutter, gun barrels
-and walker legs are all `dark`, so they are forced to share one texture. The user
-needs distinct components to take distinct textures (tracks ≠ cutter ≠ barrel),
-a way to assign parts to texture units, a reusable preset library, and a new base
-primitive (trapezoidal prism) so tank tracks can be modelled with the right shape.
+and walker legs are all `dark`, so they share one texture. The user needs distinct
+components to take distinct textures, a way to assign parts to texture units, a
+reusable preset library, and a trapezoid-prism primitive so tank tracks have the
+right shape.
 
 ## Goals
 1. Texture **individual components** independently, finer than the 6 slots.
-2. A **preset texture library** (recipe + optional baked PNG): wheels, tires,
-   tracks, legs, riveted/doored hull, glass canopy, cannons, etc.
-3. A new **trapezoid-prism primitive** (`trap`) for tracks and wedge shapes.
-4. Foundation for later **per-face** textures (track top vs sides) — Phase 3.
+2. A **preset texture library** (recipe + optional baked PNG).
+3. A new **trapezoid-prism primitive** (`trap`) for tracks / wedges.
+4. Foundation for later **per-face** textures (Phase 3).
 
-Non-goals (now): true per-face material arrays (Phase 3, optional later); a
-Stable-Diffusion backend (Gemini-native stays).
+Non-goals now: true per-face material arrays (Phase 3); a Stable-Diffusion backend
+(Gemini-native stays).
 
-## Core concept: `texGroup` (a named texture unit), slot stays the material kind
-Each `SpecPart` gains an optional **`texGroup: string`**. The `slot` keeps its
-only-material-kind role (metalness/roughness, accent glow); the **texture is
-assigned per `texGroup`**. When `texGroup` is absent the part's group **defaults
-to its slot**, so every existing vehicle is unchanged.
+## Core concept: `texGroup` is the texture unit; `slot` stays the material kind
+Each `SpecPart` gains optional **`texGroup: string`** (normalized: trimmed +
+lowercased). The **texture is assigned per `texGroup`**; the `slot` keeps its only
+job — the *material kind* (metalness/roughness, accent glow, glass). When
+`texGroup` is absent the part's group **defaults to its slot**.
 
-The set of distinct `texGroup` values in a spec = the texturable units. The
-2-pass geometry generator **auto-assigns** a semantic group per part (it already
-reasons about parts: "left MG", "FL thigh"), e.g. `track`, `roadwheel`, `cutter`,
-`cab`, `barrel`, `hull`. The studio lets the user rename / merge / split / reassign.
+Crucially the texture map's key is the **group**, and a group defaults to the
+slot, so **the existing `slotTextures` field and `slot_<key>.png` filenames are
+reused unchanged** — their key meaning simply broadens from "slot" to "group".
+Legacy bundles (parts with no `texGroup`) have group==slot, so **no migration and
+no field rename**: every existing export and committed spec keeps working as-is.
+(We keep the names `slotTextures` / `slot_<key>.png` / `importedSlotMats` to avoid
+churn; only their key semantics generalize.)
 
-Chosen approach: **A — auto-groups from the generator, editable in the studio**
-(over B: fully manual; C: per-face-only — rejected per brainstorm).
+The 2-pass geometry generator **auto-assigns** a group per part (it already
+reasons per-part). The studio lets the user rename / merge / split / reassign.
+Chosen approach: **A — auto-groups from the generator, editable in the studio.**
 
 ---
 
 ## Phase 1 — component groups
 
 ### vehicle-spec (both repos)
-- `SpecPart.texGroup?: string`. Group key for a part; default = `slot`.
-- Geometry generator (`SCHEMA_DOC`) instructs: give each part a short lowercase
-  `texGroup` naming its component (`hull`, `cab`, `track`, `roadwheel`, `cutter`,
-  `barrel`, `leg`, `dome`, `glass`, …). Parts that belong together share a group.
-- Validator: `texGroup` optional; if present must be a non-empty string. No new
+- `SpecPart.texGroup?: string` (optional; normalized). Group key; default = slot.
+- `SCHEMA_DOC` (geometry system prompt): instruct a short lowercase `texGroup`
+  per part naming its component (`hull`, `cab`, `track`, `roadwheel`, `cutter`,
+  `barrel`, `leg`, `dome`, `glass`, …); related parts share a group.
+- Validator: `texGroup` optional; if present, non-empty string after trim. No new
   hard constraints.
 
-### Studio
-- The current per-slot "Component Textures" panel becomes **per-group**:
-  - Lists the groups present (from the spec). Selecting a group highlights all its
-    parts in 3D (reuse `setSelectedSlot` → `setSelectedGroup`).
-  - Click a part in 3D selects its group. A **working multi-selection** (click
-    parts to add/remove) + "New group from selection" (name it) reassigns those
-    parts' `texGroup`. "Rename" / "Merge into…" per group.
-  - Per group: editable prompt + **Generate** (text→image) / **Sample from
-    sketch** (analyze+img2img, reused) / **Apply preset** (Phase 2) / **Clear**.
-- Persistence: textures saved as `tex_<group>.png`; per-group prompts/crops keyed
-  by group. The spec (with `texGroup` per part) is saved in the version.
-- 3D preview (`SpecRenderer`) maps per-group textures (generalize `slotTex` →
-  `groupTex`); material kind still from each part's slot.
+### Game renderer — the load-bearing change (slot → group two-level merge)
+The renderer must keep **all** slot-based material logic (`bMat/dMat`,
+`accentMat` glow, `lightMat`, `smoothMat`, `roofMat`, shadow flags) AND add a
+group dimension. Therefore the merge becomes **two-level: slot → group →
+geometry**, not "merge by group".
 
-### Game
-- `specInterpreter` carries `texGroup` onto each built `Part` (default slot).
-- `models.ts` merges meshes by **group** instead of only by slot; the material
-  kind (body/dark/accent/light/smooth/roof look) is taken from the group's parts'
-  slot; the per-group texture (if present) overrides the map.
-- Import copies `tex_<group>.png` → assets and injects `groupTextures` (group→url)
-  into the spec; `importedSlotMats` → `importedGroupMats`.
-- Back-compat: specs without `texGroup` behave exactly as today (group = slot).
+- `specInterpreter.buildPartsFromSpec` carries `texGroup` onto each `Part`
+  (default = slot).
+- The per-slot geometry merge (`SlotGeos`) sub-divides each slot bucket by group:
+  effectively a list of `{ slot, group, geometry }` (or `slot → Map<group,geo>`).
+  Back-compat: with no groups, each slot has exactly one group (==slot) → byte-
+  identical to today.
+- `meshesFor` iterates these: **material kind is chosen by `slot`** (unchanged
+  branch logic); then if a **group texture** exists for that `{slot,group}` AND
+  the slot is a *textured kind* (`body/dark/smooth/roof`), the map is applied
+  (clone the slot material, set `.map`). `accent`/`light` keep their special
+  emissive materials (a group texture does not strip the faction glow / lamps).
+- Mixed-slot groups are handled naturally: a `cab` group containing `body` hull +
+  `light` glass renders as a textured body sub-mesh + a normal glass sub-mesh; the
+  group texture only lands on the textured-kind sub-meshes.
+- `makeGhost`, bounding-box `scan`, and the turret/spin/load anim sub-groups must
+  iterate the same two-level structure (each anim sub-group also splits slot→group).
+- `importedSlotMats` → resolves a material per `{slot,group}` from the spec's
+  `slotTextures[group]` (key = group). Reads remain named `slotTextures`.
+
+### Studio
+- The "Component Textures" panel becomes **per-group**:
+  - Lists groups present (`SpecRenderer.groupsPresent()`); selecting one
+    highlights all its parts (`setSelectedGroup`, parallel to the slot path).
+  - Each mesh stores both `userData.slot` (material kind) and `userData.group`
+    (selection + texture). `onPick` returns the group.
+  - Working multi-selection: click parts to add/remove → "New group from
+    selection" (name it) reassigns those parts' `texGroup`. "Rename" / "Merge
+    into…" per group. Group keys normalized (trim+lowercase) to avoid collisions.
+  - Per group: editable prompt + **Generate** / **Sample from sketch** / **Apply
+    preset** (Phase 2) / **Clear**.
+- `SpecRenderer`: `slotTex` generalizes to `groupTex` (key = group); the base body
+  texture still follows a part's **slot** (`TEXTURED_SLOTS`), a group texture
+  overrides it.
+- Persistence reuses `slot_<group>.png` + `slotTextures[group]` (no rename). Spec
+  (with `texGroup` per part) saved in the version. Export carries the same.
+
+### Sketch sampling per group (not just slot)
+`analyzeTexture` / `TEXTURE_ANALYSIS` must reason **per group**: it receives the
+group list + a short meaning per group (default meaning from the group's slot, or
+the group name itself) and returns a crop + img2img prompt per group — otherwise
+"sample from sketch" cannot separate `track` vs `leg` vs `barrel` (all formerly
+`dark`), which is the whole point.
+
+### Game import
+`importVehicle.ts` keeps copying `slot_<key>.png` → assets and injecting
+`slotTextures` (key = group) into the spec. **Dual-read** is automatic because the
+field/filenames are unchanged; legacy keys are just slot-named groups.
 
 ---
 
 ## Phase 2 — texture library (recipe + optional baked PNG)
-- Server store `library/_presets.json`: array of
-  `{ id, name, category, slotKind, prompt, hasPng }`; baked images as
-  `library/_presets/<id>.png`.
-- Seed ~10 presets: `wheel`, `tire`, `track` (tread band), `roadwheel`,
-  `walker_leg`, `hull_riveted`, `hull_doors`, `canopy_glass`, `cannon_barrel`,
-  `sensor_dome`. Each ships with a strong prompt; baked PNGs optional (cache on
-  first generate).
-- Studio: per group, **Apply preset** → if the preset has a PNG, map it instantly
-  (free); else generate via Gemini with the preset prompt, **faction-themed**
-  (palette/material folded in). **Save current as preset** grows the library.
-- Endpoints: `GET/POST /api/presets`, preset image read.
+- Server store `library/_presets.json`: `{ id, name, category, slotKind, prompt,
+  hasPng }`; baked images `library/_presets/<id>.png`.
+- Seed ~10: `wheel`, `tire`, `track` (tread band), `roadwheel`, `walker_leg`,
+  `hull_riveted`, `hull_doors`, `canopy_glass`, `cannon_barrel`, `sensor_dome`.
+- Studio per group: **Apply preset** → if it has a PNG, map instantly (free);
+  else generate via Gemini with the preset prompt, **faction-themed**. **Save
+  current as preset** grows the library. Endpoints `GET/POST /api/presets` + image.
 
 ---
 
 ## Phase 3 — per-face textures (later, optional)
-Per-primitive face material arrays (box: 6 faces; cyl: top/side/bottom; trap:
-its faces) so a single part can carry e.g. tread on top + road-wheels on the
-sides without splitting into parts. Deferred; not in this build.
+Per-primitive face material arrays (box 6 faces; cyl top/side/bottom; trap faces)
+so one part can carry tread-top + wheel-sides without splitting. Deferred.
 
 ---
 
 ## New primitive: `trap` (trapezoidal prism)
-For tank tracks and wedge shapes. Side profile is a trapezoid (X = length,
-Y = height) extruded across the width (Z).
-- **size = `[wTop, wBottom, h, d]`** → top length, bottom length, height, depth
-  (width). `ARG_ARITY.trap = 4`. Added to `PRIMS`.
-- Cross-section centred at origin: corners
-  `(-wBottom/2,-h/2)`, `(wBottom/2,-h/2)`, `(wTop/2,h/2)`, `(-wTop/2,h/2)`;
-  extruded from `z=-d/2` to `z=+d/2`.
-- Built via `THREE.Shape` + `ExtrudeGeometry(depth=d)` (then centre on Z), in
-  **both** the studio `SpecRenderer.geoFor` and the game `specInterpreter`.
+Side profile is a trapezoid (X = length, Y = height) extruded across width (Z).
+- **size = `[wTop, wBottom, h, d]`** (top length, bottom length, height, depth).
+  `ARG_ARITY.trap = 4`; added to `PRIMS` and `SpecPrim`.
+- Cross-section centred at origin: `(-wBottom/2,-h/2) (wBottom/2,-h/2)
+  (wTop/2,h/2) (-wTop/2,h/2)`; extruded `z=-d/2 … +d/2`.
+- Built via `THREE.Shape` + `ExtrudeGeometry(depth=d)`. **`ExtrudeGeometry`
+  extrudes +Z from 0 to depth**, so BOTH engines must `translate(0,0,-d/2)` to
+  centre — implement identically in `SpecRenderer.geoFor` and the game
+  `specInterpreter`/factory, or studio and game disagree on Z origin.
+- Game round-trip: add a `trap(...)` factory with `tagGeo(...,'trap',
+  [wTop,wBottom,h,d])` so `GEO_SPEC`/`P().spec` capture works (parity with
+  box/cyl). Procedural models need not emit `trap`; only the interpreter +
+  factory + validator must support it.
 - Validator: `trap` requires 4 finite `size` numbers.
-- `SCHEMA_DOC`: document `trap` and recommend it for tracks/wedges
-  (e.g. tank track band = a wide `trap` with `wBottom > wTop`).
+- `SCHEMA_DOC`: document `trap`; recommend it for tank-track bands / wedges
+  (e.g. a wide `trap` with `wBottom > wTop`).
 
 ---
 
-## Data flow (unchanged shape, generalized key)
-sketch → geometry(2-pass, parts carry `texGroup`) → per-group textures
-(generate / sample-from-sketch / preset) → save version (`tex_<group>.png` +
-spec) → export bundle (`tex_<group>.png` + `groupTextures` in spec) →
-`import:vehicle` → game renders per group.
-
-## Back-compat & risks
-- Specs without `texGroup` render identically (group = slot). Existing 29 saved
-  vehicles keep working; re-generating gives them auto-groups.
-- Renderer change (merge-by-group) is the riskiest edit — covered by the existing
-  vitest interpreter/round-trip tests plus a new test for grouped specs.
-- `trap` is additive; absent in all current specs, so no migration needed.
+## Back-compat & risks (from spec review)
+- **No migration / no rename**: `slotTextures` + `slot_<key>.png` reused with key
+  = group (group defaults to slot). 29 existing bundles + committed specs render
+  unchanged.
+- **Riskiest edit**: the two-level slot→group merge in `models.ts`
+  (`SlotGeos`/`Template`/`meshesFor`/`makeGhost`/`scan`/anim sub-groups). Covered
+  by existing vitest interpreter/round-trip tests + new grouped-spec tests.
+- **Material-kind preserved by slot**: accent glow / glass survive grouping
+  because material is chosen by slot, texture by group.
+- **`trap` Z-centering** must be identical in both engines (named risk).
 
 ## Testing
 - vitest: validator accepts `texGroup` + `trap`(arity 4); interpreter builds a
-  `trap` mesh and groups parts by `texGroup`; round-trip keeps groups.
-- Studio: tsc + live verify (assign group, generate per-group, preset apply).
-- Game: dry-run import of a grouped + `trap` bundle; in-game render check.
+  `trap` mesh, defaults group=slot, and sub-merges slot→group; round-trip keeps
+  groups + `trap`; a spec with two groups in one slot yields two textured
+  sub-meshes.
+- Studio: tsc + live verify (assign group, per-group generate, preset apply,
+  sketch-sample per group, `trap` renders).
+- Game: dry-run import of a grouped + `trap` bundle; in-game render check; confirm
+  a legacy (no-group) spec is byte-identical.
 
-## Phasing / order
-Phase 1 (groups: schema + studio panel + game render) → Phase 2 (library) →
-Phase 3 (per-face, later). `trap` lands with Phase 1 (it needs the same schema +
-interpreter touch points).
+## Phasing
+Phase 1 (groups: schema + two-level renderer + studio panel + per-group sampling)
+and `trap` land together (shared schema/interpreter touch points). Then Phase 2
+(library). Phase 3 (per-face) later.
+
+## Files to touch (named for the implementer)
+- Game: `src/vehicles/spec/vehicleSpec.ts`, `src/vehicles/spec/validate.ts`,
+  `src/render/specInterpreter.ts`, `src/render/models.ts` (the two-level merge:
+  `SlotGeos`/`Template`/`meshesFor`/`makeGhost`/`scan`/`importedSlotMats` + `trap`
+  factory/`tagGeo`), `src/render/vehicleModels.ts` (trap factory if shared),
+  `scripts/importVehicle.ts` (unchanged keys; copy `slot_*`).
+- Studio: `src/spec/vehicleSpec.ts` + `src/spec/validate.ts` (mirror),
+  `src/preview/SpecRenderer.ts` (group tex + picking + `trap` geo),
+  `src/studio.ts` (group panel), `server/gemini.mjs` (`SCHEMA_DOC` group tag +
+  `trap`; `TEXTURE_ANALYSIS` per group; presets endpoints).
