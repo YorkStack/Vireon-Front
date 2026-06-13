@@ -125,22 +125,28 @@ so one part can carry tread-top + wheel-sides without splitting. Deferred.
 ---
 
 ## New primitive: `trap` (trapezoidal prism)
-Side profile is a trapezoid (X = length, Y = height) extruded across width (Z).
-- **size = `[wTop, wBottom, h, d]`** (top length, bottom length, height, depth).
-  `ARG_ARITY.trap = 4`; added to `PRIMS` and `SpecPrim`.
-- Cross-section centred at origin: `(-wBottom/2,-h/2) (wBottom/2,-h/2)
-  (wTop/2,h/2) (-wTop/2,h/2)`; extruded `z=-d/2 … +d/2`.
-- Built via `THREE.Shape` + `ExtrudeGeometry(depth=d)`. **`ExtrudeGeometry`
-  extrudes +Z from 0 to depth**, so BOTH engines must `translate(0,0,-d/2)` to
-  centre — implement identically in `SpecRenderer.geoFor` and the game
-  `specInterpreter`/factory, or studio and game disagree on Z origin.
+A symmetric (isosceles) trapezoid **side profile in the Z–Y plane** (length ×
+height), extruded across the **width (X)** — the natural tank-track shape (default
+orientation = Variant A; reorient anything else with `rot`).
+- **size = `[wTop, wBottom, h, d]`** = top length (Z), bottom length (Z), height
+  (Y), thickness/depth (X). `ARG_ARITY.trap = 4`; added to `PRIMS` and `SpecPrim`.
+- `wTop` and `wBottom` are **independent**: `wBottom > wTop` (ground-contact
+  wedge), `wTop > wBottom` (top overhang), or equal (box) are all valid. The
+  validator imposes **no ordering** — just 4 finite `size` numbers.
+- Cross-section centred at origin in (Z, Y): `(-wBottom/2,-h/2) (wBottom/2,-h/2)
+  (wTop/2,h/2) (-wTop/2,h/2)`; extruded along **X** from `-d/2 … +d/2`.
+- Built via `THREE.Shape` + `ExtrudeGeometry(depth=d)`, then oriented so the
+  parallel edges lie along world **Z** and the extrusion along world **X**, and
+  centred on the extrusion axis (`ExtrudeGeometry` extrudes the shape's local +Z
+  from 0..depth, so translate by `-d/2` after orienting). Implement the orientation
+  + centring **identically** in `SpecRenderer.geoFor` and the game
+  `specInterpreter`/factory, or studio and game disagree on the part origin.
 - Game round-trip: add a `trap(...)` factory with `tagGeo(...,'trap',
   [wTop,wBottom,h,d])` so `GEO_SPEC`/`P().spec` capture works (parity with
   box/cyl). Procedural models need not emit `trap`; only the interpreter +
   factory + validator must support it.
-- Validator: `trap` requires 4 finite `size` numbers.
-- `SCHEMA_DOC`: document `trap`; recommend it for tank-track bands / wedges
-  (e.g. a wide `trap` with `wBottom > wTop`).
+- `SCHEMA_DOC`: document `trap`; recommend it for tank-track bands / wedges, and
+  note both `wBottom>wTop` and `wTop>wBottom` are valid silhouettes.
 
 ---
 
