@@ -2,7 +2,7 @@
 
 > Stand: Übergabe vor /compact. Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## 🌿 Teilprojekt A — Environment-Assets (in Arbeit, 2026-06-14)
+## 🌿 Teilprojekt A — Environment-Assets (ABGESCHLOSSEN, 2026-06-14)
 Ziel: sichtbarer Map-Qualitätssprung ohne Eingriff in die Fahrzeug-Pipeline. Spec: `docs/superpowers/specs/2026-06-14-environment-assets-design.md`, Plan: `docs/superpowers/plans/2026-06-14-environment-assets.md`.
 - **ERLEDIGT (Tasks 2–4):**
   - Reine Noise-Helfer extrahiert → `src/render/terrainNoise.ts` (`hash2`/`vnoise`/`warpXZ`), von terrain.ts + props.ts genutzt, unit-getestet.
