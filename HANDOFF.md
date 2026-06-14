@@ -2,7 +2,18 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-14, Fortsetzung: Verdant + Movement-Typen)
+## ⏱️ Aktueller Stand (2026-06-14, Fortsetzung 2: Barrel-Motion, alle 4 Fraktionen, Monowheel-Topologie, Klassen-Dropdown, externe Texturen)
+- **Beide Repos committet & gepusht.** Tests: **Spiel 60**, **Studio 30** grün; tsc + builds sauber.
+- **NEU diese Sitzung:**
+  - **Kanonen-Barrel-Motion (rotieren / pumpen):** der Lauf ist jetzt ein eigener Runtime-Node **`barrel`** (Pivot am Verschluss, unter dem Turm; `muzzle` hängt darunter). Cannon-Params `spin` (0/1) + `pump` (0–0.6, beide standardmäßig AUS) → `metadata.barrelAnim`. Spiel (`world.ts#animateUnit`) rotiert den Lauf um die Bohrung (`spin`) und/oder lässt ihn pulsieren (`pump`: zieht sich auf (1−pump) der Länge zusammen und wird dabei dicker, dann wieder voll). `vehicleGlb.ts` verdrahtet `barrel`/`barrelAnim`.
+  - **Alle 4 Fraktionen baubar:** Azure Concord (`azure_chassis`/`azure_hover`/`azure_turret`/`azure_cannon`, sleek hi-tech) + Solar Dominion (`solar_chassis`/`solar_track`/`solar_turret`/`solar_cannon`, schwer gepanzert). Verdant war bereits da.
+  - **Echte Monowheel-Hub-Topologie:** neuer Chassis-Typ **`crimson_monohull`** — kompakte Hub-Kabine MIT integralem Großrad (kein separates `movement_system`), Turm auf dem Hub + L/R-Pods. Distinkt vom „Hull-im-Rad" (`crimson_monowheel` Movement bleibt für normale Chassis).
+  - **Klassen-Dropdown** in der Factory (scout/lightTank/…/monowheel) steuert cls + Vehicle-id; Vehicle-id bleibt editierbar. Fraktions-Tints für alle 4 Fraktionen ergänzt.
+  - **Separierbare Turm/Barrel-Texturen + externe PNGs:** Bake schreibt pro Gruppe eine **eigene `<vehicle>_<group>.png`** (statt base64 in metadata.json); turret/barrel-Texturen landen auf ihrem Runtime-Node (Game appliziert auf `tex_<group>` ODER den gleichnamigen Node und steigt NICHT in verschachtelte Runtime-Nodes ab → Turm-Textur blutet nicht auf den Lauf). `factoryExport` kopiert die PNGs mit; Game lädt sie per Dateiname (base64-Fallback für Altbestände).
+  - **Verifiziert:** headless gebaut blue_strider/yellow_juggernaut/red_uniwheel/green_pumpgun (alle valide, `barrel`-Node, barrelAnim korrekt) + red_mediumTank-Regression; texturierter Build erzeugt separate `_tire.png`/`_barrel.png`; **voller GUI→Server→Blender-Loop** für Monohull mit rotierender Kanone. GUI auf 5181: Klassen-Dropdown, Monohull-Chassis, Solar-Tab baubar, Cannon spin/pump-Controls.
+- **Vorheriger Stand dieser Sitzung (Verdant + Movement-Typen): siehe Block direkt darunter.**
+
+## ⏱️ Vorheriger Stand (2026-06-14, Fortsetzung: Verdant + Movement-Typen)
 - **Beide Repos committet & gepusht.** Tests: **Spiel 57**, **Studio 26** grün; tsc + builds sauber.
 - **NEU diese Sitzung (Studio-Fabrik):**
   - **Weitere Movement-Typen (parametrisch, mounten auf `movement_system`, baken in `hull_static`):** `crimson_legs` (Beine, count 2/4/6/8, paarweise Schreitbeine Hüfte→Knie→Fuß), `crimson_hover` (Hover-Pads 1/2/4/6/8/10/12, 1 = ein großes Zentralpad, sonst paarweise mit glühender Emitter-Unterseite), `crimson_monowheel` (ein großes umhüllendes Rad um die Bucht, rollt um +X, Torus + glühender Innenring + Achs-Hub). Generische Helfer `_build_legs/_build_hover/_build_monowheel` (slot-parametrisiert → fraktionsübergreifend wiederverwendbar). `_cone`-Helfer (organische Verjüngung) ergänzt.

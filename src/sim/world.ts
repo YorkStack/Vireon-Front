@@ -908,6 +908,19 @@ export class World {
         inner.position.y = prof.rideHeight + bob + step;
       }
     }
+    // GLB cannons can declare a barrel that spins about its bore and/or "pumps"
+    // (contracts to (1-pump) of its length while thickening, then expands back).
+    const barrel = u.group.userData.barrel as THREE.Object3D | undefined;
+    const ba = u.group.userData.barrelAnim as { spin?: boolean; pump?: number } | undefined;
+    if (barrel && ba) {
+      if (ba.spin) barrel.rotation.z = this.time * 6;
+      const pump = ba.pump ?? 0;
+      if (pump > 0) {
+        const ph = 0.5 - 0.5 * Math.cos(this.time * 3 + u.id); // 0..1 pulse
+        barrel.scale.z = 1 - pump * ph;
+        barrel.scale.x = barrel.scale.y = 1 + pump * ph * 0.8;
+      }
+    }
     if (!anim) return;
     if (anim.turret) {
       const target = (u.order.kind === 'attack' && u.order.target.alive) ? u.order.target

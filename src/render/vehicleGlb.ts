@@ -15,8 +15,13 @@ const REGISTRY: Record<string, string> = {
   'red:scout': '/assets/vehicles/red_scout.glb',
 };
 
+interface VehMeta {
+  slotTextures?: Record<string, string>; // group -> png filename (new) or base64 (legacy)
+  barrelAnim?: { spin?: boolean; pump?: number } | null;
+}
 const cache = new Map<string, THREE.Group>(); // key -> loaded template scene
-const metaCache = new Map<string, { slotTextures?: Record<string, string> }>(); // key -> companion metadata
+const metaCache = new Map<string, VehMeta>(); // key -> companion metadata
+const baseUrl = new Map<string, string>(); // key -> directory the GLB was loaded from
 /** Which path each vehicle visual actually used this session (debug). */
 export const VEH_SOURCE: Record<string, 'glb' | 'procedural'> = {};
 
@@ -33,6 +38,7 @@ export async function preloadVehicleGlbs(): Promise<void> {
     try {
       const gltf = await loader.loadAsync(url);
       cache.set(key, gltf.scene);
+      baseUrl.set(key, url.replace(/\/[^/]+$/, '')); // dir for companion texture pngs
       // Companion metadata (per-texGroup library textures), if present.
       try {
         const m = await fetch(url.replace(/\.glb$/, '.json')).then((r) => (r.ok ? r.json() : null));
@@ -48,6 +54,12 @@ export async function preloadVehicleGlbs(): Promise<void> {
 export function __setGlbForTest(faction: string, classId: string, scene: THREE.Group | null) {
   const key = vehicleGlbKey(faction, classId);
   if (scene) cache.set(key, scene); else cache.delete(key);
+}
+
+/** Test-only: seed companion metadata (barrelAnim / slotTextures) for a vehicle. */
+export function __setMetaForTest(faction: string, classId: string, meta: VehMeta | null) {
+  const key = vehicleGlbKey(faction, classId);
+  if (meta) metaCache.set(key, meta); else metaCache.delete(key);
 }
 
 /**
@@ -67,9 +79,11 @@ export function makeGlbEntityGroup(
 
   const scene = tmpl.clone(true);
   let turret: THREE.Object3D | undefined;
+  let barrel: THREE.Object3D | undefined;
   let muzzle: THREE.Object3D | undefined;
   scene.traverse((o) => {
     if (o.name === 'turret') turret = o;
+    if (o.name === 'barrel') barrel = o;
     if (o.name === 'muzzle') muzzle = o;
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh) return;
@@ -96,13 +110,19 @@ export function makeGlbEntityGroup(
     mesh.material = Array.isArray(mesh.material) ? mesh.material.map(remap) : remap(mesh.material);
   });
 
-  // Apply per-texGroup library textures from metadata onto their tex_<group> mesh.
+  // Apply per-group library textures from metadata. A group maps to either a
+  // dedicated `tex_<group>` node (static parts) or a runtime node sharing the
+  // group name (`turret`/`barrel`). slotTextures values are PNG filenames
+  // (loaded from the GLB's directory) or, for legacy assets, base64.
   const slotTex = metaCache.get(key)?.slotTextures;
   if (slotTex) {
     const texLoader = new THREE.TextureLoader();
-    for (const [group, b64] of Object.entries(slotTex)) {
-      if (!b64) continue;
-      const tex = texLoader.load(`data:image/png;base64,${b64}`);
+    const dir = baseUrl.get(key) ?? '';
+    const RUNTIME = new Set(['turret', 'barrel']);
+    for (const [group, ref] of Object.entries(slotTex)) {
+      if (!ref) continue;
+      const src = /\.png$/i.test(ref) ? `${dir}/${ref}` : `data:image/png;base64,${ref}`;
+      const tex = texLoader.load(src);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
       tex.repeat.set(2, 2);
@@ -111,16 +131,19 @@ export function makeGlbEntityGroup(
         c.map = tex; c.color.set(0xffffff); c.needsUpdate = true;
         return c;
       };
-      // GLTFLoader makes `tex_<group>` a parent node; its child meshes carry the
-      // geometry — apply to the whole subtree.
-      scene.traverse((node) => {
-        if (node.name !== `tex_${group}`) return;
-        node.traverse((o) => {
-          const mesh = o as THREE.Mesh;
-          if (!mesh.isMesh) return;
-          mesh.material = Array.isArray(mesh.material) ? mesh.material.map(apply) : apply(mesh.material);
-        });
-      });
+      // Find the target node, then texture its own + descendant meshes — but do
+      // NOT descend into a nested runtime node (so a turret texture never bleeds
+      // onto the barrel that hangs under it).
+      let target: THREE.Object3D | undefined;
+      scene.traverse((n) => { if (!target && (n.name === `tex_${group}` || n.name === group)) target = n; });
+      if (!target) continue;
+      const paint = (o: THREE.Object3D, isRoot: boolean) => {
+        if (!isRoot && RUNTIME.has(o.name)) return; // that node owns its own texture
+        const mesh = o as THREE.Mesh;
+        if (mesh.isMesh) mesh.material = Array.isArray(mesh.material) ? mesh.material.map(apply) : apply(mesh.material);
+        for (const ch of o.children) paint(ch, false);
+      };
+      paint(target, true);
     }
   }
 
@@ -136,6 +159,12 @@ export function makeGlbEntityGroup(
   outer.userData.anim = turret ? { turret } : {};
   outer.userData.topY = (isFinite(box.max.y) ? box.max.y : 2) * scale;
   if (muzzle) outer.userData.muzzle = muzzle;
+  // Barrel motion (spin/pump) — the game animates this node per frame.
+  const ba = metaCache.get(key)?.barrelAnim;
+  if (barrel && ba && (ba.spin || (ba.pump ?? 0) > 0)) {
+    outer.userData.barrel = barrel;
+    outer.userData.barrelAnim = ba;
+  }
   VEH_SOURCE[key] = 'glb';
   return outer;
 }
