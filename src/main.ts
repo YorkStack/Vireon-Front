@@ -3,6 +3,10 @@
 import { showStartScreen, showBriefing } from './ui/screens';
 import { Game } from './core/game';
 import { FACTION_DEFS } from './core/defs';
+import { preloadVehicleGlbs } from './render/vehicleGlb';
+
+// Warm the runtime-GLB cache (component-factory vehicles) before any match starts.
+const glbReady = preloadVehicleGlbs();
 
 // Dev guard: warn loudly when faction variants drift from their class
 // template without a declared reason (full report: npm run validate:balance).
@@ -19,6 +23,7 @@ async function main() {
     const choice = await showStartScreen();
     await showBriefing(choice.mission, FACTION_DEFS[choice.factionId].name);
     let result: 'restart' | 'menu';
+    await glbReady; // ensure baked vehicle GLBs are cached before units spawn
     do {
       const game = new Game(choice.mission, choice.factionId);
       result = await game.run();

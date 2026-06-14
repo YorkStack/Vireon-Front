@@ -467,6 +467,11 @@ export class World {
       ? new THREE.Vector3(target.cx, ty, target.cz)
       : new THREE.Vector3(target.x, ty, target.z);
 
+    // GLB vehicles expose a 'muzzle' socket on the (rotating) turret — resolve its
+    // CURRENT world position each shot so the flash sits at the barrel tip.
+    const muzzle = shooter.group.userData.muzzle as THREE.Object3D | undefined;
+    if (muzzle) { muzzle.updateWorldMatrix(true, false); muzzle.getWorldPosition(from); }
+
     this.effects.muzzleFlash(from);
     if (weapon.projectile === 'laser') {
       const color = this.teams[team].faction.emissive;

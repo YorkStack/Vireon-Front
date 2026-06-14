@@ -13,6 +13,7 @@ import type { UnitVisual } from '../core/types';
 import { textureSetUsable } from '../data/artMetadata';
 import { getVariant } from '../vehicles';
 import { importedSpecFor } from '../vehicles/importedSpecs';
+import { hasVehicleGlb, expectedVehicleGlb, makeGlbEntityGroup, VEH_SOURCE } from './vehicleGlb';
 import { buildVehicleParts } from './vehicleModels';
 import { buildPartsFromSpec } from './specInterpreter';
 
@@ -700,6 +701,17 @@ export function makeEntityGroup(
   kind: 'unit' | 'building', defId: string, accentHex: string,
   vehicle = false, visual?: UnitVisual,
 ): THREE.Group {
+  // Runtime-GLB path (component factory): prefer a baked GLB when present.
+  if (kind === 'unit' && vehicle && visual) {
+    const [fId, cId] = visual.factoryId.split(':');
+    if (hasVehicleGlb(fId, cId)) {
+      const g = makeGlbEntityGroup(fId, cId, accentHex, visual.silhouetteScale ?? 1);
+      if (g) return g;
+    } else if (expectedVehicleGlb(fId, cId)) {
+      if (import.meta.env.DEV) console.warn(`[veh] GLB fehlt/ungültig für ${fId}/${cId} → prozedural`);
+    }
+    VEH_SOURCE[`${fId}:${cId}`] = 'procedural';
+  }
   // Faction vehicle variants resolve to their own template; everything else
   // (infantry, buildings, legacy ids) uses the classic per-defId templates.
   const variantT = kind === 'unit' && vehicle && visual ? getVariantTemplate(visual.factoryId) : null;
