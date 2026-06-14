@@ -3,6 +3,7 @@
 // terrain.ts so the prop systems stay focused and unit-testable. Placement rides
 // the same horizontal warp as the terrain (terrainNoise), so props sit flush.
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GameMap, TILE } from '../map/map';
 import { hash2, warpXZ } from './terrainNoise';
 
@@ -186,4 +187,140 @@ export function buildVegetation(map: GameMap): VegetationBuild {
   };
 
   return { group, update };
+}
+
+// ---------------------------------------------------------------------------
+// Rocks (glTF geometry + vertex-AO, triplanar albedo, instanced)
+// ---------------------------------------------------------------------------
+
+const ROCK_GLBS = ['rock_01', 'rock_02', 'rock_03', 'rock_04', 'rock_05'];
+const ROCK_ALBEDO = ['01', '02', '03', '04'];
+
+const texLoader = new THREE.TextureLoader();
+function loadRockTex(v: string): THREE.Texture {
+  const t = texLoader.load(`/assets/terrain/rock/${v}.png`);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/** Load the Blender rock meshes; returns one BufferGeometry per variant (with COLOR_0 AO). */
+export async function preloadRockGlbs(): Promise<THREE.BufferGeometry[]> {
+  const loader = new GLTFLoader();
+  const geos: THREE.BufferGeometry[] = [];
+  for (const name of ROCK_GLBS) {
+    const gltf = await loader.loadAsync(`/assets/terrain/rock/${name}.glb`);
+    let geo: THREE.BufferGeometry | null = null;
+    gltf.scene.traverse((o) => { if (!geo && (o as THREE.Mesh).isMesh) geo = (o as THREE.Mesh).geometry as THREE.BufferGeometry; });
+    if (geo) geos.push(geo);
+  }
+  return geos;
+}
+
+/**
+ * MeshStandardMaterial that samples its albedo triplanar in world space (no UVs)
+ * so scaled instances don't stretch, multiplied by the mesh's vertex-color AO.
+ * Matte (roughness 0.9, metalness 0). Albedo-only — normal mapping is a later
+ * polish step (spec Task 6) with this as the safe fallback.
+ */
+export function makeTriplanarRockMaterial(map: THREE.Texture, scale = 0.5): THREE.MeshStandardMaterial {
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0, vertexColors: true, color: 0xffffff });
+  mat.onBeforeCompile = (shader) => {
+    shader.uniforms.triMap = { value: map };
+    shader.uniforms.triScale = { value: scale };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vTriWPos;\nvarying vec3 vTriWNormal;')
+      .replace('#include <project_vertex>', `#include <project_vertex>
+      #ifdef USE_INSTANCING
+        mat4 _tw = modelMatrix * instanceMatrix;
+      #else
+        mat4 _tw = modelMatrix;
+      #endif
+      vTriWPos = (_tw * vec4(transformed, 1.0)).xyz;
+      vTriWNormal = mat3(_tw) * objectNormal;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform sampler2D triMap;\nuniform float triScale;\nvarying vec3 vTriWPos;\nvarying vec3 vTriWNormal;')
+      .replace('#include <map_fragment>', `
+      vec3 _bw = abs(normalize(vTriWNormal));
+      _bw = pow(_bw, vec3(4.0));
+      _bw /= (_bw.x + _bw.y + _bw.z);
+      vec4 _tx = texture2D(triMap, vTriWPos.zy * triScale);
+      vec4 _ty = texture2D(triMap, vTriWPos.xz * triScale);
+      vec4 _tz = texture2D(triMap, vTriWPos.xy * triScale);
+      vec4 _tri = _tx * _bw.x + _ty * _bw.y + _tz * _bw.z;
+      diffuseColor *= _tri;`);
+  };
+  return mat;
+}
+
+export interface RockBuild { group: THREE.Group; ready: Promise<void>; }
+
+/**
+ * Scatter instanced glTF rocks across the map (replacing procedural boulders).
+ * One InstancedMesh per variant (own albedo). Loads async and fills the returned
+ * group when ready; distribution mirrors the old boulder logic (clean valleys,
+ * clumped at the climbs, dense on high ground), riding the same warp.
+ */
+export function buildRocks(map: GameMap): RockBuild {
+  const group = new THREE.Group();
+  group.name = 'rocks-instanced';
+
+  const ready = preloadRockGlbs().then((geos) => {
+    if (!geos.length) return;
+    const n = map.size;
+    const walkable: [number, number][] = [];
+    for (let tz = 1; tz < n - 1; tz++)
+      for (let tx = 1; tx < n - 1; tx++)
+        if (map.flags[map.idx(tx, tz)] === 0) walkable.push([tx, tz]);
+
+    const nearHigher = (tx: number, tz: number): boolean => {
+      const l = map.level[map.idx(tx, tz)];
+      return (
+        (map.inBounds(tx + 1, tz) && map.level[map.idx(tx + 1, tz)] > l) ||
+        (map.inBounds(tx - 1, tz) && map.level[map.idx(tx - 1, tz)] > l) ||
+        (map.inBounds(tx, tz + 1) && map.level[map.idx(tx, tz + 1)] > l) ||
+        (map.inBounds(tx, tz - 1) && map.level[map.idx(tx, tz - 1)] > l)
+      );
+    };
+
+    const CAP = 200;
+    const meshes = geos.map((geo, i) => {
+      const m = new THREE.InstancedMesh(geo, makeTriplanarRockMaterial(loadRockTex(ROCK_ALBEDO[i % ROCK_ALBEDO.length])), CAP);
+      m.castShadow = true; m.receiveShadow = true; m.count = 0;
+      group.add(m);
+      return m;
+    });
+
+    const dummy = new THREE.Object3D();
+    let placed = 0, guard = 0;
+    const target = 760;
+    while (placed < target && guard++ < target * 14) {
+      const [tx, tz] = walkable[(hash2(guard * 17, guard * 31) * walkable.length) | 0];
+      const r1 = hash2(guard * 7, guard * 13), r2 = hash2(guard * 19, guard * 23);
+      const lvl = map.level[map.idx(tx, tz)];
+      const edge = nearHigher(tx, tz);
+      if (lvl === 0) { if (r1 > 0.05) continue; }
+      else if (lvl === 1) { if (!edge && r1 > 0.40) continue; }
+      else { if (!edge && r1 > 0.80) continue; }
+      const [wx, wz] = map.tileToWorld(tx, tz);
+      const ox = wx + (r1 - 0.5) * TILE, oz = wz + (r2 - 0.5) * TILE;
+      const y = map.groundHeight(ox, oz);
+      const [x, z] = warpXZ(ox, oz);
+      const big = r2 > 0.82;
+      const s = big ? 1.0 + r1 * 0.9 : 0.32 + r2 * 0.6;
+      const mi = Math.min(meshes.length - 1, (hash2(tx * 5 + guard, tz * 3) * meshes.length) | 0);
+      const mesh = meshes[mi];
+      if (mesh.count >= CAP) continue;
+      dummy.position.set(x, y + 0.05 * s, z);
+      dummy.rotation.set((r1 - 0.5) * 0.5, r2 * 6, (r2 - 0.5) * 0.5);
+      dummy.scale.set(s * (0.85 + r1 * 0.4), s * (0.7 + r2 * 0.5), s * (0.85 + r2 * 0.4));
+      dummy.updateMatrix();
+      mesh.setMatrixAt(mesh.count, dummy.matrix); mesh.count++;
+      placed++;
+    }
+    for (const m of meshes) m.instanceMatrix.needsUpdate = true;
+  });
+
+  return { group, ready };
 }

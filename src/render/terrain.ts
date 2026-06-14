@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
 import { hash2, warpXZ } from './terrainNoise';
-import { buildVegetation, type VegetationBuild } from './props';
+import { buildVegetation, buildRocks, type VegetationBuild } from './props';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
 const LEVEL_COLORS = [
@@ -117,9 +117,7 @@ const CRYSTAL_TEX = (() => {
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
 })();
-// Rock textures mapped onto boulders (4 variants for variety).
-const ROCK_TEX = ['01', '02', '03', '04'].map((v) => loadGround(`/assets/terrain/rock/${v}.png`));
-// (Vegetation billboard textures + placement now live in props.ts.)
+// (Rock textures + boulder placement + vegetation now live in props.ts.)
 
 /** Tileable grain/noise texture multiplied over vertex colors for surface detail. */
 function makeGrainTexture(): THREE.Texture {
@@ -516,46 +514,10 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     return true;
   });
 
-  // Boulders: chunky rocks with 4 different rock textures for variety and
-  // strongly randomised size (small stones up to sight-blockers). Distribution
-  // by height level: ground clean & open, mid clumped at the climbs, high dense.
-  // Positions ride the same warp as the terrain so they sit flush.
-  const boulderGeo = new THREE.IcosahedronGeometry(0.4, 0);
-  const boulderMeshes = ROCK_TEX.map((tex) => {
-    const m = new THREE.InstancedMesh(
-      boulderGeo, new THREE.MeshStandardMaterial({ map: tex, color: '#d4d0e2', roughness: 0.88 }), 280);
-    m.castShadow = true; m.receiveShadow = true; m.count = 0;
-    props.add(m); return m;
-  });
-  {
-    let placed = 0, guard = 0;
-    const target = 760;
-    while (placed < target && guard++ < target * 14) {
-      const [tx, tz] = walkableTiles[(hash2(guard * 17, guard * 31) * walkableTiles.length) | 0];
-      const r1 = hash2(guard * 7, guard * 13), r2 = hash2(guard * 19, guard * 23);
-      const lvl = map.level[map.idx(tx, tz)];
-      const edge = nearHigher(tx, tz);
-      if (lvl === 0) { if (r1 > 0.05) continue; }
-      else if (lvl === 1) { if (!edge && r1 > 0.40) continue; }
-      else { if (!edge && r1 > 0.80) continue; }
-      const [wx, wz] = map.tileToWorld(tx, tz);
-      const ox = wx + (r1 - 0.5) * TILE, oz = wz + (r2 - 0.5) * TILE;
-      const y = map.groundHeight(ox, oz);
-      const [x, z] = warpXZ(ox, oz);
-      const big = r2 > 0.82;
-      const s = big ? 1.9 + r1 * 1.7 : 0.45 + r2 * 1.1;
-      dummy.position.set(x, y + 0.12 * s, z);
-      dummy.rotation.set(r1 * 6, r2 * 6, r1 * 3);
-      dummy.scale.set(s * (0.8 + r1 * 0.5), s * (0.6 + r2 * 0.6), s * (0.8 + r2 * 0.5));
-      dummy.updateMatrix();
-      const mi = Math.min(3, (hash2(tx * 5 + guard, tz * 3) * 4) | 0);
-      const mesh = boulderMeshes[mi];
-      if (mesh.count >= 280) continue;
-      mesh.setMatrixAt(mesh.count, dummy.matrix); mesh.count++;
-      placed++;
-    }
-    for (const m of boulderMeshes) m.instanceMatrix.needsUpdate = true;
-  }
+  // Rocks: instanced glTF boulders (triplanar albedo + baked vertex AO), loaded
+  // async and added to the prop group when ready. Distribution (clean valleys,
+  // clumped at the climbs, dense high) lives in props.ts; rides the same warp.
+  props.add(buildRocks(map).group);
 
   // Vegetation: Y-locked (cylindrical) instanced billboards + a shared blob-shadow
   // mesh. Trees taller and sparse across all levels; bushes lower and denser in
