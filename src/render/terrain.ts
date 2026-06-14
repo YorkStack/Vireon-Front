@@ -4,6 +4,8 @@
 // (pebbles, alien grass, spore lamps, crystal shards, glow pools).
 import * as THREE from 'three';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
+import { hash2, warpXZ } from './terrainNoise';
+import { buildVegetation, type VegetationBuild } from './props';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
 const LEVEL_COLORS = [
@@ -31,6 +33,8 @@ export interface TerrainBuild {
   rocks: THREE.Mesh;
   props: THREE.Group;
   crystalGroups: Map<number, THREE.Group>;
+  /** Per-frame: re-orients Y-locked vegetation billboards toward the camera. */
+  updateProps: (camera: THREE.Camera) => void;
 }
 
 // Per-height-level ground textures (generated natural rock). Loaded once.
@@ -115,45 +119,7 @@ const CRYSTAL_TEX = (() => {
 })();
 // Rock textures mapped onto boulders (4 variants for variety).
 const ROCK_TEX = ['01', '02', '03', '04'].map((v) => loadGround(`/assets/terrain/rock/${v}.png`));
-// Vegetation billboard sprites (alpha-cut). Trees + bushes.
-function loadVeg(name: string): THREE.Texture {
-  const t = groundLoader.load(`/assets/vegetation/${name}.png`);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
-  return t;
-}
-// tree_03 came back as a full scene (not isolated) -> kept out; the two clean
-// isolated trees give enough variety alongside the two bushes.
-const TREE_TEX = ['tree_01', 'tree_02'].map(loadVeg);
-const BUSH_TEX = ['bush_01', 'bush_02'].map(loadVeg);
-
-function hash2(x: number, z: number): number {
-  const h = Math.sin(x * 12.9898 + z * 78.233) * 43758.5453;
-  return h - Math.floor(h);
-}
-
-// Smooth value noise (lattice + smoothstep) for the horizontal terrain warp.
-function vnoise(x: number, z: number): number {
-  const xi = Math.floor(x), zi = Math.floor(z);
-  const xf = x - xi, zf = z - zi;
-  const u = xf * xf * (3 - 2 * xf), v = zf * zf * (3 - 2 * zf);
-  const a = hash2(xi, zi), b = hash2(xi + 1, zi), c = hash2(xi, zi + 1), d = hash2(xi + 1, zi + 1);
-  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
-}
-
-// Horizontal domain warp: nudges a world XZ position along a smooth noise field
-// so the grid-aligned plateau outlines and cliff edges meander organically
-// instead of reading as hard rectangles. Pure function of (x,z), so any shared
-// vertex/feature is displaced identically -> the mesh stays watertight and props
-// stay glued to the ground. Heights are untouched (logical pathfinding intact).
-const WARP_AMP = 0.45;
-function warpXZ(x: number, z: number): [number, number] {
-  let dx = vnoise(x * 0.15, z * 0.15) - 0.5;
-  let dz = vnoise(x * 0.15 + 5.2, z * 0.15 + 1.3) - 0.5;
-  dx += (vnoise(x * 0.42 + 9, z * 0.42) - 0.5) * 0.45;
-  dz += (vnoise(x * 0.42, z * 0.42 + 7) - 0.5) * 0.45;
-  return [x + dx * WARP_AMP * 2, z + dz * WARP_AMP * 2];
-}
+// (Vegetation billboard textures + placement now live in props.ts.)
 
 /** Tileable grain/noise texture multiplied over vertex colors for surface detail. */
 function makeGrainTexture(): THREE.Texture {
@@ -591,38 +557,11 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     for (const m of boulderMeshes) m.instanceMatrix.needsUpdate = true;
   }
 
-  // Vegetation billboards: textured tree & bush sprites (camera-facing, bottom-
-  // pivoted so they stand on the ground). Trees taller and sparse across all
-  // levels; bushes lower and denser in the valleys. Positions follow the warp.
-  const vegMats = (texs: THREE.Texture[]) =>
-    texs.map((t) => new THREE.SpriteMaterial({ map: t, transparent: true, alphaTest: 0.45, depthWrite: true, fog: true }));
-  const treeMats = vegMats(TREE_TEX);
-  const bushMats = vegMats(BUSH_TEX);
-  const scatterVeg = (
-    count: number, mats: THREE.SpriteMaterial[], hMin: number, hMax: number,
-    wRatio: number, valleyBias: boolean, yOff: number, salt: number,
-  ) => {
-    let placed = 0, guard = 0;
-    while (placed < count && guard++ < count * 16) {
-      const [tx, tz] = walkableTiles[(hash2(guard * 17 + salt, guard * 31 + salt) * walkableTiles.length) | 0];
-      const r1 = hash2(guard * 7 + salt, guard * 13), r2 = hash2(guard * 19, guard * 23 + salt);
-      if (valleyBias && map.level[map.idx(tx, tz)] > 1 && r1 > 0.25) continue;
-      const [wx, wz] = map.tileToWorld(tx, tz);
-      const ox = wx + (r1 - 0.5) * TILE, oz = wz + (r2 - 0.5) * TILE;
-      const y = map.groundHeight(ox, oz);
-      const [x, z] = warpXZ(ox, oz);
-      const h = hMin + (hMax - hMin) * r2;
-      const mat = mats[Math.min(mats.length - 1, (hash2(tx * 3 + guard, tz * 7) * mats.length) | 0)];
-      const sp = new THREE.Sprite(mat);
-      sp.center.set(0.5, 0);
-      sp.scale.set(h * wRatio, h, 1);
-      sp.position.set(x, y + yOff, z);
-      props.add(sp);
-      placed++;
-    }
-  };
-  scatterVeg(95, treeMats, 2.1, 3.6, 0.82, false, -0.05, 11);  // trees: tall, sparse
-  scatterVeg(190, bushMats, 0.7, 1.25, 1.1, true, -0.05, 37);  // bushes: low, valleys
+  // Vegetation: Y-locked (cylindrical) instanced billboards + a shared blob-shadow
+  // mesh. Trees taller and sparse across all levels; bushes lower and denser in
+  // the valleys. Placement rides the same warp; see props.ts.
+  const vegetation: VegetationBuild = buildVegetation(map);
+  props.add(vegetation.group);
 
   // Spore lamps: small glowing teal bulbs on dark stalks (two meshes).
   const stalkGeo = new THREE.CylinderGeometry(0.025, 0.045, 0.55, 4);
@@ -710,5 +649,5 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     crystalGroups.set(node.id, grp);
   }
 
-  return { terrain, rocks, props, crystalGroups };
+  return { terrain, rocks, props, crystalGroups, updateProps: (cam) => vegetation.update(cam) };
 }

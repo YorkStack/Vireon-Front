@@ -2,6 +2,16 @@
 
 > Stand: Übergabe vor /compact. Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
+## 🌿 Teilprojekt A — Environment-Assets (in Arbeit, 2026-06-14)
+Ziel: sichtbarer Map-Qualitätssprung ohne Eingriff in die Fahrzeug-Pipeline. Spec: `docs/superpowers/specs/2026-06-14-environment-assets-design.md`, Plan: `docs/superpowers/plans/2026-06-14-environment-assets.md`.
+- **ERLEDIGT (Tasks 2–4):**
+  - Reine Noise-Helfer extrahiert → `src/render/terrainNoise.ts` (`hash2`/`vnoise`/`warpXZ`), von terrain.ts + props.ts genutzt, unit-getestet.
+  - Neues Modul `src/render/props.ts`: **Vegetation = Y-locked (cylindrical) instanzierte Billboards** (CPU-per-Instanz-Yaw, kein Shader → robust) statt `THREE.Sprite`. **285 Instanzen in 4 InstancedMeshes** statt ~285 Sprites. Plus **gemeinsames Blob-Shadow-InstancedMesh** (285 Instanzen, 1 Draw-Call, Canvas-Gradient).
+  - Per-Frame-Reorientierung via `TerrainBuild.updateProps(camera)` → in `game.ts#frame` eingehängt.
+  - Tests: `terrainNoise.test.ts` + `props.test.ts` (billboardYaw, triplanarWeights, scatterVegInstances-Determinismus/in-bounds). **Gesamt 38 grün** (vorher 27). tsc + build sauber. Visuell auf 5180 verifiziert: Bäume stehen aufrecht bei Kamera-Tilt, Schatten sichtbar, 120 FPS, keine Fehler.
+- **OFFEN (Tasks 1, 5, 6):** Felsen als glTF — **braucht laufendes Blender mit MCP-Addon (`localhost:9876`)**, war bei diesem Durchlauf NICHT verbunden. `tools/blender/rocks.py` (Cell-Fracture, Vertex-AO via `vertex_color_dirt`, GLB-Export) + COLOR_0-Guard-Test, dann InstancedMesh + Triplanar-Albedo (+ Normal-Politur mit Fallback) ersetzt die Icosaeder-Boulders. `triplanarWeights` ist schon implementiert + getestet.
+- **DANACH:** Teilprojekt C — volle Blender-Komponentenfabrik für Fahrzeuge (Runtime-GLB), siehe Memory `vehicle-blender-component-factory`. Vertikaler Durchstich zuerst.
+
 ## ⏱️ Jüngster Stand (Fortsetzung nach /compact)
 - **Beide Repos committet & gepusht, Arbeitsbäume sauber:** Spiel `main` @ `8d202ba`, Studio `main` @ `45700ac`.
 - **Worauf zuletzt gearbeitet wurde — Vehicle Design Studio reift stark:** editierbare Original-Prompts pro Fraktion×Fahrzeug (Skizze/Geometrie/Textur, Prompt-Pack als Default, pro Version gespeichert), Prompt-Feld direkt über jedem Erzeugen-Button; **Batch-Modus** (Header „⚙ Batch all") mit **anklickbarem Auswahl-Raster** (Zelle/Fraktion/Klasse), Resume, Export-pro-Fahrzeug, optionale Multi-Pass-Komponenten-Texturen, robustem Stop/Cancel; **Overview-Seite** (Header „📋 Overview") mit Bulk-Export/-Delete; **Texturen aus der Skizze sampeln** (Gemini-Vision → ziehbare Crop-Box → img2img); **2-Pass-Geometrie** (Technical-Artist-System-Prompt + Phase-1-Analyse) — auch im Batch.

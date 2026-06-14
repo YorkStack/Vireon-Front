@@ -32,6 +32,7 @@ export class Game {
   private lastT = 0;
   private fpsAcc = 0; private fpsN = 0; private fpsTimer = 0;
   private resolveRun!: (r: GameResult) => void;
+  private updateProps!: (camera: THREE.Camera) => void;
 
   constructor(mission: MissionDef, playerFactionId: string) {
     this.mission = mission;
@@ -49,6 +50,7 @@ export class Game {
     this.effects = new Effects(this.rig.scene);
 
     const built = buildTerrain(this.map);
+    this.updateProps = built.updateProps;
     this.rig.scene.add(built.terrain, built.rocks, built.props);
     for (const [id, g] of built.crystalGroups) {
       g.userData.crystalId = id;
@@ -150,6 +152,7 @@ export class Game {
       this.checkEnd();
     }
     this.rig.update(dt, (x, z) => this.map.groundHeight(x, z));
+    this.updateProps(this.rig.camera); // Y-lock vegetation billboards to the camera
 
     // Minimap + fps.
     const viewW = 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.rig.camera.fov / 2)) * this.rig.camera.aspect;
