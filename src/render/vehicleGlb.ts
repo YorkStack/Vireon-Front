@@ -12,6 +12,7 @@ const UNIT_VISUAL_SCALE = 1.28;
 // Vehicles that have a baked runtime GLB (faction:classId -> asset url).
 const REGISTRY: Record<string, string> = {
   'red:mediumTank': '/assets/vehicles/red_mediumTank.glb',
+  'red:scout': '/assets/vehicles/red_scout.glb',
 };
 
 const cache = new Map<string, THREE.Group>(); // key -> loaded template scene

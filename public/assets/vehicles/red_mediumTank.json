@@ -2,11 +2,11 @@
   "vehicle_id": "red_mediumTank",
   "faction": "red",
   "class": "mediumTank",
-  "tris": 828,
+  "tris": 756,
   "bbox": {
-    "w": 2.95,
-    "h": 2.03,
-    "l": 3.89
+    "w": 2.9,
+    "h": 2.05,
+    "l": 3.8
   },
   "nodes": [
     "turret",

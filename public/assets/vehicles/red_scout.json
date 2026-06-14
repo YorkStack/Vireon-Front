@@ -1,0 +1,15 @@
+{
+  "vehicle_id": "red_scout",
+  "faction": "red",
+  "class": "scout",
+  "tris": 792,
+  "bbox": {
+    "w": 2.78,
+    "h": 1.85,
+    "l": 3.39
+  },
+  "nodes": [
+    "turret",
+    "muzzle"
+  ]
+}
