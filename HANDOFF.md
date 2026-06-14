@@ -1,6 +1,16 @@
 # Vireon Front — Handoff / Arbeitsstand
 
-> Stand: Übergabe vor /compact. Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
+> Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
+
+## ⏱️ Aktueller Stand (2026-06-14, Übergabe beim Projektwechsel)
+- **Beide Repos committet & gepusht:** Spiel `main` @ `9de7d81`, Studio `main` @ `3e0f019` (`../vireon-design-studio`). Arbeitsbäume sauber. Tests: **Spiel 57**, **Studio 23** grün; tsc + builds sauber.
+- **Heute erledigt (3 Stränge, alle Details in den Sektionen unten):**
+  1. **A — Environment-Assets** (ABGESCHLOSSEN): Vegetation Y-locked instanzierte Billboards + Blob-Shadow-InstancedMesh + glTF-Felsen (Blender headless) mit Triplanar-Albedo + Vertex-AO.
+  2. **C Slice 1 — Vehicle Component Factory** (ABGESCHLOSSEN): parametrische bpy-Templates → Validator → Assemble/Bake → Runtime-GLB (turret/muzzle/Akzent-Tint) → Spiel-Render-Pfad + Studio-Factory-GUI. `red/mediumTank` rendert aus GLB.
+  3. **C Slice 2 — Parametrisches Movement + Selektor + Texturen** (GROSSTEILS fertig): `movement_system`-Hardpoint + Bucht; **Räder 4/6/8** + Ketten per_side (im Spiel verifiziert, `red/scout` = 6 Räder); GUI-Selektor mit **Fraktions-Tabs** + Chassis-Typ + Enum-Params + **Textur-Bibliothek** (Picker/Generate/Bake `tex_<group>`/Spiel-Anwendung).
+- **Blender headless (wichtig):** `"/Applications/Blender.app/Contents/MacOS/Blender" --background --python <script>` — MCP-Socket NICHT nötig. Studio-Preview: `npx vite` in `../vireon-design-studio` (Config „studio" in `.claude/launch.json`, Port 5181). Spiel-Preview Port 5180 (User spielt auf 5199).
+- **NÄCHSTE offene Punkte (Slice 2 Rest):** dedizierter Klassen-Dropdown in der Factory (aktuell via Vehicle-id-Feld); **Barrel/Turm-Texturen** (sitzen im gemergten Turm-Node — Bake müsste sie als eigenes `tex_<group>`-Mesh unter `turret` halten); **exotische Geometrie-Templates** (Verdant-Organik-Lauf mit Leuchtadern, User-Screenshot → neues Waffen-Template + `barrel/organic-veins`-Textur); **weitere Movement-Typen** (Beine 2–8 / Hover-Pads 1–12 / Monowheel-Topologie); weitere Fraktions-Templates (Azure/Verdant/Solar). Optimierung: Texturen sind in `metadata.json` eingebettet (groß) → besser separate `tex_<group>.png` schreiben.
+- **Specs/Pläne:** `docs/superpowers/specs/2026-06-14-{environment-assets,vehicle-component-factory,factory-slice2-movement-textures}-design.md` + Pläne unter `docs/superpowers/plans/`.
 
 ## 🌿 Teilprojekt A — Environment-Assets (ABGESCHLOSSEN, 2026-06-14)
 Ziel: sichtbarer Map-Qualitätssprung ohne Eingriff in die Fahrzeug-Pipeline. Spec: `docs/superpowers/specs/2026-06-14-environment-assets-design.md`, Plan: `docs/superpowers/plans/2026-06-14-environment-assets.md`.
