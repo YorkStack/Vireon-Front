@@ -16,6 +16,7 @@ const REGISTRY: Record<string, string> = {
 };
 
 const cache = new Map<string, THREE.Group>(); // key -> loaded template scene
+const metaCache = new Map<string, { slotTextures?: Record<string, string> }>(); // key -> companion metadata
 /** Which path each vehicle visual actually used this session (debug). */
 export const VEH_SOURCE: Record<string, 'glb' | 'procedural'> = {};
 
@@ -32,6 +33,11 @@ export async function preloadVehicleGlbs(): Promise<void> {
     try {
       const gltf = await loader.loadAsync(url);
       cache.set(key, gltf.scene);
+      // Companion metadata (per-texGroup library textures), if present.
+      try {
+        const m = await fetch(url.replace(/\.glb$/, '.json')).then((r) => (r.ok ? r.json() : null));
+        if (m) metaCache.set(key, m);
+      } catch { /* no metadata is fine */ }
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`[veh] GLB-Load fehlgeschlagen ${key} (${url}) → prozedural`, e);
     }
@@ -89,6 +95,34 @@ export function makeGlbEntityGroup(
     };
     mesh.material = Array.isArray(mesh.material) ? mesh.material.map(remap) : remap(mesh.material);
   });
+
+  // Apply per-texGroup library textures from metadata onto their tex_<group> mesh.
+  const slotTex = metaCache.get(key)?.slotTextures;
+  if (slotTex) {
+    const texLoader = new THREE.TextureLoader();
+    for (const [group, b64] of Object.entries(slotTex)) {
+      if (!b64) continue;
+      const tex = texLoader.load(`data:image/png;base64,${b64}`);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 2);
+      const apply = (m: THREE.Material): THREE.Material => {
+        const c = (m as THREE.MeshStandardMaterial).clone();
+        c.map = tex; c.color.set(0xffffff); c.needsUpdate = true;
+        return c;
+      };
+      // GLTFLoader makes `tex_<group>` a parent node; its child meshes carry the
+      // geometry — apply to the whole subtree.
+      scene.traverse((node) => {
+        if (node.name !== `tex_${group}`) return;
+        node.traverse((o) => {
+          const mesh = o as THREE.Mesh;
+          if (!mesh.isMesh) return;
+          mesh.material = Array.isArray(mesh.material) ? mesh.material.map(apply) : apply(mesh.material);
+        });
+      });
+    }
+  }
 
   const inner = new THREE.Group();
   inner.add(scene);
