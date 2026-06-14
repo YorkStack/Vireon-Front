@@ -6,9 +6,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIR = join(process.cwd(), '../vireon-design-studio/exports/red_mediumTank');
-const GLB = join(DIR, 'red_mediumTank_final.glb');
-const META = join(DIR, 'metadata.json');
+const DIR = join(process.cwd(), 'public/assets/vehicles');
+const GLB = join(DIR, 'red_mediumTank.glb');
+const META = join(DIR, 'red_mediumTank.json');
 const CANONICAL = ['mat_body', 'mat_dark', 'mat_accent', 'mat_light', 'mat_smooth', 'mat_roof'];
 const TRI_BUDGET = 4000;
 
