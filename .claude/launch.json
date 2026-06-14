@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--port", "5180"],
       "port": 5180
+    },
+    {
+      "name": "studio",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd '../vireon-design-studio' && npx vite --port 5181"],
+      "port": 5181
     }
   ]
 }
