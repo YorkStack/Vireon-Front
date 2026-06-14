@@ -705,7 +705,21 @@ export function makeEntityGroup(
   if (kind === 'unit' && vehicle && visual) {
     const [fId, cId] = visual.factoryId.split(':');
     if (hasVehicleGlb(fId, cId)) {
-      const g = makeGlbEntityGroup(fId, cId, accentHex, visual.silhouetteScale ?? 1);
+      // Map the GLB's canonical mat_<slot> materials onto the game's vehicle
+      // materials so it reads like the procedural units (textured hull etc.).
+      const hull = vehicleHullMat(cId, visual);
+      const slotMat = (slot: string): THREE.Material | null => {
+        switch (slot) {
+          case 'body': return hull.body;
+          case 'dark': return hull.dark;
+          case 'accent': return accentMat(accentHex);
+          case 'smooth': return smoothMat;
+          case 'roof': return roofMat;
+          case 'light': return lightMat;
+          default: return null;
+        }
+      };
+      const g = makeGlbEntityGroup(fId, cId, accentHex, visual.silhouetteScale ?? 1, slotMat);
       if (g) return g;
     } else if (expectedVehicleGlb(fId, cId)) {
       if (import.meta.env.DEV) console.warn(`[veh] GLB fehlt/ungültig für ${fId}/${cId} → prozedural`);

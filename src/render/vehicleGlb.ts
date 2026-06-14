@@ -47,8 +47,12 @@ export function __setGlbForTest(faction: string, classId: string, scene: THREE.G
  * Build a vehicle visual from a cached GLB, shaped like makeEntityGroup's output.
  * Returns null if no GLB is cached for this vehicle.
  */
+/** Maps a canonical slot ('body'/'dark'/'accent'/…) to a game material, or null to keep the GLB's. */
+export type SlotMaterialFn = (slot: string) => THREE.Material | null | undefined;
+
 export function makeGlbEntityGroup(
   faction: string, classId: string, accentHex: string, silhouetteScale = 1,
+  materialForSlot?: SlotMaterialFn,
 ): THREE.Group | null {
   const key = vehicleGlbKey(faction, classId);
   const tmpl = cache.get(key);
@@ -64,9 +68,16 @@ export function makeGlbEntityGroup(
     if (!mesh.isMesh) return;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-    // Clone + tint the accent material so per-faction colour doesn't leak across instances.
-    const tint = (m: THREE.Material): THREE.Material => {
-      if ((m as any)?.name === 'mat_accent') {
+    // Swap each `mat_<slot>` for the game's matching vehicle material so the GLB
+    // tank reads like the procedural units. Fall back to tinting only the accent.
+    const remap = (m: THREE.Material): THREE.Material => {
+      const name = (m as any)?.name as string | undefined;
+      const slot = name?.startsWith('mat_') ? name.slice(4) : undefined;
+      if (slot) {
+        const repl = materialForSlot?.(slot);
+        if (repl) return repl;
+      }
+      if (name === 'mat_accent') {
         const c = (m as THREE.MeshStandardMaterial).clone();
         c.color.set(accentHex);
         c.emissive.set(accentHex);
@@ -75,7 +86,7 @@ export function makeGlbEntityGroup(
       }
       return m;
     };
-    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(tint) : tint(mesh.material);
+    mesh.material = Array.isArray(mesh.material) ? mesh.material.map(remap) : remap(mesh.material);
   });
 
   const inner = new THREE.Group();
