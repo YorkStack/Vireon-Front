@@ -2,7 +2,16 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-14, Fortsetzung 2: Barrel-Motion, alle 4 Fraktionen, Monowheel-Topologie, Klassen-Dropdown, externe Texturen)
+## ⏱️ Aktueller Stand (2026-06-15, Studio-Unification — Brainstorm/Spec/Plan + P0+P1)
+- **Großer Studio-Umbau geplant & gestartet.** Brainstorm → Spec → Plan abgeschlossen; Umsetzung läuft subagent-getrieben auf Studio-Branch **`feat/studio-unification`** (NICHT main).
+  - **Spec:** `vireon-design-studio/docs/superpowers/specs/2026-06-15-studio-factory-unification-design.md` — Factory wird der eine Build-Workflow; Skizze bleibt als 4-Felder-Blatt (Draufsicht/Seite/Front/Iso) + **Spec-Treiber**; eine gemeinsame Bibliothek; editierbare Fraktions-/Komponenten-/Textur-Übersichten; **dual-LLM** (Gemini=Bilder, Claude=Spec/Metadaten/bpy-Code); **Kosten-Hoheit** (Token+€); Phasen **P0–P8**. §9 = künftiges **Gebäude-Designer**-Schwesterprojekt (eigene Spec).
+  - **Plan:** `…/plans/2026-06-15-studio-factory-unification.md` — P0+P1 voll bite-sized, P2–P8 Roadmap (jede Folgephase eigener Detailplan).
+  - **ERLEDIGT P0:** Default-Fraktion = Crimson (factionId + Accent aus `FACTIONS[0]`); sprechende Komponenten-Labels + Tooltips in der Factory.
+  - **ERLEDIGT P1 (Kosten-Hoheit):** `server/cost.mjs` (getesteter Pure-Core priceUsd/usdToEur/summarize + recordGemini/estimate/costSummary), Wrapper um **jeden** Gemini-Call (pro-Feature gelabelt), `/costSummary`+`/pricing`-Routen (über dem Key-Guard), **„💶 Kosten"-Übersicht** (USD+EUR, FX als Schätzung). Preise: Sonnet 4.6 $3/$15, Opus 4.8 $5/$25, Gemini Flash-Bild $0.039 / Pro-Bild $0.134. Studio-Tests **37** grün, tsc+build sauber, im Browser verifiziert.
+  - **NÄCHSTE Phasen (Studio):** P2 gemeinsame Bibliothek+Liste+Preview · P3 Factory eingebettet+Multi-Fahrzeug · P4 Sketch→Spec (Claude) · P5 Bibliotheken editierbar · P6 Claude-bpy-Gen · P7 Batch · P8 spielbare Einheit. Jede bekommt beim Erreichen ihren eigenen Detailplan.
+  - **Merken (am Programm-Ende hierher übernehmen):** Gebäude-Designer-Anforderungen (Spec §9) + Kosten-Hoheit-Zusammenfassung.
+
+## ⏱️ Vorheriger Stand (2026-06-14, Fortsetzung 2: Barrel-Motion, alle 4 Fraktionen, Monowheel-Topologie, Klassen-Dropdown, externe Texturen)
 - **Beide Repos committet & gepusht.** Tests: **Spiel 60**, **Studio 30** grün; tsc + builds sauber.
 - **NEU diese Sitzung:**
   - **Kanonen-Barrel-Motion (rotieren / pumpen):** der Lauf ist jetzt ein eigener Runtime-Node **`barrel`** (Pivot am Verschluss, unter dem Turm; `muzzle` hängt darunter). Cannon-Params `spin` (0/1) + `pump` (0–0.6, beide standardmäßig AUS) → `metadata.barrelAnim`. Spiel (`world.ts#animateUnit`) rotiert den Lauf um die Bohrung (`spin`) und/oder lässt ihn pulsieren (`pump`: zieht sich auf (1−pump) der Länge zusammen und wird dabei dicker, dann wieder voll). `vehicleGlb.ts` verdrahtet `barrel`/`barrelAnim`.
