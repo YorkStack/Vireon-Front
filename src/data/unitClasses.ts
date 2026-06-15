@@ -206,6 +206,16 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
     targetPriority: [], ...PASSIVE_AI,
     support: { repairAuraRange: 6, repairAmount: 8, shieldBoostRange: 0, detectionAuraRange: 0 },
   }),
+  warden: T({
+    id: 'warden', displayName: 'Warden', unitClass: 'vehicle', role: 'tank',
+    techTier: 3, builtAt: 'foundry', buildTime: 20, cost: 1000, supplyCost: 0, prerequisites: [],
+    description: 'Six-legged assault walker. Strides over rough terrain with a heavy cannon.',
+    defaultMovementType: 'walker', speed: 4.4, collisionRadius: 1.0, ...GROUND_MOBILITY,
+    maxHitPoints: 640, armorClass: 'heavy', armorValue: 0, resistances: res('heavy'), ...NO_SHIELD,
+    primaryWeapon: 'tankCannon', secondaryWeapon: null,
+    visionRange: 10, autoAcquireRange: 10, pursuitRange: 16,
+    targetPriority: ['vehicles', 'structures', 'turrets'], ...COMBAT_AI,
+  }),
   // ====================== infantry ======================
   lancer: T({
     id: 'lancer', displayName: 'Lancer', unitClass: 'infantry', role: 'rifle',
@@ -242,7 +252,7 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
 /** Vehicle classes that get per-faction variants (order = codex display + balance audit). */
 export const VEHICLE_CLASS_IDS = [
   'harvester', 'builder', 'scout', 'lightAttack',
-  'mediumTank', 'heavyTank', 'antiAir', 'support',
+  'mediumTank', 'heavyTank', 'antiAir', 'support', 'warden',
 ] as const;
 export type VehicleClassId = typeof VEHICLE_CLASS_IDS[number];
 

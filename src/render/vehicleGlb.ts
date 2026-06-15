@@ -13,6 +13,7 @@ const UNIT_VISUAL_SCALE = 1.28;
 const REGISTRY: Record<string, string> = {
   'red:mediumTank': '/assets/vehicles/red_mediumTank.glb',
   'red:scout': '/assets/vehicles/red_scout.glb',
+  'green:warden': '/assets/vehicles/green_warden.glb',
 };
 
 interface VehMeta {

@@ -2,7 +2,16 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-15, Studio-Unification — Brainstorm/Spec/Plan + P0+P1)
+## ⏱️ Aktueller Stand (2026-06-15, **P8 — Verdant-Warden als echte spielbare Einheit (GAME, main)**)
+- **Die fabrik-gebaute Einheit ist im Spiel angekommen.** Der **Verdant-Warden** (6-Bein-Walker mit Organik-Lauf, Studio-Factory-Output) ist jetzt eine reguläre, baubare Klasse — der erste Beweis, dass der Studio-Factory-Pipeline-Output direkt ins Spiel fließt.
+  - **GLB:** `vireon-design-studio/exports/green_warden/green_warden_final.glb` (1674 Tris, turret+muzzle, mat_<slot>) → kopiert nach `public/assets/vehicles/green_warden.glb` + Companion `green_warden.json`.
+  - **Klassen-Template:** neues `warden` in `src/data/unitClasses.ts` (Tier 3, `builtAt:'foundry'`, `defaultMovementType:'walker'`, 640 HP heavy, `tankCannon`, Kosten 1000) + in `VEHICLE_CLASS_IDS` aufgenommen → erscheint automatisch in `UNIT_DEFS`/Foundry/Codex aller Fraktionen.
+  - **Varianten:** je eine Visual-Variante pro Fraktion (`src/vehicles/{green,red,blue,yellow}/warden.ts`, alle `style:'walker'` legCount 6), in `src/vehicles/index.ts` registriert. **`green:warden`** in `src/render/vehicleGlb.ts` REGISTRY → GLB-Pfad bevorzugt; andere Fraktionen rendern prozedural.
+  - **Test:** `src/vehicles/warden.test.ts` (Template/Foundry/UNIT_DEFS, 4 Walker-Varianten, GLB-Registrierung). **Alle 63 Game-Tests grün**, `tsc --noEmit` + `vite build` sauber, `validate:balance` zeigt nur erklärte Fraktions-Perks.
+  - **Im Browser verifiziert (Port 5180):** Warden im Unit-Codex unter Verdant Swarm (Tier 3 · walker · 576 HP mit −10%-Verdant-Perk), 3D-Preview rendert das **grüne GLB** (Akzent-Naht grün getönt + Walker-Fußplatten), keine GLB-Ladefehler.
+  - **Status:** lokal committed auf **main** (noch nicht gepusht — Push auf Wunsch). Studio-Arbeit (P0–P7) liegt weiter auf `feat/studio-unification` und ist davon getrennt.
+
+## ⏱️ Vorheriger Stand (2026-06-15, Studio-Unification — Brainstorm/Spec/Plan + P0+P1)
 - **Großer Studio-Umbau geplant & gestartet.** Brainstorm → Spec → Plan abgeschlossen; Umsetzung läuft subagent-getrieben auf Studio-Branch **`feat/studio-unification`** (NICHT main).
   - **Spec:** `vireon-design-studio/docs/superpowers/specs/2026-06-15-studio-factory-unification-design.md` — Factory wird der eine Build-Workflow; Skizze bleibt als 4-Felder-Blatt (Draufsicht/Seite/Front/Iso) + **Spec-Treiber**; eine gemeinsame Bibliothek; editierbare Fraktions-/Komponenten-/Textur-Übersichten; **dual-LLM** (Gemini=Bilder, Claude=Spec/Metadaten/bpy-Code); **Kosten-Hoheit** (Token+€); Phasen **P0–P8**. §9 = künftiges **Gebäude-Designer**-Schwesterprojekt (eigene Spec).
   - **Plan:** `…/plans/2026-06-15-studio-factory-unification.md` — P0+P1 voll bite-sized, P2–P8 Roadmap (jede Folgephase eigener Detailplan).

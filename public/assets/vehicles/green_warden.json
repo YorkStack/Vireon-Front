@@ -1,0 +1,15 @@
+{
+  "vehicle_id": "green_warden",
+  "faction": "green",
+  "class": "warden",
+  "tris": 1674,
+  "bbox": {
+    "w": 3.1,
+    "h": 2.91,
+    "l": 4.08
+  },
+  "nodes": [
+    "turret",
+    "muzzle"
+  ]
+}
