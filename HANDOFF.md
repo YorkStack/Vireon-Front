@@ -2,6 +2,28 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
+---
+
+## 🚀 QUICK RESUME (Stand 2026-06-16, nach Compact hier weiterlesen)
+
+**Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`, Studio-Unification gemergt). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
+
+**Test-/Build-Stand:** `npm test` → **108 grün**; `npx tsc --noEmit`, `npm run build`, `npm run validate:balance` sauber. Dev-Server: `npm run dev` → http://localhost:5199.
+
+**Was zuletzt lief (letzte Sitzung):** großer Fraktions-/KI-Ausbau am Spiel.
+1. Spiel-UX: Bau-%-Label, HP-Ampel (grün≥50/gelb≥25/rot), Mac-Linksklick-Steuerung, low-power Gebäude-Anzeige, Harvester-Ladeanzeige + manueller Rückruf.
+2. **Schwierigkeitsgrade** (leicht/mittel/schwer/superschwer; heute=Schwer verankert; KI-Income-Hebel) — [difficulty.ts](src/data/difficulty.ts), Auswahl im Startbildschirm.
+3. **Doctrines** (KI-Persona): alle 12 ([doctrines.ts](src/data/doctrines.ts)), Default je Fraktion, Gegner zieht zufällig. **Konzept-Refactor:** Fraktion = feste Identität (Tactical Profile), Doctrine = KI-Variante; Spieler-Doctrine nur unter „⚙ Erweitert" (kein Gameplay-Effekt), Briefing zeigt Faction-Profil.
+4. **Faction-Modifier-System (Economy/Power)** — feste Fraktionsmechanik, zentral in [factionModifiers.ts](src/data/factionModifiers.ts). **Live:** faction-spezifischer Strommangel (Produktion/Turm/Reparatur), Gather-Rate, Reparatur-Rate. **Admin-Readiness-Metadaten** klassifizieren jeden Modifier (live/legacy_backed/prepared).
+
+**Design-Doku:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md) (vollständiges System, Roadmap MVP/P2/P3).
+
+**➡️ NÄCHSTER SCHRITT (Prompt 3): F8 Admin-/Balancing-Panel.** Soll NUR die 6 `live`-Modifier als editierbare Slider anbieten (`getAdminEditableFactionModifierPaths()`), legacy_backed/prepared nur gelabelt anzeigen. Nutzt `setFactionModifierOverrides` (greift sofort, da world.ts die Registry jede Frame liest) + `calculateFactionPowerScore` für Warnungen. localStorage + Export/Import JSON. Details: Design-Doku Abschnitt 9 + die Metadaten in factionModifiers.ts.
+
+**Wichtige Konventionen:** committen/pushen nur auf Ansage; nach jedem Schritt tsc+vitest+build+ggf. Browser verifizieren; Faction-Modifiers ≠ Doctrine (Doctrine moduliert nur KI). Keine Migration der legacy-backed Dimensionen ohne Rücksprache (berührt `validate:balance`).
+
+---
+
 ## ⏱️ Aktueller Stand (2026-06-16, **Faction-Modifier-System (Economy/Power) als feste Fraktionsmechanik**)
 - **Zentrale, datengetriebene Registry** [factionModifiers.ts](src/data/factionModifiers.ts): `FACTION_MODIFIERS: Record<FactionId, FactionModifiers>` (economy/power/combat/defense/production/repair/special) für alle vier Fraktionen mit den moderaten Initialwerten (Crimson≈Referenz, Azure langsam/haltbar/defensiv, Verdant schnell/billig/hungrig/strom-resilient, Solar energieabhängig/late-game/strom-fragil). Alle zentralen Funktionen: `getFactionModifiers`/`getEconomy/PowerModifiers`, `getModifiedUnitCost/BuildingCost/TechCost/BuildDuration/ProductionDuration/PowerUsage/PowerGeneration/Hull/Damage/UnitSpeed/TurretRange/RepairRate/Upkeep`, Power-State (`getPowerRatio`/`isLowPower`/`getPowerOutageEffects`/`applyPowerStateModifier`), `getColonyAura` (prepared), `calculateFactionPowerScore`, + `setFactionModifierOverrides` (Admin-Tuning-Hook für Phase 3).
 - **Power-Outage** (Kern): `powerRatio = produced/used`; <1 ⇒ faction-spezifische Strafen (Solar bricht ein, Verdant kaum). **Live integriert** in [world.ts](src/sim/world.ts): Produktions-Tempo der Queue, Turm-Effizienz (offline-Schwelle + Cooldown-Skalierung), Reparatur-Tempo nutzen jetzt `getPowerOutageEffects` statt des pauschalen `lowPower?0.5`. **Gather-Rate** (Dropoff × `resourceGatherRate`) und **Reparatur** (× `repairRate` × Outage) live.
