@@ -69,7 +69,9 @@ export interface FactionDefenseModifiers {
 }
 
 export interface FactionProductionModifiers {
-  buildSpeed: number;
+  /** Build-time MULTIPLIER for foundations/units — higher = SLOWER (mirrors the
+   *  legacy factions.json `buildTime`). effectiveDuration = baseDuration × this. */
+  buildTimeMultiplier: number;
   unitProductionSpeed: number;
   vehicleProductionSpeed: number;
   infantryProductionSpeed: number;
@@ -108,7 +110,7 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 1.0, powerGridVulnerability: 1.0, lowPowerProductionPenalty: 0.85, lowPowerDefensePenalty: 0.85, lowPowerRepairPenalty: 0.85, lowPowerWeaponPenalty: 0.9 },
     combat: { infantryDamage: 1.0, vehicleDamage: 1.15, energyWeaponDamage: 1.0, unitSpeed: 1.0, unitHull: 1.0, vehicleHull: 1.0, infantryHull: 1.0 },
     defense: { buildingHull: 1.0, turretDurability: 1.0, turretRangeBonus: 0, turretTurnSpeed: 1.0, staticDefensePower: 1.0 },
-    production: { buildSpeed: 1.0, unitProductionSpeed: 1.0, vehicleProductionSpeed: 1.0, infantryProductionSpeed: 1.0, techUnlockSpeed: 1.0 },
+    production: { buildTimeMultiplier: 1.0, unitProductionSpeed: 1.0, vehicleProductionSpeed: 1.0, infantryProductionSpeed: 1.0, techUnlockSpeed: 1.0 },
     repair: { repairRate: 1.1, autoRepairEfficiency: 1.0 },
   },
   // Azure Concorde — shielded control: slower, durable, defensive.
@@ -122,7 +124,7 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 1.15, powerGridVulnerability: 1.1, lowPowerProductionPenalty: 0.8, lowPowerDefensePenalty: 0.72, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.85 },
     combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.05, unitSpeed: 0.95, unitHull: 1.12, vehicleHull: 1.12, infantryHull: 1.08 },
     defense: { buildingHull: 1.15, turretDurability: 1.2, turretRangeBonus: 0, turretTurnSpeed: 0.9, staticDefensePower: 1.15, shieldStrength: 1.2 },
-    production: { buildSpeed: 0.88, unitProductionSpeed: 0.92, vehicleProductionSpeed: 0.92, infantryProductionSpeed: 0.95, techUnlockSpeed: 0.95 },
+    production: { buildTimeMultiplier: 1.12, unitProductionSpeed: 0.92, vehicleProductionSpeed: 0.92, infantryProductionSpeed: 0.95, techUnlockSpeed: 0.95 },
     repair: { repairRate: 1.15, autoRepairEfficiency: 1.1, shieldRegenRate: 1.2 },
     special: { shieldNetworkEfficiency: 1.15 },
   },
@@ -135,7 +137,7 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 0.45, powerGridVulnerability: 0.5, lowPowerProductionPenalty: 0.92, lowPowerDefensePenalty: 0.9, lowPowerRepairPenalty: 0.95, lowPowerWeaponPenalty: 0.95 },
     combat: { infantryDamage: 1.0, vehicleDamage: 0.98, energyWeaponDamage: 0.95, unitSpeed: 1.15, unitHull: 0.95, vehicleHull: 0.95, infantryHull: 0.92 },
     defense: { buildingHull: 0.9, turretDurability: 0.85, turretRangeBonus: 0, turretTurnSpeed: 1.05, staticDefensePower: 0.8 },
-    production: { buildSpeed: 1.2, unitProductionSpeed: 1.25, vehicleProductionSpeed: 1.12, infantryProductionSpeed: 1.3, techUnlockSpeed: 0.9 },
+    production: { buildTimeMultiplier: 1.0, unitProductionSpeed: 1.25, vehicleProductionSpeed: 1.12, infantryProductionSpeed: 1.3, techUnlockSpeed: 0.9 },
     repair: { repairRate: 0.75, autoRepairEfficiency: 0.8 },
     special: { replacementBias: 1.25, biologicalResilience: 1.1 },
   },
@@ -148,7 +150,7 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.25, powerGeneration: 1.0, powerOutageSeverity: 1.35, powerGridVulnerability: 1.35, lowPowerProductionPenalty: 0.65, lowPowerDefensePenalty: 0.55, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.5 },
     combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.2, unitSpeed: 0.98, unitHull: 1.0, vehicleHull: 1.0, infantryHull: 1.0 },
     defense: { buildingHull: 1.05, turretDurability: 1.05, turretRangeBonus: 1, turretTurnSpeed: 0.95, staticDefensePower: 1.1 },
-    production: { buildSpeed: 0.95, unitProductionSpeed: 0.95, vehicleProductionSpeed: 0.95, infantryProductionSpeed: 0.95, techUnlockSpeed: 1.05 },
+    production: { buildTimeMultiplier: 1.0, unitProductionSpeed: 0.95, vehicleProductionSpeed: 0.95, infantryProductionSpeed: 0.95, techUnlockSpeed: 1.05 },
     repair: { repairRate: 0.95, autoRepairEfficiency: 1.0 },
     special: { colonyAuraEnabled: true, colonyAuraStrength: 1.15 },
   },
@@ -191,7 +193,7 @@ export function getModifiedTechCost(baseCost: number, factionId: FactionId): num
   return Math.round(baseCost * getEconomyModifiers(factionId).techCost);
 }
 export function getModifiedBuildDuration(baseDuration: number, factionId: FactionId): number {
-  return baseDuration / getFactionModifiers(factionId).production.buildSpeed; // >1 buildSpeed = faster
+  return baseDuration * getFactionModifiers(factionId).production.buildTimeMultiplier; // higher = slower (mirrors legacy buildTime)
 }
 export function getModifiedProductionDuration(baseDuration: number, factionId: FactionId, unitKind: UnitKind = 'general'): number {
   const p = getFactionModifiers(factionId).production;
@@ -374,13 +376,13 @@ export const MODIFIER_RUNTIME_METADATA: ModifierRuntimeMetadata[] = [
   { path: 'economy.vehicleCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Fahrzeug-Kostenfaktor. Migriert: resolveUnit liest getModifiedUnitCost (spiegelt factions.json).' },
   { path: 'economy.buildingCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Gebäude-Kostenfaktor. Migriert: buildingStats liest getModifiedBuildingCost.' },
   { path: 'power.powerUsage', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Gebäude-Stromverbrauch. Migriert: buildingStats liest getModifiedPowerUsage (spiegelt factions.json powerUse).' },
+  { path: 'production.buildTimeMultiplier', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Bauzeit-MULTIPLIKATOR (höher = langsamer). Migriert (4a.2): resolveUnit + buildingStats lesen getModifiedBuildDuration = baseDuration × multiplier (spiegelt factions.json buildTime, keine Inversion).' },
 
   // ---- LEGACY-BACKED (live in-game, but via the old path → migration needed) ----
   { path: 'combat.vehicleDamage', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (vehicleDamage) in unitStats.' },
   { path: 'combat.energyWeaponDamage', status: 'legacy_backed', runtimeSource: 'mixed', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (energyDamage) in unit/buildingStats.' },
   { path: 'combat.unitHull', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (hp/unitHp) in unitStats.' },
   { path: 'combat.unitSpeed', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantrySpeed) in unitStats.' },
-  { path: 'production.buildSpeed', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, migrationDeferred: true, description: 'Bauzeit aktiv via factions.json (buildTime) in building/unitStats. Bewusst NICHT in 4a migriert: Registry-Semantik ist Speed (Kehrwert), Legacy ist buildTime-Multiplikator → Inversions-/Präzisionsrisiko, und der Pfad wird an zwei Runtime-Stellen (Units+Buildings) angewandt.' },
   { path: 'defense.turretRangeBonus', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (turretRange) in buildingStats.' },
 
   // ---- PREPARED only (no effect yet) ----

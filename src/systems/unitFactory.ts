@@ -13,7 +13,7 @@ import { UNIT_CLASS_TEMPLATES, type UnitClassTemplate } from '../data/unitClasse
 import { WEAPONS, toLegacyWeapon } from '../data/weapons';
 import { getVariant } from '../vehicles';
 import type { VehicleVariant } from '../vehicles/types';
-import { getModifiedUnitCost, type FactionId, type UnitKind } from '../data/factionModifiers';
+import { getModifiedUnitCost, getModifiedBuildDuration, type FactionId, type UnitKind } from '../data/factionModifiers';
 
 /** Old units.json ids → new class template ids (campaign compat). */
 export const LEGACY_ALIASES: Record<string, string> = {
@@ -143,7 +143,9 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
     hp: Math.round(def.hp * hpMul),
     cost: getModifiedUnitCost(def.cost, faction.id as FactionId, kind),
     speed: def.speed * speedMul,
-    buildTime: def.buildTime * mod(faction, 'buildTime'),
+    // Build time MIGRATED to FACTION_MODIFIERS (Phase 4a.2): baseDuration ×
+    // buildTimeMultiplier — same math as the legacy buildTime perk, no inversion.
+    buildTime: getModifiedBuildDuration(def.buildTime, faction.id as FactionId),
     weapon,
   };
 }

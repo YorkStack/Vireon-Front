@@ -47,6 +47,22 @@ describe('Phase 4a cost/power migration — NO balance change', () => {
       expect(m.economy.unitCost, `${id}.unitCost`).toBe(1);     // no legacy unitCost → neutral
       expect(m.economy.buildingCost, `${id}.buildingCost`).toBe(1); // no legacy buildingCost → neutral
       expect(m.power.powerUsage, `${id}.powerUsage`).toBe(legacy(id, 'powerUse'));
+      // Phase 4a.2: build-time multiplier mirrors legacy buildTime (no inversion).
+      expect(m.production.buildTimeMultiplier, `${id}.buildTimeMultiplier`).toBe(legacy(id, 'buildTime'));
+    }
+  });
+
+  it('build time stays identical for every unit class and building (no inversion)', () => {
+    for (const id of IDS) {
+      for (const [classId, t] of Object.entries(UNIT_CLASS_TEMPLATES)) {
+        const resolved = resolveUnit(classId, FACTION_DEFS[id]);
+        expect(resolved.buildTime, `${id}.${classId}.buildTime`).toBe(t.buildTime * legacy(id, 'buildTime'));
+      }
+      for (const bid of Object.keys(buildingsJson)) {
+        const b = buildingStats(bid, FACTION_DEFS[id]);
+        const base = (buildingsJson as Record<string, { buildTime: number }>)[bid];
+        expect(b.buildTime, `${id}.${bid}.buildTime`).toBe(base.buildTime * legacy(id, 'buildTime'));
+      }
     }
   });
 
@@ -65,7 +81,7 @@ describe('Phase 4a cost/power migration — NO balance change', () => {
 
 describe('Phase 4a migration — runtime metadata', () => {
   it('migrated dimensions are now live & admin-editable from FACTION_MODIFIERS', () => {
-    for (const p of ['economy.vehicleCost', 'economy.infantryCost', 'economy.unitCost', 'economy.buildingCost', 'power.powerUsage']) {
+    for (const p of ['economy.vehicleCost', 'economy.infantryCost', 'economy.unitCost', 'economy.buildingCost', 'power.powerUsage', 'production.buildTimeMultiplier']) {
       const meta = getModifierMetadata(p)!;
       expect(meta, p).toBeDefined();
       expect(meta.status, p).toBe('live');
@@ -74,26 +90,27 @@ describe('Phase 4a migration — runtime metadata', () => {
       expect(meta.migrationNeeded ?? false, p).toBe(false);
     }
     const editable = getAdminEditableFactionModifierPaths().map((m) => m.path);
-    for (const p of ['economy.vehicleCost', 'economy.infantryCost', 'power.powerUsage']) {
+    for (const p of ['economy.vehicleCost', 'economy.infantryCost', 'power.powerUsage', 'production.buildTimeMultiplier']) {
       expect(editable).toContain(p);
     }
   });
 
-  it('buildSpeed is intentionally deferred (still legacy-backed, read-only)', () => {
-    const bs = getModifierMetadata('production.buildSpeed')!;
-    expect(bs.status).toBe('legacy_backed');
-    expect(bs.adminEditable).toBe(false);
-    expect(bs.migrationNeeded).toBe(true);
-    expect(bs.migrationDeferred).toBe(true);
+  it('buildTimeMultiplier is now LIVE (Phase 4a.2 — no longer deferred)', () => {
+    // the old buildSpeed path is gone entirely
+    expect(getModifierMetadata('production.buildSpeed')).toBeUndefined();
+    const bt = getModifierMetadata('production.buildTimeMultiplier')!;
+    expect(bt.status).toBe('live');
+    expect(bt.adminEditable).toBe(true);
+    expect(bt.migrationDeferred ?? false).toBe(false);
   });
 
   it('non-migrated legacy combat dims remain read-only and out of the editable set', () => {
     const legacyPaths = getLegacyBackedModifierPaths().map((m) => m.path);
     expect(legacyPaths).toContain('combat.vehicleDamage');
-    expect(legacyPaths).toContain('production.buildSpeed');
-    expect(legacyPaths).not.toContain('economy.vehicleCost'); // migrated out
+    expect(legacyPaths).toContain('combat.unitHull');
+    expect(legacyPaths).not.toContain('economy.vehicleCost');            // migrated out
+    expect(legacyPaths).not.toContain('production.buildTimeMultiplier'); // migrated out
     const editable = getAdminEditableFactionModifierPaths().map((m) => m.path);
     expect(editable).not.toContain('combat.vehicleDamage');
-    expect(editable).not.toContain('production.buildSpeed');
   });
 });

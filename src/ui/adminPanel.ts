@@ -55,6 +55,22 @@ export const SLIDER_RANGES: Record<string, { min: number; max: number; step: num
   'economy.vehicleCost': { min: 0.5, max: 2.0, step: 0.05 },
   'economy.buildingCost': { min: 0.5, max: 2.0, step: 0.05 },
   'power.powerUsage': { min: 0.5, max: 2.0, step: 0.05 },
+  // Phase 4a.2 — build-time multiplier (higher = SLOWER):
+  'production.buildTimeMultiplier': { min: 0.5, max: 2.0, step: 0.05 },
+};
+
+// Short semantic hints shown inline next to a slider so the direction is
+// unambiguous (especially where higher ≠ "better").
+export const PATH_HINTS: Record<string, string> = {
+  'production.buildTimeMultiplier': '↑ = langsamer',
+  'power.powerUsage': '↑ = mehr Verbrauch',
+  'economy.vehicleCost': '↑ = teurer',
+  'economy.infantryCost': '↑ = teurer',
+  'economy.unitCost': '↑ = teurer',
+  'economy.buildingCost': '↑ = teurer',
+  'power.powerOutageSeverity': '↑ = härtere Strafe',
+  'economy.resourceGatherRate': '↑ = mehr Ertrag',
+  'repair.repairRate': '↑ = schneller',
 };
 
 // ── Editable-path governance ─────────────────────────────────────────────────
@@ -460,7 +476,8 @@ export function createAdminPanel(doc: Document = document): AdminPanelHandle {
     num.type = 'number'; num.className = 'num';
     num.min = String(range.min); num.max = String(range.max); num.step = String(range.step);
     num.value = String(round2(live));
-    const defSpan = el('span', 'def', `def ${round2(def)}`);
+    const hint = PATH_HINTS[path];
+    const defSpan = el('span', 'def', hint ? `def ${round2(def)} · ${hint}` : `def ${round2(def)}`);
     const resetBtn = el('button', 'reset', '↺') as HTMLButtonElement;
     resetBtn.title = 'Auf Faction-Default zurücksetzen';
 

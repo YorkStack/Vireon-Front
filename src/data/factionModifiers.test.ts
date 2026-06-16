@@ -36,14 +36,14 @@ describe('FACTION_MODIFIERS registry', () => {
       // every MULTIPLIER (everything except the additive turretRangeBonus) is > 0
       const m = FACTION_MODIFIERS[id];
       expect(m.economy.resourceGatherRate).toBeGreaterThan(0);
-      expect(m.production.buildSpeed).toBeGreaterThan(0);
+      expect(m.production.buildTimeMultiplier).toBeGreaterThan(0);
       expect(m.power.powerUsage).toBeGreaterThan(0);
     }
   });
 
   it('3. Crimson Pact sits near reference (≈1.0)', () => {
     const r = FACTION_MODIFIERS.red;
-    expect(r.production.buildSpeed).toBe(1.0);
+    expect(r.production.buildTimeMultiplier).toBe(1.0);
     expect(r.power.powerUsage).toBe(1.0);
     expect(r.power.powerOutageSeverity).toBe(1.0);
     expect(r.economy.resourceGatherRate).toBe(1.0);
@@ -51,7 +51,8 @@ describe('FACTION_MODIFIERS registry', () => {
 
   it('4. Azure builds slower but is more durable/defensive', () => {
     const b = FACTION_MODIFIERS.blue, r = FACTION_MODIFIERS.red;
-    expect(b.production.buildSpeed).toBeLessThan(r.production.buildSpeed);
+    // buildTimeMultiplier: higher = slower, so blue (1.12) > red (1.0).
+    expect(b.production.buildTimeMultiplier).toBeGreaterThan(r.production.buildTimeMultiplier);
     expect(b.production.unitProductionSpeed).toBeLessThan(r.production.unitProductionSpeed);
     expect(b.combat.unitHull).toBeGreaterThan(r.combat.unitHull);
     expect(b.defense.buildingHull).toBeGreaterThan(r.defense.buildingHull);

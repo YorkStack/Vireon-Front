@@ -9,7 +9,7 @@ import factionsJson from '../data/factions.json';
 import type { UnitDef, BuildingDef, FactionDef } from './types';
 import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import { templateToDef, resolveUnit } from '../systems/unitFactory';
-import { getModifiedBuildingCost, getModifiedPowerUsage, type FactionId } from '../data/factionModifiers';
+import { getModifiedBuildingCost, getModifiedPowerUsage, getModifiedBuildDuration, type FactionId } from '../data/factionModifiers';
 
 export const UNIT_DEFS: Record<string, UnitDef> = {};
 export const BUILDING_DEFS: Record<string, BuildingDef> = {};
@@ -49,7 +49,9 @@ export function buildingStats(defId: string, faction: FactionDef): BuildingDef {
     ...base,
     cost: getModifiedBuildingCost(base.cost, fid),
     hp: Math.round(base.hp * mod(faction, 'hp')),
-    buildTime: base.buildTime * mod(faction, 'buildTime'),
+    // Build time MIGRATED (Phase 4a.2): registry buildTimeMultiplier mirrors the
+    // legacy factions.json buildTime — same × math, applied to units & buildings.
+    buildTime: getModifiedBuildDuration(base.buildTime, fid),
     power,
     weapon,
   };

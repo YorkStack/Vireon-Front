@@ -56,9 +56,9 @@ describe('F8 admin panel — governance & DOM', () => {
       'power.lowPowerRepairPenalty', 'power.powerOutageSeverity', 'repair.repairRate']) {
       expect(editablePaths()).toContain(p);
     }
-    // …plus the five migrated economy/power cost dimensions
+    // …plus the migrated economy/power/build-time dimensions (Phase 4a + 4a.2)
     for (const p of ['economy.unitCost', 'economy.infantryCost', 'economy.vehicleCost',
-      'economy.buildingCost', 'power.powerUsage']) {
+      'economy.buildingCost', 'power.powerUsage', 'production.buildTimeMultiplier']) {
       expect(editablePaths()).toContain(p);
     }
   });
