@@ -5,7 +5,7 @@ import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, CrystalNode } from '../m
 import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
-import { makeEntityGroup, makeSelectionRing, makeHealthBar, makePctLabel, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
+import { makeEntityGroup, makeSelectionRing, makeHealthBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 
@@ -95,6 +95,8 @@ export class Building {
   ring: THREE.Mesh;
   hb: HealthBar;
   pct: TextLabel; // construction-progress % label (visible only while building)
+  darkOverlay?: THREE.Mesh;     // low-power shroud (consumers only)
+  powerIcon?: THREE.Sprite;     // pulsing low-power lightning indicator
 
   constructor(team: TeamId, def: BuildingDef, tx: number, tz: number, level: number, accent: string, complete: boolean) {
     this.team = team; this.def = def; this.tx = tx; this.tz = tz;
@@ -127,6 +129,18 @@ export class Building {
     this.pct.sprite.position.y = (this.group.userData.topY ?? 3) + 1.05;
     this.pct.sprite.visible = false;
     this.group.add(this.pct.sprite);
+    // Low-power state visuals: a dark shroud + pulsing lightning, for power
+    // consumers (def.power < 0). Walls/producers get none.
+    if (!def.wall && def.power < 0) {
+      const topY = this.group.userData.topY ?? 3;
+      this.darkOverlay = makeDarkOverlay(this.w * TILE * 0.98, this.h * TILE * 0.98, topY * 1.02);
+      this.darkOverlay.visible = false;
+      this.group.add(this.darkOverlay);
+      this.powerIcon = makePowerIcon();
+      this.powerIcon.position.y = topY + 0.55;
+      this.powerIcon.visible = false;
+      this.group.add(this.powerIcon);
+    }
     if (!complete) this.group.scale.y = 0.15;
   }
   get cx() { return (this.tx + this.w / 2) * TILE; }
@@ -864,16 +878,21 @@ export class World {
     for (const b of this.buildings) {
       b.ring.visible = b.selected;
       if (!b.complete) {
-        // Under construction: show the build-progress %, hide the HP bar.
         b.hb.group.visible = false;
-        const pct = Math.round(100 * b.progress / Math.max(0.001, b.def.buildTime));
-        b.pct.set(`${pct}%`);
-        b.pct.sprite.visible = true;
-        // Counter the building's animated Y-scale (0.15→1) so the label keeps a
-        // constant world height and stays undistorted.
-        const s = b.group.scale.y || 1;
-        b.pct.sprite.position.y = ((b.group.userData.topY ?? 3) + 1.05) / s;
-        b.pct.sprite.scale.set(b.pct.baseScaleX, b.pct.baseScaleY / s, 1);
+        // Show the build-progress % only once construction has actually begun
+        // (a builder has reached the site); before that the pad sits empty.
+        if (b.started) {
+          const pct = Math.round(100 * b.progress / Math.max(0.001, b.def.buildTime));
+          b.pct.set(`${pct}%`);
+          b.pct.sprite.visible = true;
+          // Counter the building's animated Y-scale (0.15→1) so the label keeps
+          // a constant world height and stays undistorted.
+          const s = b.group.scale.y || 1;
+          b.pct.sprite.position.y = ((b.group.userData.topY ?? 3) + 1.05) / s;
+          b.pct.sprite.scale.set(b.pct.baseScaleX, b.pct.baseScaleY / s, 1);
+        } else {
+          b.pct.sprite.visible = false;
+        }
       } else {
         b.pct.sprite.visible = false;
         const hurt = b.hp < b.def.hp - 0.5;
@@ -969,6 +988,17 @@ export class World {
       const ph = Math.sin(this.time * 2.6 + b.id * 1.7);
       beacon.visible = b.complete;
       beacon.scale.setScalar(0.75 + 0.45 * ph);
+    }
+    // Low-power: darken the consumer + pulse a lightning indicator.
+    const offline = b.complete && b.def.power < 0 && this.teams[b.team].lowPower;
+    if (b.darkOverlay) b.darkOverlay.visible = offline;
+    if (b.powerIcon) {
+      b.powerIcon.visible = offline;
+      if (offline) {
+        const p = 0.5 + 0.5 * Math.sin(this.time * 5 + b.id);
+        (b.powerIcon.material as THREE.SpriteMaterial).opacity = 0.35 + 0.65 * p;
+        b.powerIcon.scale.setScalar(1.0 + 0.2 * p);
+      }
     }
     if (!anim || !b.complete) return;
     if (anim.turret) {

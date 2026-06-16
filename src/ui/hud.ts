@@ -25,6 +25,7 @@ export class Hud {
   private panel: HTMLElement;
   private refreshTimer = 0;
   private shownCredits = 0;
+  private lastHtml = ''; // last panel markup — skip DOM writes when unchanged (clicks stay alive)
 
   constructor(world: World, cb: HudCallbacks) {
     this.world = world;
@@ -76,16 +77,29 @@ export class Hud {
 
   renderPanel() {
     const { units, building } = this.cb.getSelection();
-    const t = this.world.teams[0];
 
     if (!units.length && !building) {
       this.panel.classList.remove('visible');
+      this.lastHtml = '';
       return;
     }
     this.panel.classList.add('visible');
 
-    if (building) { this.renderBuildingPanel(building); return; }
+    const html = building ? this.buildingHtml(building) : this.unitsHtml(units);
+    // Only rewrite the DOM when the markup actually changes. The old code rebuilt
+    // innerHTML on every 0.25s refresh tick, which destroyed the buttons mid-click
+    // → clicks were silently dropped (the reported "hacklige" selection).
+    if (html !== this.lastHtml) {
+      this.panel.innerHTML = html;
+      this.lastHtml = html;
+      this.wirePanel();
+    }
+    // Live production-bar widths are updated in place (kept out of the signature).
+    if (building) this.refreshQueueBars(building);
+  }
 
+  private unitsHtml(units: Unit[]): string {
+    const t = this.world.teams[0];
     const builder = units.find(u => u.def.builder);
     const names = new Map<string, number>();
     for (const u of units) names.set(u.def.name, (names.get(u.def.name) ?? 0) + 1);
@@ -130,23 +144,10 @@ export class Hud {
     } else {
       html += `<div class="hint">Linksklick: Boden = bewegen · Gegner = angreifen${units.some(u => u.def.harvester) ? ' · Kristall = sammeln' : ''} · ⚔/Taste A = Angriffsbewegung · eigene Einheit = neu wählen · ESC = abwählen</div>`;
     }
-
-    this.panel.innerHTML = html;
-    this.panel.querySelectorAll<HTMLButtonElement>('[data-build]').forEach(btn => {
-      btn.addEventListener('click', () => this.cb.startPlacement(btn.dataset.build!));
-    });
-    this.panel.querySelectorAll<HTMLButtonElement>('[data-act]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const a = btn.dataset.act;
-        if (a === 'attack') this.cb.armAttack();
-        else if (a === 'stop') this.cb.stopSel();
-        else if (a === 'hold') this.cb.holdSel();
-        this.renderPanel();
-      });
-    });
+    return html;
   }
 
-  private renderBuildingPanel(b: Building) {
+  private buildingHtml(b: Building): string {
     const t = this.world.teams[0];
     let html = `
       <div>
@@ -173,23 +174,53 @@ export class Hud {
       if (b.queue.length) {
         html += `<div class="sel-sub" style="letter-spacing:1.5px;">QUEUE <span style="opacity:.6">(click to cancel)</span></div><div class="queue-row">`;
         b.queue.forEach((q, i) => {
-          const pct = Math.round(100 * (1 - q.remaining / q.total));
-          html += `<div class="queue-item" data-qi="${i}">${UNIT_DEFS[q.defId].name}<div class="prog" style="width:${i === 0 ? pct : 0}%"></div></div>`;
+          // Width is set live in refreshQueueBars so the per-tick change doesn't
+          // alter the signature (which would rebuild + steal clicks).
+          html += `<div class="queue-item" data-qi="${i}">${UNIT_DEFS[q.defId].name}<div class="prog" style="width:0%"></div></div>`;
         });
         html += `</div>`;
       }
     }
+    return html;
+  }
 
-    this.panel.innerHTML = html;
+  /** Update the live production-progress bar width without rebuilding the panel. */
+  private refreshQueueBars(b: Building) {
+    if (!b.queue.length) return;
+    const first = this.panel.querySelector<HTMLElement>('.queue-item[data-qi="0"] .prog');
+    if (first) {
+      const q = b.queue[0];
+      first.style.width = `${Math.round(100 * (1 - q.remaining / q.total))}%`;
+    }
+  }
+
+  /** Wire panel button listeners (only called when the DOM is actually rebuilt).
+   *  Train/cancel resolve the building live so a same-markup re-selection can't
+   *  leave a stale closure pointing at the previously selected structure. */
+  private wirePanel() {
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-build]').forEach(btn => {
+      btn.addEventListener('click', () => this.cb.startPlacement(btn.dataset.build!));
+    });
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const a = btn.dataset.act;
+        if (a === 'attack') this.cb.armAttack();
+        else if (a === 'stop') this.cb.stopSel();
+        else if (a === 'hold') this.cb.holdSel();
+        this.renderPanel();
+      });
+    });
     this.panel.querySelectorAll<HTMLButtonElement>('[data-train]').forEach(btn => {
       btn.addEventListener('click', () => {
-        if (!this.world.enqueue(b, btn.dataset.train!)) toast('Cannot train: check funds');
+        const b = this.cb.getSelection().building;
+        if (b && !this.world.enqueue(b, btn.dataset.train!)) toast('Cannot train: check funds');
         this.renderPanel();
       });
     });
     this.panel.querySelectorAll<HTMLElement>('[data-qi]').forEach(q => {
       q.addEventListener('click', () => {
-        this.world.cancelQueue(b, Number(q.dataset.qi));
+        const b = this.cb.getSelection().building;
+        if (b) this.world.cancelQueue(b, Number(q.dataset.qi));
         this.renderPanel();
       });
     });

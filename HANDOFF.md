@@ -2,7 +2,14 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-16, **Spiel-UX: Bau-%, HP-Farben, Mac-freundliche Linksklick-Steuerung**)
+## ⏱️ Aktueller Stand (2026-06-16, **Spiel-UX v2: stabiles Auswahl-Panel, Bau-%-Timing, Strommangel-Anzeige**)
+- **Drei Folge-Fixes (GAME, main).**
+  - **Panel-Klicks zuverlässig:** [hud.ts](src/ui/hud.ts) `renderPanel` schrieb das `innerHTML` 4×/s neu und zerstörte Buttons mitten im Klick → Klicks gingen verloren. Jetzt **Signatur-Guard**: DOM nur neu schreiben, wenn sich das Markup ändert; Live-Produktionsbalken werden separat in-place aktualisiert; Train/Cancel lösen das Gebäude live auf (keine stale Closures). Live verifiziert: gemerkte Button-Node überlebt mehrere Refresh-Ticks.
+  - **Bau-% erst bei Baubeginn:** Das schwebende %-Label erscheint jetzt nur, wenn `b.started` (Builder ist da), nicht mehr mit „0%" auf der leeren Baufläche ([world.ts](src/sim/world.ts) `syncVisuals`). Live verifiziert.
+  - **Strommangel-Anzeige:** Verbraucher-Gebäude (`def.power < 0`) **dunkeln ab** (transluzente Box, `makeDarkOverlay`) + **pulsierender Blitz** (`makePowerIcon`) bei `team.lowPower` — Toggle in `animateBuilding` über `offline = b.complete && b.def.power < 0 && team.lowPower` (spiegelt das bestehende Offline-Muster). Erzeugungs-Pfad live ohne Fehler exerziert; volles Abdunkeln benötigt einen fertigen Verbraucher ohne Kraftwerk (Bauzeit zu lang fürs Live-Harness) → Logik-verifiziert.
+  - **Verify:** 67 Tests grün, `tsc`+`vite build` sauber.
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Spiel-UX: Bau-%, HP-Farben, Mac-freundliche Linksklick-Steuerung**)
 - **Drei UX-Verbesserungen im Spiel (GAME, main).**
   - **Bau-Fortschritt in %:** Gebäude im Bau zeigen ein schwebendes %-Label (Canvas-Sprite, `makePctLabel` in [models.ts](src/render/models.ts)); in [world.ts](src/sim/world.ts) `syncVisuals` während des Baus sichtbar (HP-Balken solange ausgeblendet), Y-Scale der Bau-Animation wird gegengerechnet. Live verifiziert: Label zählt 0→1→2% hoch, deckungsgleich mit dem Panel.
   - **HP-Balken-Ampel:** Schwellen in `makeHealthBar` auf Vorgabe gesetzt — **grün ≥50 %, gelb ≥25 %, rot <25 %**. Gesichert durch [healthbar.test.ts](src/render/healthbar.test.ts) (4 Tests an den 50/25-Grenzen).

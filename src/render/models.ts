@@ -923,3 +923,36 @@ export function makePctLabel(): TextLabel {
   const set = (text: string) => { if (text !== last) { last = text; draw(text); } };
   return { sprite, set, baseScaleX, baseScaleY };
 }
+
+// Pulsing low-power indicator: a hand-drawn lightning bolt sprite (no font/emoji
+// dependency) that always faces the camera. Caller toggles visibility + pulses
+// opacity/scale.
+export function makePowerIcon(): THREE.Sprite {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  ctx.clearRect(0, 0, 64, 64);
+  ctx.beginPath();
+  ctx.moveTo(38, 5); ctx.lineTo(19, 36); ctx.lineTo(30, 36);
+  ctx.lineTo(26, 59); ctx.lineTo(47, 26); ctx.lineTo(35, 26); ctx.closePath();
+  ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(8, 10, 18, 0.95)'; ctx.stroke();
+  ctx.fillStyle = '#ffd23a'; ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(1.1, 1.1, 1);
+  sprite.renderOrder = 23;
+  return sprite;
+}
+
+// Translucent dark shroud sized to a building's footprint/height — dims the
+// structure when it is offline (low power). Works with the shared materials.
+export function makeDarkOverlay(wWorld: number, dWorld: number, hWorld: number): THREE.Mesh {
+  const geo = new THREE.BoxGeometry(wWorld, hWorld, dWorld);
+  const mat = new THREE.MeshBasicMaterial({ color: '#06080f', transparent: true, opacity: 0.5, depthWrite: false });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.y = hWorld / 2;
+  m.renderOrder = 6;
+  return m;
+}
