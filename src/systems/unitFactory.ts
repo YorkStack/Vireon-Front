@@ -13,7 +13,7 @@ import { UNIT_CLASS_TEMPLATES, type UnitClassTemplate } from '../data/unitClasse
 import { WEAPONS, toLegacyWeapon } from '../data/weapons';
 import { getVariant } from '../vehicles';
 import type { VehicleVariant } from '../vehicles/types';
-import { getModifiedUnitCost, getModifiedBuildDuration, getModifiedHull, getCombatModifiers, type FactionId, type UnitKind } from '../data/factionModifiers';
+import { getModifiedUnitCost, getModifiedBuildDuration, getModifiedHull, getModifiedInfantrySpeed, getCombatModifiers, type FactionId, type UnitKind } from '../data/factionModifiers';
 
 /** Old units.json ids → new class template ids (campaign compat). */
 export const LEGACY_ALIASES: Record<string, string> = {
@@ -27,9 +27,6 @@ export function classIdOf(defId: string): string {
   return LEGACY_ALIASES[defId] ?? defId;
 }
 
-function mod(f: FactionDef, key: string, fallback = 1): number {
-  return f.modifiers[key] ?? fallback;
-}
 
 /** Template → legacy-shaped base def (faction-neutral, for HUD lists etc.). */
 export function templateToDef(t: UnitClassTemplate): UnitDef {
@@ -126,7 +123,6 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
   // Faction perk modifiers — identical math to the old unitStats().
   const isInf = def.class === 'infantry';
   const isVeh = def.class === 'vehicle';
-  const speedMul = isInf ? mod(faction, 'infantrySpeed') : 1;
   let weapon: WeaponDef | null = def.weapon;
   if (weapon) {
     // Damage MIGRATED to FACTION_MODIFIERS (Phase 4b.1): same composition as the
@@ -147,7 +143,10 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
     // this equals the legacy hp×unitHp exactly. No double application.
     hp: getModifiedHull(def.hp, faction.id as FactionId, isVeh ? 'vehicle' : 'infantry'),
     cost: getModifiedUnitCost(def.cost, faction.id as FactionId, kind),
-    speed: def.speed * speedMul,
+    // Speed MIGRATED to FACTION_MODIFIERS (Phase 4b.2b): INFANTRY ONLY via
+    // getModifiedInfantrySpeed (mirrors legacy infantrySpeed); vehicles stay
+    // exactly def.speed — no generic unit-speed application.
+    speed: isInf ? getModifiedInfantrySpeed(def.speed, faction.id as FactionId) : def.speed,
     // Build time MIGRATED to FACTION_MODIFIERS (Phase 4a.2): baseDuration ×
     // buildTimeMultiplier — same math as the legacy buildTime perk, no inversion.
     buildTime: getModifiedBuildDuration(def.buildTime, faction.id as FactionId),

@@ -177,11 +177,12 @@ describe('runtime-status metadata (admin readiness)', () => {
     }
   });
 
-  it('4. legacy-backed modifiers are flagged migrationNeeded and not editable', () => {
+  it('4. legacy-backed modifiers are read-only and not registry-sourced', () => {
     const legacy = getLegacyBackedModifierPaths();
     expect(legacy.length).toBeGreaterThan(0);
     for (const m of legacy) {
-      expect(m.migrationNeeded, m.path).toBe(true);
+      // All faction dims are migrated as of Phase 4b.2b; the remaining legacy
+      // entry is the DEPRECATED combat.unitSpeed alias — read-only, no registry.
       expect(m.adminEditable, m.path).toBe(false);
       expect(m.runtimeSource).not.toBe('FACTION_MODIFIERS');
     }

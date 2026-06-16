@@ -64,6 +64,8 @@ export const SLIDER_RANGES: Record<string, { min: number; max: number; step: num
   // Phase 4b.2a — hull/HP multipliers:
   'combat.unitHull': { min: 0.5, max: 2.0, step: 0.05 },
   'defense.buildingHull': { min: 0.5, max: 2.0, step: 0.05 },
+  // Phase 4b.2b — infantry-only movement speed:
+  'combat.infantrySpeed': { min: 0.5, max: 2.0, step: 0.05 },
 };
 
 // Short semantic hints shown inline next to a slider so the direction is
@@ -83,6 +85,7 @@ export const PATH_HINTS: Record<string, string> = {
   'defense.turretRangeBonus': 'additiv: +Reichweite (Felder)',
   'combat.unitHull': '↑ = mehr Unit-HP',
   'defense.buildingHull': '↑ = mehr Gebäude-HP',
+  'combat.infantrySpeed': '↑ = schnellere Infanterie',
 };
 
 // ── Editable-path governance ─────────────────────────────────────────────────
