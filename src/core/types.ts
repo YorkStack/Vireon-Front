@@ -107,7 +107,10 @@ export interface FactionDef {
   emissive: string;
   tagline: string;
   perks: string[];
-  modifiers: Record<string, number>;
+  /** @deprecated Removed in Phase 4c.2 — balance lives in FACTION_MODIFIERS
+   *  (src/data/factionModifiers.ts). Kept optional only for legacy compatibility;
+   *  no runtime/validator/UI code reads it. */
+  modifiers?: Record<string, number>;
   tactical?: TacticalProfile;
   strengths?: string[];
   weaknesses?: string[];

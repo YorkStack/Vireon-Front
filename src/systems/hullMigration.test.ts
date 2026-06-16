@@ -5,28 +5,32 @@ import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import buildingsJson from '../data/buildings.json';
 import {
   FACTION_MODIFIERS, getAdminEditableFactionModifierPaths, getLegacyBackedModifierPaths,
-  getModifierMetadata, type FactionId,
+  getModifierMetadata, getModifiedHull, type FactionId,
 } from '../data/factionModifiers';
 
 const IDS: FactionId[] = ['red', 'blue', 'green', 'yellow'];
-const legacy = (id: FactionId, key: string): number => (FACTION_DEFS[id].modifiers[key] ?? 1);
 
-describe('Phase 4b.2a hull migration — NO balance change', () => {
-  it('1. effective unit HP is identical (legacy hp × unitHp) for every class/faction', () => {
+// Phase 4c.2: expectations come from FACTION_MODIFIERS (via getModifiedHull and
+// the registry's unitHull/buildingHull), never from factions.json.modifiers.
+
+describe('Phase 4b.2a hull — runtime delegates to the central registry function', () => {
+  it('1. unit HP == getModifiedHull (= base × combat.unitHull) for every class/faction', () => {
     for (const id of IDS) {
       for (const [classId, t] of Object.entries(UNIT_CLASS_TEMPLATES)) {
         const baseHp = templateToDef(t).hp; // faction-neutral base (no hp overrides exist)
-        const expected = Math.round(baseHp * legacy(id, 'hp') * legacy(id, 'unitHp'));
-        expect(resolveUnit(classId, FACTION_DEFS[id]).hp, `${id}.${classId}.hp`).toBe(expected);
+        const kind = t.unitClass === 'infantry' ? 'infantry' : 'vehicle';
+        expect(resolveUnit(classId, FACTION_DEFS[id]).hp, `${id}.${classId}.hp`)
+          .toBe(getModifiedHull(baseHp, id, kind));
       }
     }
   });
 
-  it('2. effective building HP is identical (legacy hp only)', () => {
+  it('2. building HP == getModifiedHull (= base × defense.buildingHull)', () => {
     for (const id of IDS) {
       for (const bid of Object.keys(buildingsJson)) {
         const base = (buildingsJson as Record<string, { hp: number }>)[bid];
-        expect(buildingStats(bid, FACTION_DEFS[id]).hp, `${id}.${bid}.hp`).toBe(Math.round(base.hp * legacy(id, 'hp')));
+        expect(buildingStats(bid, FACTION_DEFS[id]).hp, `${id}.${bid}.hp`)
+          .toBe(getModifiedHull(base.hp, id, 'building'));
       }
     }
   });
@@ -42,16 +46,16 @@ describe('Phase 4b.2a hull migration — NO balance change', () => {
     expect(buildingStats(bid, FACTION_DEFS.green).hp).toBe(Math.round(baseBHp * 1.0)); // green has NO building-hp perk
   });
 
-  it('5+6. no double application: registry mirrors the legacy combination exactly', () => {
-    for (const id of IDS) {
-      const m = FACTION_MODIFIERS[id];
-      expect(m.combat.unitHull, `${id}.unitHull`).toBe(legacy(id, 'hp') * legacy(id, 'unitHp'));
-      expect(m.defense.buildingHull, `${id}.buildingHull`).toBe(legacy(id, 'hp'));
-    }
+  it('5+6. registry holds the canonical hull values (unitHull = hp×unitHp, buildingHull = hp)', () => {
+    // blue +15% hull (units & buildings), green -10% unit hull only — others neutral.
     expect(FACTION_MODIFIERS.blue.combat.unitHull).toBe(1.15);
     expect(FACTION_MODIFIERS.green.combat.unitHull).toBe(0.90);
     expect(FACTION_MODIFIERS.blue.defense.buildingHull).toBe(1.15);
     expect(FACTION_MODIFIERS.green.defense.buildingHull).toBe(1.0);
+    for (const id of ['red', 'yellow'] as FactionId[]) {
+      expect(FACTION_MODIFIERS[id].combat.unitHull, `${id}.unitHull`).toBe(1.0);
+      expect(FACTION_MODIFIERS[id].defense.buildingHull, `${id}.buildingHull`).toBe(1.0);
+    }
   });
 
   it('7. vehicleHull and infantryHull stay neutral 1.0 (not separately migrated)', () => {

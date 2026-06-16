@@ -3,26 +3,29 @@ import { FACTION_DEFS } from '../core/defs';
 import { resolveUnit, templateToDef } from './unitFactory';
 import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import {
-  FACTION_MODIFIERS, getAdminEditableFactionModifierPaths, getModifierMetadata, type FactionId,
+  FACTION_MODIFIERS, getAdminEditableFactionModifierPaths, getModifierMetadata,
+  getModifiedInfantrySpeed, type FactionId,
 } from '../data/factionModifiers';
 import { editablePaths } from '../ui/adminPanel';
 
 const IDS: FactionId[] = ['red', 'blue', 'green', 'yellow'];
-const legacy = (id: FactionId, key: string): number => (FACTION_DEFS[id].modifiers[key] ?? 1);
 
-describe('Phase 4b.2b infantry-speed rename + migration — NO balance change', () => {
-  it('1+2+3. infantry speed = base × infantrySpeed; green ×1.15, others ×1.0', () => {
+// Phase 4c.2: expectations come from FACTION_MODIFIERS (via getModifiedInfantrySpeed),
+// never from factions.json.modifiers.
+
+describe('Phase 4b.2b infantry-speed — runtime delegates to the central registry function', () => {
+  it('1+2+3. infantry speed == getModifiedInfantrySpeed; green ×1.15, others ×1.0', () => {
     for (const id of IDS) {
       for (const [classId, t] of Object.entries(UNIT_CLASS_TEMPLATES)) {
         if (t.unitClass !== 'infantry') continue;
         const baseSpeed = templateToDef(t).speed; // no speed overrides exist
-        const expected = baseSpeed * legacy(id, 'infantrySpeed');
-        expect(resolveUnit(classId, FACTION_DEFS[id]).speed, `${id}.${classId}.speed`).toBe(expected);
+        expect(resolveUnit(classId, FACTION_DEFS[id]).speed, `${id}.${classId}.speed`)
+          .toBe(getModifiedInfantrySpeed(baseSpeed, id));
       }
     }
     // green is the only faction with the perk
-    expect(legacy('green', 'infantrySpeed')).toBe(1.15);
-    for (const id of ['red', 'blue', 'yellow'] as FactionId[]) expect(legacy(id, 'infantrySpeed')).toBe(1);
+    expect(FACTION_MODIFIERS.green.combat.infantrySpeed).toBe(1.15);
+    for (const id of ['red', 'blue', 'yellow'] as FactionId[]) expect(FACTION_MODIFIERS[id].combat.infantrySpeed).toBe(1);
   });
 
   it('4+5. vehicles are exactly unchanged — no faction speeds up its vehicles', () => {
@@ -38,11 +41,9 @@ describe('Phase 4b.2b infantry-speed rename + migration — NO balance change', 
     expect(resolveUnit('mediumTank', FACTION_DEFS.green).speed).toBe(tankBase);
   });
 
-  it('6+7. registry mirrors legacy infantrySpeed exactly (no double application)', () => {
-    for (const id of IDS) {
-      expect(FACTION_MODIFIERS[id].combat.infantrySpeed, `${id}.infantrySpeed`).toBe(legacy(id, 'infantrySpeed'));
-    }
+  it('6+7. registry holds the canonical infantrySpeed values (only green is non-neutral)', () => {
     expect(FACTION_MODIFIERS.green.combat.infantrySpeed).toBe(1.15);
+    expect(FACTION_MODIFIERS.red.combat.infantrySpeed).toBe(1.0);
     expect(FACTION_MODIFIERS.blue.combat.infantrySpeed).toBe(1.0);   // was aspirational 0.95
     expect(FACTION_MODIFIERS.yellow.combat.infantrySpeed).toBe(1.0); // was aspirational 0.98
   });

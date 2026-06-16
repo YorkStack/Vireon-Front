@@ -5,10 +5,6 @@
     "emissive": "#ff5c4d",
     "tagline": "Iron columns. Forward, always.",
     "perks": ["Vehicle weapons +15% damage", "Vehicles cost +10%"],
-    "modifiers": {
-      "vehicleDamage": 1.15,
-      "vehicleCost": 1.10
-    },
     "tactical": {
       "doctrineLabel": "Balanced Military Doctrine",
       "build": "Stabil", "attack": "Koordiniert", "defense": "Befestigt",
@@ -25,10 +21,6 @@
     "emissive": "#4d8cff",
     "tagline": "The shield that does not break.",
     "perks": ["Units & buildings +15% hull", "Construction 12% slower"],
-    "modifiers": {
-      "hp": 1.15,
-      "buildTime": 1.12
-    },
     "tactical": {
       "doctrineLabel": "Shielded Control Doctrine",
       "build": "Langsam, stark", "attack": "Konter-fokussiert", "defense": "Exzellent",
@@ -45,11 +37,6 @@
     "emissive": "#49e85d",
     "tagline": "We are many. We are fast.",
     "perks": ["Infantry +15% speed, -15% cost", "All units -10% hull"],
-    "modifiers": {
-      "infantrySpeed": 1.15,
-      "infantryCost": 0.85,
-      "unitHp": 0.90
-    },
     "tactical": {
       "doctrineLabel": "Swarm Consumption Doctrine",
       "build": "Sehr schnell", "attack": "Unerbittlich", "defense": "Schwach",
@@ -66,11 +53,6 @@
     "emissive": "#ffd84d",
     "tagline": "Light, weaponized.",
     "perks": ["Energy weapons +20% damage, turrets +1 range", "Buildings use +25% power"],
-    "modifiers": {
-      "energyDamage": 1.20,
-      "turretRange": 1,
-      "powerUse": 1.25
-    },
     "tactical": {
       "doctrineLabel": "Radiant Colony Doctrine",
       "build": "Energieabhängig", "attack": "Vernichtend", "defense": "Zonenbasiert",

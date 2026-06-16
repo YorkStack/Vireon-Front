@@ -5,76 +5,76 @@ import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import buildingsJson from '../data/buildings.json';
 import {
   FACTION_MODIFIERS, getAdminEditableFactionModifierPaths, getLegacyBackedModifierPaths,
-  getModifierMetadata, type FactionId,
+  getModifierMetadata, getModifiedUnitCost, getModifiedBuildingCost, getModifiedPowerUsage,
+  getModifiedBuildDuration, type FactionId,
 } from '../data/factionModifiers';
 
 const IDS: FactionId[] = ['red', 'blue', 'green', 'yellow'];
-// The legacy source-of-truth: factions.json perk modifiers (1 when absent).
-const legacy = (id: FactionId, key: string): number => (FACTION_DEFS[id].modifiers[key] ?? 1);
 
-describe('Phase 4a cost/power migration — NO balance change', () => {
-  it('unit cost equals the legacy factions.json formula (5-credit rounding) for every class', () => {
+// Phase 4c.2: tests no longer read factions.json.modifiers — FACTION_MODIFIERS is
+// the single source of truth. Each test asserts the runtime delegates to the
+// central getModified* function (i.e. applies the registry value exactly once →
+// no double application).
+
+describe('Phase 4a cost/power — runtime delegates to the central registry functions', () => {
+  it('unit cost == getModifiedUnitCost (5-credit rounding) for every class', () => {
     for (const id of IDS) {
       for (const [classId, t] of Object.entries(UNIT_CLASS_TEMPLATES)) {
-        const resolved = resolveUnit(classId, FACTION_DEFS[id]);
-        const kindMul = t.unitClass === 'infantry' ? legacy(id, 'infantryCost')
-          : t.unitClass === 'vehicle' ? legacy(id, 'vehicleCost') : 1;
-        const expected = Math.round(t.cost * kindMul / 5) * 5; // identical to old resolveUnit
-        expect(resolved.cost, `${id}.${classId}.cost`).toBe(expected);
+        const kind = t.unitClass === 'infantry' ? 'infantry' : t.unitClass === 'vehicle' ? 'vehicle' : 'general';
+        const expected = getModifiedUnitCost(t.cost, id, kind);
+        expect(resolveUnit(classId, FACTION_DEFS[id]).cost, `${id}.${classId}.cost`).toBe(expected);
       }
     }
   });
 
-  it('building cost is unchanged and power usage mirrors legacy powerUse', () => {
+  it('building cost == getModifiedBuildingCost; power == getModifiedPowerUsage (consumers only)', () => {
     for (const id of IDS) {
       for (const bid of Object.keys(buildingsJson)) {
         const b = buildingStats(bid, FACTION_DEFS[id]);
         const base = (buildingsJson as Record<string, { cost: number; power: number }>)[bid];
-        // no legacy buildingCost perk exists → building cost must be untouched
-        expect(b.cost, `${id}.${bid}.cost`).toBe(base.cost);
-        // power consumers (negative power) scale by powerUse; producers untouched
-        const expectedPower = base.power < 0 ? Math.round(base.power * legacy(id, 'powerUse')) : base.power;
+        expect(b.cost, `${id}.${bid}.cost`).toBe(getModifiedBuildingCost(base.cost, id));
+        const expectedPower = base.power < 0 ? Math.round(getModifiedPowerUsage(base.power, id)) : base.power;
         expect(b.power, `${id}.${bid}.power`).toBe(expectedPower);
       }
     }
   });
 
-  it('no double application: registry mirrors the legacy effective values exactly', () => {
-    for (const id of IDS) {
-      const m = FACTION_MODIFIERS[id];
-      expect(m.economy.vehicleCost, `${id}.vehicleCost`).toBe(legacy(id, 'vehicleCost'));
-      expect(m.economy.infantryCost, `${id}.infantryCost`).toBe(legacy(id, 'infantryCost'));
-      expect(m.economy.unitCost, `${id}.unitCost`).toBe(1);     // no legacy unitCost → neutral
-      expect(m.economy.buildingCost, `${id}.buildingCost`).toBe(1); // no legacy buildingCost → neutral
-      expect(m.power.powerUsage, `${id}.powerUsage`).toBe(legacy(id, 'powerUse'));
-      // Phase 4a.2: build-time multiplier mirrors legacy buildTime (no inversion).
-      expect(m.production.buildTimeMultiplier, `${id}.buildTimeMultiplier`).toBe(legacy(id, 'buildTime'));
-    }
-  });
-
-  it('build time stays identical for every unit class and building (no inversion)', () => {
+  it('build time == getModifiedBuildDuration for every unit class and building', () => {
     for (const id of IDS) {
       for (const [classId, t] of Object.entries(UNIT_CLASS_TEMPLATES)) {
-        const resolved = resolveUnit(classId, FACTION_DEFS[id]);
-        expect(resolved.buildTime, `${id}.${classId}.buildTime`).toBe(t.buildTime * legacy(id, 'buildTime'));
+        expect(resolveUnit(classId, FACTION_DEFS[id]).buildTime, `${id}.${classId}.buildTime`)
+          .toBe(getModifiedBuildDuration(t.buildTime, id));
       }
       for (const bid of Object.keys(buildingsJson)) {
-        const b = buildingStats(bid, FACTION_DEFS[id]);
         const base = (buildingsJson as Record<string, { buildTime: number }>)[bid];
-        expect(b.buildTime, `${id}.${bid}.buildTime`).toBe(base.buildTime * legacy(id, 'buildTime'));
+        expect(buildingStats(bid, FACTION_DEFS[id]).buildTime, `${id}.${bid}.buildTime`)
+          .toBe(getModifiedBuildDuration(base.buildTime, id));
       }
     }
   });
 
-  it('only red vehicles and green infantry actually shift price (the live perks)', () => {
-    // Spot-check that the migration kept exactly the two real perks and nothing else.
+  it('registry holds the canonical economy/power values (cost/power neutral except the real perks)', () => {
+    // red vehicles +10%, green infantry -15%, yellow buildings +25% power — everything else neutral.
     expect(FACTION_MODIFIERS.red.economy.vehicleCost).toBe(1.10);
     expect(FACTION_MODIFIERS.green.economy.infantryCost).toBe(0.85);
     expect(FACTION_MODIFIERS.yellow.power.powerUsage).toBe(1.25);
-    for (const id of ['blue'] as FactionId[]) {
-      expect(FACTION_MODIFIERS[id].economy.vehicleCost).toBe(1);
-      expect(FACTION_MODIFIERS[id].economy.infantryCost).toBe(1);
-      expect(FACTION_MODIFIERS[id].power.powerUsage).toBe(1);
+    expect(FACTION_MODIFIERS.blue.production.buildTimeMultiplier).toBe(1.12);
+    for (const id of IDS) {
+      const m = FACTION_MODIFIERS[id];
+      expect(m.economy.unitCost, `${id}.unitCost`).toBe(1);
+      expect(m.economy.buildingCost, `${id}.buildingCost`).toBe(1);
+    }
+    for (const id of ['blue', 'yellow'] as FactionId[]) {
+      expect(FACTION_MODIFIERS[id].economy.vehicleCost, `${id}.vehicleCost`).toBe(1);
+    }
+    for (const id of ['red', 'blue', 'yellow'] as FactionId[]) {
+      expect(FACTION_MODIFIERS[id].economy.infantryCost, `${id}.infantryCost`).toBe(1);
+    }
+    for (const id of ['red', 'blue', 'green'] as FactionId[]) { // yellow is the +25% power perk
+      expect(FACTION_MODIFIERS[id].power.powerUsage, `${id}.powerUsage`).toBe(1);
+    }
+    for (const id of ['red', 'green', 'yellow'] as FactionId[]) {
+      expect(FACTION_MODIFIERS[id].production.buildTimeMultiplier, `${id}.btm`).toBe(1);
     }
   });
 });
@@ -96,7 +96,6 @@ describe('Phase 4a migration — runtime metadata', () => {
   });
 
   it('buildTimeMultiplier is now LIVE (Phase 4a.2 — no longer deferred)', () => {
-    // the old buildSpeed path is gone entirely
     expect(getModifierMetadata('production.buildSpeed')).toBeUndefined();
     const bt = getModifierMetadata('production.buildTimeMultiplier')!;
     expect(bt.status).toBe('live');
@@ -106,7 +105,7 @@ describe('Phase 4a migration — runtime metadata', () => {
 
   it('non-migrated legacy combat dims remain read-only and out of the editable set', () => {
     const legacyPaths = getLegacyBackedModifierPaths().map((m) => m.path);
-    expect(legacyPaths).toContain('combat.unitSpeed');                   // still legacy (Phase 4b.2b deferred)
+    expect(legacyPaths).toContain('combat.unitSpeed');                   // deprecated marker
     expect(legacyPaths).not.toContain('economy.vehicleCost');            // migrated out (4a)
     expect(legacyPaths).not.toContain('production.buildTimeMultiplier'); // migrated out (4a.2)
     expect(legacyPaths).not.toContain('combat.vehicleDamage');           // migrated out (4b.1)
