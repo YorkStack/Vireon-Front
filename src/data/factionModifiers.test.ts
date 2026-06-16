@@ -4,6 +4,8 @@ import {
   getModifiedBuildDuration, getModifiedProductionDuration, getModifiedDamage, getModifiedHull,
   getModifiedTurretRange, getModifiedRepairRate, getPowerRatio, isLowPower, getPowerOutageEffects,
   applyPowerStateModifier, calculateFactionPowerScore, type FactionId, type FactionModifiers,
+  MODIFIER_RUNTIME_METADATA, getAdminEditableFactionModifierPaths, getPreparedButNotLiveModifierPaths,
+  getLegacyBackedModifierPaths,
 } from './factionModifiers';
 
 const IDS: FactionId[] = ['red', 'blue', 'green', 'yellow'];
@@ -137,6 +139,67 @@ describe('modifier functions', () => {
     // Azure tougher hull, Verdant weaker.
     expect(getModifiedHull(100, 'blue', 'building')).toBeGreaterThan(100);
     expect(getModifiedHull(100, 'green', 'vehicle')).toBeLessThan(100);
+  });
+});
+
+describe('runtime-status metadata (admin readiness)', () => {
+  it('1. metadata exists and covers the central modifier groups', () => {
+    expect(MODIFIER_RUNTIME_METADATA.length).toBeGreaterThan(0);
+    const groups = new Set(MODIFIER_RUNTIME_METADATA.map((m) => m.path.split('.')[0]));
+    for (const g of ['economy', 'power', 'combat', 'defense', 'production', 'repair', 'special']) {
+      expect(groups.has(g), `group ${g} represented`).toBe(true);
+    }
+    // every entry is internally consistent
+    for (const m of MODIFIER_RUNTIME_METADATA) {
+      expect(typeof m.path).toBe('string');
+      expect(m.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('2. live modifiers are admin-editable and sourced from FACTION_MODIFIERS', () => {
+    const live = MODIFIER_RUNTIME_METADATA.filter((m) => m.status === 'live');
+    expect(live.length).toBeGreaterThan(0);
+    for (const m of live) {
+      expect(m.adminEditable, m.path).toBe(true);
+      expect(m.runtimeSource, m.path).toBe('FACTION_MODIFIERS');
+    }
+    // the genuinely-wired ones are present
+    expect(live.map((m) => m.path)).toEqual(
+      expect.arrayContaining(['power.powerOutageSeverity', 'economy.resourceGatherRate', 'repair.repairRate']),
+    );
+  });
+
+  it('3. prepared-only modifiers are NOT admin-editable', () => {
+    for (const m of getPreparedButNotLiveModifierPaths()) {
+      expect(m.adminEditable, m.path).toBe(false);
+      expect(m.runtimeSource, m.path).toBe('not_yet_integrated');
+    }
+  });
+
+  it('4. legacy-backed modifiers are flagged migrationNeeded and not editable', () => {
+    const legacy = getLegacyBackedModifierPaths();
+    expect(legacy.length).toBeGreaterThan(0);
+    for (const m of legacy) {
+      expect(m.migrationNeeded, m.path).toBe(true);
+      expect(m.adminEditable, m.path).toBe(false);
+      expect(m.runtimeSource).not.toBe('FACTION_MODIFIERS');
+    }
+  });
+
+  it('5. getAdminEditableFactionModifierPaths() contains no prepared-only values', () => {
+    const editable = getAdminEditableFactionModifierPaths();
+    expect(editable.length).toBeGreaterThan(0);
+    for (const m of editable) {
+      expect(m.status).not.toBe('prepared');
+      expect(m.status).not.toBe('legacy_backed');
+      expect(m.adminEditable).toBe(true);
+    }
+  });
+
+  it('6. prepared list includes colony aura and upkeep (not yet live)', () => {
+    const prepared = getPreparedButNotLiveModifierPaths().map((m) => m.path);
+    expect(prepared).toContain('special.colonyAuraStrength');
+    expect(prepared.some((p) => p.startsWith('economy.upkeep'))).toBe(true);
   });
 });
 

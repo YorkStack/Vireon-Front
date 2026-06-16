@@ -316,6 +316,84 @@ export interface FactionPowerScore {
   warnings: string[];
 }
 
+// ── Runtime-status metadata (Admin-readiness) ────────────────────────────────
+// Honest map of WHERE each modifier actually takes effect today, so the future
+// F8 admin panel only exposes editable sliders for values that genuinely wire
+// through this registry (and would respond to setFactionModifierOverrides).
+export type ModifierRuntimeStatus =
+  | 'live'           // runtime-effective via FACTION_MODIFIERS (override-responsive)
+  | 'prepared'       // in the registry but not yet applied anywhere
+  | 'legacy_backed'  // dimension IS live, but via factions.json/unitStats/buildingStats — editing the registry does nothing yet
+  | 'admin_ready'    // live + intended as a primary admin slider
+  | 'read_only';     // displayed only, never editable
+
+export interface ModifierRuntimeMetadata {
+  path: string;
+  status: ModifierRuntimeStatus;
+  description: string;
+  runtimeSource: 'FACTION_MODIFIERS' | 'factions.json' | 'unitStats' | 'buildingStats' | 'mixed' | 'not_yet_integrated';
+  adminEditable: boolean;
+  migrationNeeded?: boolean;
+}
+
+/**
+ * Status of the modifier paths the admin panel cares about. Only the LIVE rows
+ * change gameplay through this registry today (world.ts reads them every frame
+ * via getPowerOutageEffects / getEconomyModifiers / getModifiedRepairRate, so an
+ * override takes effect immediately). Legacy-backed rows are live in-game but
+ * computed from the old factions.json path — editing the registry is a no-op
+ * until migrated. Prepared rows have no effect at all yet.
+ */
+export const MODIFIER_RUNTIME_METADATA: ModifierRuntimeMetadata[] = [
+  // ---- LIVE via FACTION_MODIFIERS (admin-editable) ----
+  { path: 'power.powerOutageSeverity', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Skaliert die Schärfe aller Strommangel-Strafen (Produktion/Turm/Reparatur).' },
+  { path: 'power.lowPowerProductionPenalty', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Produktions-Tempo der Queue bei vollem Stromausfall.' },
+  { path: 'power.lowPowerDefensePenalty', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Turm-Effizienz/Offline-Schwelle bei Stromausfall.' },
+  { path: 'power.lowPowerRepairPenalty', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Reparatur-Tempo bei Stromausfall.' },
+  { path: 'economy.resourceGatherRate', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Erz-Ertrag pro Harvester-Abladung.' },
+  { path: 'repair.repairRate', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Reparatur-Tempo der Fabricator an Gebäuden.' },
+
+  // ---- LEGACY-BACKED (live in-game, but via the old path → migration needed) ----
+  { path: 'combat.vehicleDamage', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (vehicleDamage) in unitStats.' },
+  { path: 'combat.energyWeaponDamage', status: 'legacy_backed', runtimeSource: 'mixed', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (energyDamage) in unit/buildingStats.' },
+  { path: 'combat.unitHull', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (hp/unitHp) in unitStats.' },
+  { path: 'combat.unitSpeed', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantrySpeed) in unitStats.' },
+  { path: 'economy.vehicleCost', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (vehicleCost) in unitStats.' },
+  { path: 'economy.infantryCost', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantryCost) in unitStats.' },
+  { path: 'production.buildSpeed', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Bauzeit aktiv via factions.json (buildTime) in building/unitStats.' },
+  { path: 'defense.turretRangeBonus', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (turretRange) in buildingStats.' },
+  { path: 'power.powerUsage', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Gebäude-Stromverbrauch aktiv via factions.json (powerUse) in buildingStats.' },
+
+  // ---- PREPARED only (no effect yet) ----
+  { path: 'special.colonyAuraEnabled', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Colony-Aura-Flag; getColonyAura vorbereitet, nicht auf Entities angewandt.' },
+  { path: 'special.colonyAuraStrength', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Colony-Aura-Stärke; TODO Vollintegration.' },
+  { path: 'economy.upkeepPressure', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Upkeep-Druck; getModifiedUpkeep-Utility, kein Live-Upkeep-System.' },
+  { path: 'economy.resourceConsumption', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Laufender Verbrauch; vorbereitet, nicht live.' },
+  { path: 'power.lowPowerWeaponPenalty', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Waffen-Effizienz bei Stromausfall berechnet, aber nicht auf Einheiten-Waffen angewandt.' },
+  { path: 'power.powerGridVulnerability', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Nur im Power-Score, keine Gameplay-Wirkung.' },
+  { path: 'production.unitProductionSpeed', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Granulares Produktions-Tempo; Queue nutzt buildTime (legacy).' },
+  { path: 'defense.turretDurability', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Turm-Haltbarkeit; nicht im Kampf angewandt.' },
+  { path: 'defense.shieldStrength', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Schild-Stärke; kein Schild-System live.' },
+  { path: 'repair.shieldRegenRate', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Schild-Regeneration; kein Schild-System live.' },
+];
+
+/** Paths the F8 admin panel may expose as EDITABLE live sliders. */
+export function getAdminEditableFactionModifierPaths(): ModifierRuntimeMetadata[] {
+  return MODIFIER_RUNTIME_METADATA.filter((m) => m.adminEditable);
+}
+/** Registry values prepared but not yet wired into gameplay (display-only). */
+export function getPreparedButNotLiveModifierPaths(): ModifierRuntimeMetadata[] {
+  return MODIFIER_RUNTIME_METADATA.filter((m) => m.status === 'prepared');
+}
+/** Dimensions that ARE live in-game but via the legacy path (need migration before editing here helps). */
+export function getLegacyBackedModifierPaths(): ModifierRuntimeMetadata[] {
+  return MODIFIER_RUNTIME_METADATA.filter((m) => m.status === 'legacy_backed');
+}
+/** Look up the runtime metadata for a single modifier path. */
+export function getModifierMetadata(path: string): ModifierRuntimeMetadata | undefined {
+  return MODIFIER_RUNTIME_METADATA.find((m) => m.path === path);
+}
+
 const avg = (...xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length;
 
 /** Rough heuristic score (reference ≈ 1.0). Warns if a faction drifts far. */
