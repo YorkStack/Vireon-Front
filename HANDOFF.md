@@ -8,7 +8,7 @@
 
 **Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`, Studio-Unification gemergt). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Test-/Build-Stand:** `npm test` → **137 grün**; `npx tsc --noEmit`, `npm run build`, `npm run validate:balance` sauber. Dev-Server: `npm run dev` → http://localhost:5199. Letzter Commit auf origin/main: **`bc5b3c9`**.
+**Test-/Build-Stand:** `npm test` → **149 grün**; `npx tsc --noEmit`, `npm run build`, `npm run validate:balance` sauber. Dev-Server: `npm run dev` → http://localhost:5199. Letzter Commit auf origin/main: **`6ec311b`**.
 
 **Was zuletzt lief (letzte Sitzungen):** großer Fraktions-/KI-Ausbau + zentrale Modifier-Migration.
 1. Spiel-UX, Schwierigkeitsgrade, Doctrines (alle 12, Faction-Identität vs. KI-Doctrine getrennt) — siehe ältere Stände unten.
@@ -16,17 +16,32 @@
 3. **F8 Admin-/Balancing-Panel** ([adminPanel.ts](src/ui/adminPanel.ts), Commit `365ce5f`): Dev-Tool (F8), nur `live`-Modifier editierbar (aus `getAdminEditableFactionModifierPaths()`), legacy/prepared read-only; localStorage + Export/Import JSON, Import lehnt non-live ab; `calculateFactionPowerScore`-Overview.
 4. **Phase 4a — Economy/Power-Migration** (Commit `18f7264`, **gepusht**): `economy.{unitCost,infantryCost,vehicleCost,buildingCost}` + `power.powerUsage` jetzt **live über FACTION_MODIFIERS**, im F8-Panel editierbar; **keine Balance-Änderung** (Registry spiegelt die Legacy-Effektivwerte, runtime liest nur eine Quelle).
 5. **Phase 4a.2 — Build-Time-Klärung** (Commit `ca5cb95`, **gepusht**): `production.buildSpeed` **ersetzt durch** `production.buildTimeMultiplier` (höher = langsamer, `effectiveDuration = baseDuration × multiplier`), live + editierbar, F8-Hinweis „↑ = langsamer". Keine Inversion, keine Balance-Änderung.
-6. **Phase 4b.1 — Turret-Range + Vehicle/Energy-Damage** (Commit `bc5b3c9`, **gepusht**): `defense.turretRangeBonus` (additiv), `combat.vehicleDamage`, `combat.energyWeaponDamage` jetzt **live über FACTION_MODIFIERS**, F8-editierbar (15 Pfade / 60 Rows). Keine Balance-Änderung. **Nicht migriert:** `combat.unitHull`, `combat.unitSpeed`, `defense.turretDurability`.
+6. **Phase 4b.1 — Turret-Range + Vehicle/Energy-Damage** (Commit `bc5b3c9`, **gepusht**): `defense.turretRangeBonus` (additiv), `combat.vehicleDamage`, `combat.energyWeaponDamage` live über FACTION_MODIFIERS, F8-editierbar.
+7. **Phase 4b.2a — Unit/Building Hull** (Commit `bb7bf29`, **gepusht**): `combat.unitHull` (= legacy hp×unitHp) + `defense.buildingHull` (= legacy hp) live/editierbar; vehicle/infantryHull neutral 1.0. Keine Balance-Änderung.
+8. **Phase 4b.2b — Infantry-Speed Rename + Migration** (Commit `6ec311b`, **gepusht**): `combat.unitSpeed` (zu breiter Name) **ersetzt durch** `combat.infantrySpeed` (nur Infanterie; green 1.15, sonst 1.0); Fahrzeuge unverändert. `combat.unitSpeed` bleibt nur als **deprecated read-only Marker** (kein Runtime-Effekt, kein Registry-Feld). **Meilenstein: alle je-live Fraktionsdimensionen sind jetzt zentral in FACTION_MODIFIERS.** F8: 18 Pfade / 72 Rows.
 
 **Design-Doku:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md) (vollständiges System, Roadmap MVP/P2/P3).
 
-**➡️ NÄCHSTER SCHRITT: Phase 4b.2 — Hull/Speed/Turret-Durability.** Readiness-/Designanalyse liegt vor (Abschnitt „Phase 4b.2 Readiness" unten). Empfehlung: in **4b.2a Hull**, **4b.2b Speed (mit Rename infantrySpeed)**, **4b.2c turretDurability (defer)** aufteilen. Migration NUR nach 4a/4a.2-Muster (Registry spiegelt Legacy, eine Quelle, Drift-Test). **Noch nicht gestartet.**
+**➡️ NÄCHSTER SCHRITT: Phase 4c — Validator auf Registry umstellen.** Readiness-Analyse liegt vor (Abschnitt „Phase 4c Readiness" unten). Kern: **`balanceValidation.ts:68` (`viaPerks`) ist die EINZIGE verbleibende Stelle, die `factions.json.modifiers` liest** — die Runtime liest sie gar nicht mehr. Ziel: Validator leitet die Perk-Erklärung aus `FACTION_MODIFIERS` ab; danach kann das `modifiers`-Objekt aus factions.json entfernt werden (Identität/Tactical/`perks`-Flavortext bleiben). **Noch nicht gestartet.**
 
-**Wichtige Konventionen:** committen/pushen nur auf Ansage; nach jedem Schritt tsc+vitest+build+Browser verifizieren; Faction-Modifiers ≠ Doctrine (Doctrine moduliert nur KI). Migration der legacy-backed Dimensionen IMMER „no balance change": Registry spiegelt Legacy, keine Doppelanwendung, Drift-Test. `factions.json`-Perk-Keys bleiben vorerst für `validate:balance` (zwei Zahlenquellen, per Test verriegelt).
+**Wichtige Konventionen:** committen/pushen nur auf Ansage; nach jedem Schritt tsc+vitest+build+Browser verifizieren; Faction-Modifiers ≠ Doctrine (Doctrine moduliert nur KI). Migration der legacy-backed Dimensionen IMMER „no balance change": Registry spiegelt Legacy, keine Doppelanwendung, Drift-Test. `factions.json.modifiers` wird aktuell NUR noch vom Balance-Validator gelesen (zwei Zahlenquellen, per Drift-Test verriegelt).
 
 ---
 
-## ⏱️ Aktueller Stand (2026-06-16, **Phase 4b.1 — Turret-Range + Vehicle/Energy-Damage auf FACTION_MODIFIERS**)
+## ⏱️ Aktueller Stand (2026-06-16, **Phase 4b.2a + 4b.2b — Hull + Infantry-Speed → FACTION_MODIFIERS · MEILENSTEIN**)
+- **Phase 4b.2a (Commit `bb7bf29`, gepusht):** `combat.unitHull` (= legacy `hp × unitHp`; blue 1.15, green 0.90, sonst 1.0) + `defense.buildingHull` (= legacy `hp`; blue 1.15, sonst 1.0) live/adminEditable. `combat.vehicleHull`/`infantryHull` neutral 1.0 (reserviert). Runtime: `resolveUnit`/`buildingStats` lesen `getModifiedHull`. defs.ts `mod()`-Helper entfernt.
+- **Phase 4b.2b (Commit `6ec311b`, gepusht):** Scope-Falle gelöst — `combat.unitSpeed` (zu breit) → **`combat.infantrySpeed`** (nur Infanterie; green 1.15, sonst 1.0). Runtime: `speed = isInf ? getModifiedInfantrySpeed(def.speed, fid) : def.speed`; Fahrzeuge **exakt unverändert**. `getModifiedUnitSpeed`→`getModifiedInfantrySpeed`. unitFactory.ts `mod()`-Helper entfernt. **`combat.unitSpeed` bleibt nur als deprecated read-only Marker** (status legacy_backed, kein Registry-Feld, kein Runtime-Effekt) — hält die Import-Governance testbar.
+- **MEILENSTEIN:** Alle je-live Fraktionsdimensionen (economy/power/combat/defense/production) sind jetzt zentral in `FACTION_MODIFIERS`. **`factions.json.modifiers` wird von der RUNTIME gar nicht mehr gelesen** — nur noch von `balanceValidation.ts` (`viaPerks`).
+- **Verify:** **149 Tests grün**, `tsc` + `vite build` + `validate:balance` sauber. F8: **18 Pfade / 72 Rows**, Browser-Smoke ok (green infantrySpeed 1.15 edit+reset, unitSpeed read-only-only).
+- **Nicht gestartet:** `defense.turretDurability` (prepared, braucht Turm-HP-System), Colony Aura, Upkeep, Shield, Balancing-Pass.
+
+### 🔬 Phase 4c Readiness (Validator auf Registry umstellen) — NUR Analyse
+- **Einzige verbleibende factions.json-Leserstelle:** [balanceValidation.ts:68](src/systems/balanceValidation.ts:68) `viaPerks = perkKeys.some(k => f.modifiers[k] !== 1 …)`. `PERK_FIELDS` mappt Validator-Feld → Legacy-Keys (cost→vehicleCost/infantryCost, buildTime→buildTime, speed→infantrySpeed, maxHitPoints→hp/unitHp, damage→vehicleDamage/energyDamage).
+- **Alle 9 factions.json-Modifier-Keys** (vehicleDamage, vehicleCost, hp, buildTime, infantrySpeed, infantryCost, unitHp, energyDamage, turretRange, powerUse) sind in FACTION_MODIFIERS gespiegelt → komplett ersetzbar.
+- **Zielbild:** Validator leitet `viaPerks` aus `FACTION_MODIFIERS` ab (neue Mapping-Tabelle Validator-Feld → Registry-Pfad + neutral-Wert). Danach `factions.json.modifiers` entfernen; `perks`-Stringarray (Flavortext) + Tactical/Identität bleiben.
+- **Test-Impact:** Die Migrations-Drift-Tests (`legacy(id,key)` aus factions.json) müssen umgestellt werden auf „resolved == registry-abgeleitete Erwartung" (sie sollen nicht mehr factions.json als Quelle nutzen). Empfehlung: Phase 4c.1 = Validator-Mapping + Drift-Test-Umstellung (factions.json.modifiers noch behalten); Phase 4c.2 = factions.json.modifiers entfernen.
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Phase 4b.1 — Turret-Range + Vehicle/Energy-Damage auf FACTION_MODIFIERS**)
 - **Commit `bc5b3c9` (gepusht), keine Balance-Änderung.** Migriert → **live / adminEditable**:
   - `combat.vehicleDamage` (×, fahrzeug-only), `combat.energyWeaponDamage` (×, Energiewaffen), `defense.turretRangeBonus` (**additiv**: `effectiveRange = baseRange + bonus`).
 - **Runtime nutzt jetzt FACTION_MODIFIERS:**
