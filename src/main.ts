@@ -8,6 +8,12 @@ import { preloadVehicleGlbs } from './render/vehicleGlb';
 // Warm the runtime-GLB cache (component-factory vehicles) before any match starts.
 const glbReady = preloadVehicleGlbs();
 
+// Dev-only F8 admin/balancing panel (live faction-modifier tuning). Not shown in
+// normal player UI — hidden until F8. Self-installs its own hotkeys.
+if (import.meta.env.DEV) {
+  import('./ui/adminPanel').then((m) => m.installAdminPanel());
+}
+
 // Dev guard: warn loudly when faction variants drift from their class
 // template without a declared reason (full report: npm run validate:balance).
 if (import.meta.env.DEV) {
