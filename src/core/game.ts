@@ -13,6 +13,7 @@ import { InputController } from '../ui/input';
 import { showPauseMenu, showEndScreen, toast } from '../ui/screens';
 import { FACTION_DEFS } from './defs';
 import type { MissionDef, TeamId } from './types';
+import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -34,8 +35,9 @@ export class Game {
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
 
-  constructor(mission: MissionDef, playerFactionId: string) {
+  constructor(mission: MissionDef, playerFactionId: string, difficultyId: DifficultyId = DEFAULT_DIFFICULTY) {
     this.mission = mission;
+    const difficulty = DIFFICULTIES[difficultyId] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
     const playerFaction = FACTION_DEFS[playerFactionId];
     let enemyId = mission.enemyFaction;
     if (!enemyId || enemyId === 'auto') {
@@ -60,6 +62,7 @@ export class Game {
     this.world = new World(this.map, this.rig.scene, this.effects, playerFaction, enemyFaction, built.crystalGroups);
     this.world.teams[0].credits = mission.startingResources;
     this.world.teams[1].credits = mission.enemyStartingResources;
+    this.world.teams[1].incomeMul = difficulty.aiIncomeMul; // AI economy handicap by difficulty
 
     // Starting units.
     const spawn = (team: TeamId, list: { type: string; offset: [number, number] }[], at: { tx: number; tz: number }) => {
@@ -86,7 +89,7 @@ export class Game {
       return b;
     };
 
-    this.ai = new EnemyAI(this.world, mission.aiProfile, this.map.enemyStart.tx, this.map.enemyStart.tz);
+    this.ai = new EnemyAI(this.world, mission.aiProfile, this.map.enemyStart.tx, this.map.enemyStart.tz, difficulty);
 
     this.input = new InputController(this.rig, this.world, this.effects, built.terrain);
     this.input.openPause = () => this.openPause();

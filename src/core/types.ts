@@ -87,6 +87,15 @@ export interface BuildingDef {
   description: string;
 }
 
+export interface TacticalProfile {
+  build: string;
+  attack: string;
+  defense: string;
+  economy: string;
+  difficulty: string;        // flavour rating shown on the card
+  recommended?: string;
+}
+
 export interface FactionDef {
   id: string;
   name: string;
@@ -95,6 +104,9 @@ export interface FactionDef {
   tagline: string;
   perks: string[];
   modifiers: Record<string, number>;
+  tactical?: TacticalProfile;
+  strengths?: string[];
+  weaknesses?: string[];
 }
 
 export interface MissionDef {

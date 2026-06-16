@@ -8,7 +8,14 @@
     "modifiers": {
       "vehicleDamage": 1.15,
       "vehicleCost": 1.10
-    }
+    },
+    "tactical": {
+      "build": "Stabil", "attack": "Koordiniert", "defense": "Befestigt",
+      "economy": "Kontrolliert", "difficulty": "Mittel",
+      "recommended": "Sichern, aufbauen, koordiniert zuschlagen."
+    },
+    "strengths": ["Verlässliche Fahrzeuge", "Starke Verteidigung", "Ausgewogene Wirtschaft"],
+    "weaknesses": ["Fahrzeuge kosten mehr", "Wenig explosiver Früh-Druck"]
   },
   "blue": {
     "name": "Azure Concord",
@@ -19,7 +26,14 @@
     "modifiers": {
       "hp": 1.15,
       "buildTime": 1.12
-    }
+    },
+    "tactical": {
+      "build": "Langsam, stark", "attack": "Konter-fokussiert", "defense": "Exzellent",
+      "economy": "Effizient", "difficulty": "Mittel-Schwer",
+      "recommended": "Befestigen, kontern, Raum kontrollieren."
+    },
+    "strengths": ["Robuste Einheiten & Gebäude", "Starke Verteidigungstech", "Exzellente Konter"],
+    "weaknesses": ["Langsamer Aufbau", "Energieabhängige Verteidigung"]
   },
   "green": {
     "name": "Verdant Swarm",
@@ -31,7 +45,14 @@
       "infantrySpeed": 1.15,
       "infantryCost": 0.85,
       "unitHp": 0.90
-    }
+    },
+    "tactical": {
+      "build": "Sehr schnell", "attack": "Unerbittlich", "defense": "Schwach",
+      "economy": "Ressourcenhungrig", "difficulty": "Aggressiv",
+      "recommended": "Früh expandieren, billig spammen, Druck halten."
+    },
+    "strengths": ["Schnelle Produktion", "Billige Einheiten", "Früher Druck"],
+    "weaknesses": ["Schwache statische Verteidigung", "Hoher Ressourcenverbrauch", "Geringere Panzerung"]
   },
   "yellow": {
     "name": "Solar Dominion",
@@ -43,6 +64,13 @@
       "energyDamage": 1.20,
       "turretRange": 1,
       "powerUse": 1.25
-    }
+    },
+    "tactical": {
+      "build": "Energieabhängig", "attack": "Vernichtend", "defense": "Zonenbasiert",
+      "economy": "Energieintensiv", "difficulty": "Schwer",
+      "recommended": "Power-Grid sichern, Zonen halten, spät vernichtend zuschlagen."
+    },
+    "strengths": ["Starke Energiewaffen", "Türme mit großer Reichweite", "Zonenkontrolle"],
+    "weaknesses": ["Hoher Stromverbrauch", "Schwach bei Stromausfall", "Langsames Frühspiel"]
   }
 }

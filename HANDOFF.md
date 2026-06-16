@@ -2,7 +2,17 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-16, **Spiel-UX v2: stabiles Auswahl-Panel, Bau-%-Timing, Strommangel-Anzeige**)
+## ⏱️ Aktueller Stand (2026-06-16, **Schwierigkeitsgrade + Fraktions-Doctrines (MVP, GAME, main)**)
+- **Designdokument:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md) — vollständiges datengetriebenes System (Faction × Doctrine × Difficulty), 12 Doctrines, Balancing-Matrix + Power-Score, Admin-Tuning-Konzept, Resource/Power/Aura-Modelle, AI-Entscheidungsfunktionen, 3-Phasen-Roadmap. **Phase 2/3 noch offen.**
+- **MVP (Phase 1) umgesetzt:**
+  - **4 Schwierigkeitsgrade** [difficulty.ts](src/data/difficulty.ts): leicht/mittel/schwer/superschwer. **Heute = „Schwer" (Baseline 1.0)** verankert; Multiplikatoren auf firstWaveAt/waveInterval/waveGrowth/maxArmy/cadence + **KI-Income-Hebel** (`TeamState.incomeMul`, im Erz-Dropoff angewandt). Auswahl im Startbildschirm (Default **Mittel**).
+  - **Fraktions-Doctrines** [doctrines.ts](src/data/doctrines.ts): je 1 Default-Doctrine pro Fraktion (Field Marshal / Shield Architect / Brood Rusher / Radiant Cultivator) mit eigener Build-Order, Defense-Order, Army-Mix + Persönlichkeitsknöpfen. `EnemyAI` nutzt sie → Fraktionen spielen erkennbar unterschiedlich.
+  - **Reine Entscheidungsfunktionen** [decisions.ts](src/ai/decisions.ts) (`effectiveProfile`, `waveMinReady`, `sendFraction`, `attackTimingMul`, `tickInterval`) — voll unit-getestet ([decisions.test.ts](src/ai/decisions.test.ts), 10 Tests).
+  - **Tactical-Profile-Karten** im Fraktionsauswahl-Screen (Schwierigkeits-Badge, Bau/Angriff/Verteid./Wirtschaft, grüne Stärken / rote Schwächen, empfohlener Stil) aus erweitertem [factions.json](src/data/factions.json).
+  - **Verify:** 77 Tests grün (+10), `tsc`+`vite build`+`validate:balance` sauber, im Browser end-to-end (Leicht → Match läuft fehlerfrei).
+  - **Begriff:** „Commander" = intern `CommanderProfile`/Doctrine (Strategieprofil), im UI „Tactical Doctrine", **kein Held nötig** (`heroUnitId?` optional für später).
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Spiel-UX v2: stabiles Auswahl-Panel, Bau-%-Timing, Strommangel-Anzeige**)
 - **Drei Folge-Fixes (GAME, main).**
   - **Panel-Klicks zuverlässig:** [hud.ts](src/ui/hud.ts) `renderPanel` schrieb das `innerHTML` 4×/s neu und zerstörte Buttons mitten im Klick → Klicks gingen verloren. Jetzt **Signatur-Guard**: DOM nur neu schreiben, wenn sich das Markup ändert; Live-Produktionsbalken werden separat in-place aktualisiert; Train/Cancel lösen das Gebäude live auf (keine stale Closures). Live verifiziert: gemerkte Button-Node überlebt mehrere Refresh-Ticks.
   - **Bau-% erst bei Baubeginn:** Das schwebende %-Label erscheint jetzt nur, wenn `b.started` (Builder ist da), nicht mehr mit „0%" auf der leeren Baufläche ([world.ts](src/sim/world.ts) `syncVisuals`). Live verifiziert.

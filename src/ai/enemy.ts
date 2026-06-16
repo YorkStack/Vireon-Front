@@ -5,6 +5,9 @@ import { TILE } from '../map/map';
 import { buildingStats, unitStats, UNIT_DEFS } from '../core/defs';
 import type { MissionDef } from '../core/types';
 import type { World, Unit, Building } from '../sim/world';
+import { DIFFICULTIES, type DifficultyConfig } from '../data/difficulty';
+import { defaultDoctrineFor, type Doctrine } from '../data/doctrines';
+import { effectiveProfile, tickInterval, waveMinReady, sendFraction } from './decisions';
 
 const CORE_PLAN = ['nexus', 'refinery', 'spire', 'barracks', 'foundry', 'spire'];
 const DEFENSE_PLAN = ['cannon', 'cannon', 'lance', 'wall', 'wall', 'cannon', 'lance'];
@@ -28,20 +31,35 @@ export class EnemyAI {
   private nextWaveAt: number;
   private waveSize: number;
   private wavesSent = 0;
+  // Difficulty + faction doctrine shape the effective behaviour.
+  private doctrine: Doctrine;
+  private tickIntervalSec: number;
+  private corePlan: string[];
+  private defensePlan: string[];
+  private armyMix: [string, number][];
 
-  constructor(world: World, profile: MissionDef['aiProfile'], startTx: number, startTz: number) {
+  constructor(
+    world: World, profile: MissionDef['aiProfile'], startTx: number, startTz: number,
+    difficulty: DifficultyConfig = DIFFICULTIES.schwer, doctrine?: Doctrine,
+  ) {
     this.world = world;
-    this.profile = profile;
     this.startTx = startTx;
     this.startTz = startTz;
-    this.nextWaveAt = profile.firstWaveAt;
+    this.doctrine = doctrine ?? defaultDoctrineFor(world.teams[1].faction.id);
+    // Compose mission base × difficulty × doctrine timing into the live profile.
+    this.profile = effectiveProfile(profile, difficulty, this.doctrine.preferredAttackTiming);
+    this.tickIntervalSec = tickInterval(difficulty);
+    this.corePlan = this.doctrine.buildOrder ?? CORE_PLAN;
+    this.defensePlan = this.doctrine.defenseOrder ?? DEFENSE_PLAN;
+    this.armyMix = this.doctrine.armyMix ?? ARMY_ROLE_MIX;
+    this.nextWaveAt = this.profile.firstWaveAt;
     this.waveSize = 5;
   }
 
   update(dt: number) {
     this.tick -= dt;
     if (this.tick > 0) return;
-    this.tick = 1.0; // decide once per second
+    this.tick = this.tickIntervalSec; // decision cadence (difficulty-scaled)
 
     this.runConstruction();
     this.runEconomy();
@@ -93,15 +111,15 @@ export class EnemyAI {
     if (this.profile.rebuilds) {
       for (const core of ['nexus', 'refinery', 'spire', 'barracks', 'foundry']) {
         const have = this.myBuildings(core).length;
-        const planned = CORE_PLAN.slice(0, this.planIndex).filter(p => p === core).length;
+        const planned = this.corePlan.slice(0, this.planIndex).filter(p => p === core).length;
         if (planned > 0 && have === 0) { next = core; break; }
       }
     }
-    if (!next && this.planIndex < CORE_PLAN.length) next = CORE_PLAN[this.planIndex];
+    if (!next && this.planIndex < this.corePlan.length) next = this.corePlan[this.planIndex];
     if (!next) {
       // Core done: alternate defenses and power as funds allow.
       if (this.world.teams[this.team].lowPower) next = 'spire';
-      else if (this.defenseIndex < DEFENSE_PLAN.length) next = DEFENSE_PLAN[this.defenseIndex];
+      else if (this.defenseIndex < this.defensePlan.length) next = this.defensePlan[this.defenseIndex];
       else if (this.myBuildings('spire').length < 5 && Math.random() < 0.3) next = 'spire';
       if (!next) return;
     }
@@ -129,8 +147,8 @@ export class EnemyAI {
     if (b) {
       b.group.userData.building = b;
       this.world.orderBuild(fab, b);
-      if (this.planIndex < CORE_PLAN.length && next === CORE_PLAN[this.planIndex]) this.planIndex++;
-      else if (DEFENSE_PLAN[this.defenseIndex] === next) this.defenseIndex++;
+      if (this.planIndex < this.corePlan.length && next === this.corePlan[this.planIndex]) this.planIndex++;
+      else if (this.defensePlan[this.defenseIndex] === next) this.defenseIndex++;
     }
   }
 
@@ -166,7 +184,7 @@ export class EnemyAI {
       Object.values(UNIT_DEFS).find(d => d.role === role && !d.harvester && !d.builder)?.id ?? 'lancer';
     const pick = () => {
       let r = Math.random(), acc = 0;
-      for (const [role, w] of ARMY_ROLE_MIX) { acc += w; if (r <= acc) return byRole(role); }
+      for (const [role, w] of this.armyMix) { acc += w; if (r <= acc) return byRole(role); }
       return 'lancer';
     };
     for (const prod of [...barracks, ...foundries]) {
@@ -203,12 +221,15 @@ export class EnemyAI {
   private runWaves() {
     if (this.world.time < this.nextWaveAt) return;
     const army = this.myArmy().filter(u => u.order.kind === 'idle');
-    if (army.length < Math.min(this.waveSize, 4)) {
+    // Aggressive doctrines strike with fewer ready units; defensive ones wait.
+    const minReady = waveMinReady(this.doctrine.personality.attackAggression);
+    if (army.length < Math.min(this.waveSize, minReady)) {
       this.nextWaveAt = this.world.time + 20; // not ready, check again soon
       return;
     }
-    // Send ~70% of the idle army at the player's base.
-    const send = army.slice(0, Math.max(4, Math.floor(army.length * 0.7)));
+    // Commit a doctrine-dependent share of the idle army (defensive = hold more back).
+    const frac = sendFraction(this.doctrine.personality.defensePriority);
+    const send = army.slice(0, Math.max(minReady, Math.floor(army.length * frac)));
     const target = this.world.buildings.find(b => b.team === 0 && b.def.id === 'nexus')
       ?? this.world.buildings.find(b => b.team === 0);
     const [px, pz] = target

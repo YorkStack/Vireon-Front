@@ -25,7 +25,7 @@ async function main() {
     let result: 'restart' | 'menu';
     await glbReady; // ensure baked vehicle GLBs are cached before units spawn
     do {
-      const game = new Game(choice.mission, choice.factionId);
+      const game = new Game(choice.mission, choice.factionId, choice.difficulty);
       result = await game.run();
     } while (result === 'restart');
   }

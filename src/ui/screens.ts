@@ -4,6 +4,7 @@ import { FACTION_DEFS } from '../core/defs';
 import type { CampaignDef, MissionDef } from '../core/types';
 import { loadCampaignList, loadMission } from '../campaign/campaign';
 import { showUnitCodex } from './unitCodex';
+import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -17,12 +18,14 @@ export interface MissionChoice {
   campaign: CampaignDef;
   mission: MissionDef;
   factionId: string;
+  difficulty: DifficultyId;
 }
 
-/** Start screen flow: title -> campaign select -> faction select -> briefing. */
+/** Start screen flow: title -> campaign select -> faction select -> difficulty -> briefing. */
 export async function showStartScreen(): Promise<MissionChoice> {
   const campaigns = await loadCampaignList();
   let factionId = 'red';
+  let difficulty: DifficultyId = DEFAULT_DIFFICULTY;
 
   return new Promise<MissionChoice>((resolve) => {
     const screen = el(`
@@ -37,6 +40,10 @@ export async function showStartScreen(): Promise<MissionChoice> {
         <div class="menu-box tac-panel" style="min-width:740px;">
           <div class="menu-head">SELECT FACTION</div>
           <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
+        </div>
+        <div class="menu-box tac-panel">
+          <div class="menu-head">SCHWIERIGKEIT</div>
+          <div class="difficulty-row" id="difficulty-row" style="display:flex;gap:10px;justify-content:center;"></div>
         </div>
         <div style="display:flex;gap:14px;align-items:center;">
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
@@ -73,12 +80,27 @@ export async function showStartScreen(): Promise<MissionChoice> {
 
     const row = screen.querySelector('#faction-row')!;
     for (const f of Object.values(FACTION_DEFS)) {
+      const t = f.tactical;
+      const profile = t ? `
+        <div class="tac-grid">
+          <span>Bau</span><b>${t.build}</b>
+          <span>Angriff</span><b>${t.attack}</b>
+          <span>Verteid.</span><b>${t.defense}</b>
+          <span>Wirtschaft</span><b>${t.economy}</b>
+        </div>` : '';
+      const sw = (f.strengths || f.weaknesses) ? `
+        <ul class="sw">
+          ${(f.strengths || []).map(s => `<li class="pos">+ ${s}</li>`).join('')}
+          ${(f.weaknesses || []).map(s => `<li class="neg">− ${s}</li>`).join('')}
+        </ul>` : `<ul>${f.perks.map(p => `<li>${p}</li>`).join('')}</ul>`;
       const card = el(`
         <div class="faction-card" style="--fc:${f.color}">
           <div class="swatch"></div>
-          <h3>${f.name}</h3>
+          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge">${t.difficulty}</span>` : ''}</div>
           <div class="tag">${f.tagline}</div>
-          <ul>${f.perks.map(p => `<li>${p}</li>`).join('')}</ul>
+          ${profile}
+          ${sw}
+          ${t?.recommended ? `<div class="reco">▸ ${t.recommended}</div>` : ''}
         </div>
       `);
       if (f.id === factionId) card.classList.add('selected');
@@ -90,10 +112,24 @@ export async function showStartScreen(): Promise<MissionChoice> {
       row.appendChild(card);
     }
 
+    // Difficulty selector (default = Mittel).
+    const diffRow = screen.querySelector('#difficulty-row')!;
+    for (const id of DIFFICULTY_ORDER) {
+      const d = DIFFICULTIES[id];
+      const btn = el(`<button class="difficulty-btn" title="${d.blurb}"><b>${d.uiName}</b><span>${d.blurb}</span></button>`);
+      if (id === difficulty) btn.classList.add('primary');
+      btn.addEventListener('click', () => {
+        difficulty = id;
+        diffRow.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('primary'));
+        btn.classList.add('primary');
+      });
+      diffRow.appendChild(btn);
+    }
+
     screen.querySelector('#btn-start')!.addEventListener('click', async () => {
       const mission = await loadMission(chosen.campaign.id, chosen.missionRef.file);
       screen.remove();
-      resolve({ campaign: chosen.campaign, mission, factionId });
+      resolve({ campaign: chosen.campaign, mission, factionId, difficulty });
     });
 
     root().appendChild(screen);

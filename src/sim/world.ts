@@ -154,6 +154,7 @@ export interface TeamState {
   powerProduced: number;
   powerUsed: number;
   lowPower: boolean;
+  incomeMul: number; // ore-yield multiplier (AI difficulty handicap; player = 1)
 }
 
 export class World {
@@ -177,8 +178,8 @@ export class World {
     this.map = map; this.scene = scene; this.effects = effects;
     this.crystalGroups = crystalGroups;
     this.teams = [
-      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false },
-      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false },
+      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, incomeMul: 1 },
+      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, incomeMul: 1 },
     ];
   }
 
@@ -705,7 +706,7 @@ export class World {
       const drop = this.nearestDropoff(u.team, u.x, u.z);
       if (!drop) { u.path = null; return; } // wait until a refinery exists
       if (this.nearBuilding(u, drop)) {
-        this.teams[u.team].credits += u.cargo;
+        this.teams[u.team].credits += u.cargo * this.teams[u.team].incomeMul;
         u.cargo = 0;
         u.sub = 'toNode';
         if (!o.node || o.node.amount <= 0) o.node = this.nearestCrystal(u.x, u.z);

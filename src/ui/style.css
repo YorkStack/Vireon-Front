@@ -183,6 +183,27 @@ button.primary:active {
 .faction-card .tag { font-size: 11.5px; color: #7fb8b8; font-style: italic; margin-bottom: 8px; }
 .faction-card ul { list-style: none; font-size: 11.5px; color: #a6d8d4; display: flex; flex-direction: column; gap: 3px; }
 .faction-card ul li::before { content: '◆ '; color: var(--fc); }
+.faction-card .fc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.faction-card .diff-badge { font-size: 9.5px; letter-spacing: .5px; padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--fc); color: var(--fc); white-space: nowrap; }
+.faction-card .tac-grid { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; font-size: 11px;
+  margin-bottom: 8px; text-align: left; }
+.faction-card .tac-grid span { color: #7fb8b8; }
+.faction-card .tac-grid b { color: #cdeef0; font-weight: 600; }
+.faction-card ul.sw { gap: 2px; text-align: left; margin-bottom: 6px; }
+.faction-card ul.sw li::before { content: ''; }
+.faction-card ul.sw li.pos { color: #74e0a0; }
+.faction-card ul.sw li.neg { color: #f0a0a0; }
+.faction-card .reco { font-size: 10.5px; color: #8fb8c8; font-style: italic; text-align: left; }
+.difficulty-row { flex-wrap: wrap; }
+.difficulty-btn { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 150px;
+  padding: 9px 12px; border-radius: 9px; border: 1px solid var(--panel-border);
+  background: rgba(40, 44, 80, 0.55); color: var(--text); cursor: pointer; transition: background .12s, border-color .12s; }
+.difficulty-btn:hover { background: rgba(60, 66, 112, 0.7); }
+.difficulty-btn b { font-size: 13px; letter-spacing: 1px; }
+.difficulty-btn span { font-size: 10px; color: var(--text-dim); }
+.difficulty-btn.primary { border-color: var(--accent); background: rgba(46, 120, 120, 0.5); color: #eafffb; }
+.difficulty-btn.primary span { color: #bfeee8; }
 
 .campaign-item { text-align: left; padding: 14px 18px; color: #cdeef0; }
 .campaign-item strong { color: var(--accent); }
