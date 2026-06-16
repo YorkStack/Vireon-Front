@@ -9,7 +9,7 @@ import factionsJson from '../data/factions.json';
 import type { UnitDef, BuildingDef, FactionDef } from './types';
 import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import { templateToDef, resolveUnit } from '../systems/unitFactory';
-import { getModifiedBuildingCost, getModifiedPowerUsage, getModifiedBuildDuration, getModifiedDamage, getModifiedTurretRange, type FactionId } from '../data/factionModifiers';
+import { getModifiedBuildingCost, getModifiedPowerUsage, getModifiedBuildDuration, getModifiedDamage, getModifiedTurretRange, getModifiedHull, type FactionId } from '../data/factionModifiers';
 
 export const UNIT_DEFS: Record<string, UnitDef> = {};
 export const BUILDING_DEFS: Record<string, BuildingDef> = {};
@@ -18,10 +18,6 @@ export const FACTION_DEFS: Record<string, FactionDef> = {};
 for (const t of Object.values(UNIT_CLASS_TEMPLATES)) UNIT_DEFS[t.id] = templateToDef(t);
 for (const [id, d] of Object.entries(buildingsJson)) BUILDING_DEFS[id] = { id, ...(d as Omit<BuildingDef, 'id'>) };
 for (const [id, d] of Object.entries(factionsJson)) FACTION_DEFS[id] = { id, ...(d as Omit<FactionDef, 'id'>) };
-
-function mod(f: FactionDef, key: string, fallback = 1): number {
-  return f.modifiers[key] ?? fallback;
-}
 
 /** Unit stats with faction variant + balance modifiers baked in. */
 export function unitStats(defId: string, faction: FactionDef): UnitDef {
@@ -50,7 +46,9 @@ export function buildingStats(defId: string, faction: FactionDef): BuildingDef {
   return {
     ...base,
     cost: getModifiedBuildingCost(base.cost, fid),
-    hp: Math.round(base.hp * mod(faction, 'hp')),
+    // Building HP MIGRATED to FACTION_MODIFIERS (Phase 4b.2a): getModifiedHull
+    // (building) = baseHp × defense.buildingHull, which mirrors the legacy hp perk.
+    hp: getModifiedHull(base.hp, fid, 'building'),
     // Build time MIGRATED (Phase 4a.2): registry buildTimeMultiplier mirrors the
     // legacy factions.json buildTime — same × math, applied to units & buildings.
     buildTime: getModifiedBuildDuration(base.buildTime, fid),

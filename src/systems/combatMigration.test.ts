@@ -92,10 +92,9 @@ describe('Phase 4b.1 migration — runtime metadata', () => {
     }
     // NOT migrated this phase:
     const legacyPaths = getLegacyBackedModifierPaths().map((m) => m.path);
-    expect(legacyPaths).toContain('combat.unitHull');
     expect(legacyPaths).toContain('combat.unitSpeed');
     expect(getModifierMetadata('defense.turretDurability')!.status).toBe('prepared');
-    for (const p of ['combat.unitHull', 'combat.unitSpeed', 'defense.turretDurability']) {
+    for (const p of ['combat.unitSpeed', 'defense.turretDurability']) {
       expect(editable).not.toContain(p);
     }
   });

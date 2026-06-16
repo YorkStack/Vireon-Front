@@ -13,7 +13,7 @@ import { UNIT_CLASS_TEMPLATES, type UnitClassTemplate } from '../data/unitClasse
 import { WEAPONS, toLegacyWeapon } from '../data/weapons';
 import { getVariant } from '../vehicles';
 import type { VehicleVariant } from '../vehicles/types';
-import { getModifiedUnitCost, getModifiedBuildDuration, getCombatModifiers, type FactionId, type UnitKind } from '../data/factionModifiers';
+import { getModifiedUnitCost, getModifiedBuildDuration, getModifiedHull, getCombatModifiers, type FactionId, type UnitKind } from '../data/factionModifiers';
 
 /** Old units.json ids → new class template ids (campaign compat). */
 export const LEGACY_ALIASES: Record<string, string> = {
@@ -126,7 +126,6 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
   // Faction perk modifiers — identical math to the old unitStats().
   const isInf = def.class === 'infantry';
   const isVeh = def.class === 'vehicle';
-  const hpMul = mod(faction, 'hp') * mod(faction, 'unitHp');
   const speedMul = isInf ? mod(faction, 'infantrySpeed') : 1;
   let weapon: WeaponDef | null = def.weapon;
   if (weapon) {
@@ -143,7 +142,10 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
   const kind: UnitKind = isInf ? 'infantry' : isVeh ? 'vehicle' : 'general';
   return {
     ...def,
-    hp: Math.round(def.hp * hpMul),
+    // Hull/HP MIGRATED to FACTION_MODIFIERS (Phase 4b.2a): getModifiedHull =
+    // baseHp × unitHull × (vehicle|infantry)Hull; with veh/infHull neutral 1.0
+    // this equals the legacy hp×unitHp exactly. No double application.
+    hp: getModifiedHull(def.hp, faction.id as FactionId, isVeh ? 'vehicle' : 'infantry'),
     cost: getModifiedUnitCost(def.cost, faction.id as FactionId, kind),
     speed: def.speed * speedMul,
     // Build time MIGRATED to FACTION_MODIFIERS (Phase 4a.2): baseDuration ×

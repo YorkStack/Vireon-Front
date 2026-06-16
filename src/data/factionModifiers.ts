@@ -124,7 +124,9 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 1.15, powerGridVulnerability: 1.1, lowPowerProductionPenalty: 0.8, lowPowerDefensePenalty: 0.72, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.85 },
     // NOTE (Phase 4b.1): energyWeaponDamage mirrors the live legacy value (blue
     // has no energyDamage perk → 1.0). The 1.05 was aspirational/never-live.
-    combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.0, unitSpeed: 0.95, unitHull: 1.12, vehicleHull: 1.12, infantryHull: 1.08 },
+    // NOTE (Phase 4b.2a): unitHull = legacy hp×unitHp = 1.15×1 = 1.15; vehicle/
+    // infantryHull neutral 1.0. buildingHull = legacy hp = 1.15.
+    combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.0, unitSpeed: 0.95, unitHull: 1.15, vehicleHull: 1.0, infantryHull: 1.0 },
     defense: { buildingHull: 1.15, turretDurability: 1.2, turretRangeBonus: 0, turretTurnSpeed: 0.9, staticDefensePower: 1.15, shieldStrength: 1.2 },
     production: { buildTimeMultiplier: 1.12, unitProductionSpeed: 0.92, vehicleProductionSpeed: 0.92, infantryProductionSpeed: 0.95, techUnlockSpeed: 0.95 },
     repair: { repairRate: 1.15, autoRepairEfficiency: 1.1, shieldRegenRate: 1.2 },
@@ -139,8 +141,10 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 0.45, powerGridVulnerability: 0.5, lowPowerProductionPenalty: 0.92, lowPowerDefensePenalty: 0.9, lowPowerRepairPenalty: 0.95, lowPowerWeaponPenalty: 0.95 },
     // NOTE (Phase 4b.1): vehicleDamage + energyWeaponDamage mirror live legacy
     // (green has neither perk → 1.0). The 0.98/0.95 were aspirational/never-live.
-    combat: { infantryDamage: 1.0, vehicleDamage: 1.0, energyWeaponDamage: 1.0, unitSpeed: 1.15, unitHull: 0.95, vehicleHull: 0.95, infantryHull: 0.92 },
-    defense: { buildingHull: 0.9, turretDurability: 0.85, turretRangeBonus: 0, turretTurnSpeed: 1.05, staticDefensePower: 0.8 },
+    // NOTE (Phase 4b.2a): unitHull = legacy hp×unitHp = 1×0.90 = 0.90; vehicle/
+    // infantryHull neutral 1.0. buildingHull = legacy hp = 1.0 (was aspirational 0.9).
+    combat: { infantryDamage: 1.0, vehicleDamage: 1.0, energyWeaponDamage: 1.0, unitSpeed: 1.15, unitHull: 0.90, vehicleHull: 1.0, infantryHull: 1.0 },
+    defense: { buildingHull: 1.0, turretDurability: 0.85, turretRangeBonus: 0, turretTurnSpeed: 1.05, staticDefensePower: 0.8 },
     production: { buildTimeMultiplier: 1.0, unitProductionSpeed: 1.25, vehicleProductionSpeed: 1.12, infantryProductionSpeed: 1.3, techUnlockSpeed: 0.9 },
     repair: { repairRate: 0.75, autoRepairEfficiency: 0.8 },
     special: { replacementBias: 1.25, biologicalResilience: 1.1 },
@@ -153,7 +157,8 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     economy: { resourceGatherRate: 0.95, resourceEfficiency: 0.98, resourceConsumption: 1.05, unitCost: 1.0, infantryCost: 1.0, vehicleCost: 1.0, buildingCost: 1.0, techCost: 1.1, upkeepPressure: 1.05 },
     power: { powerUsage: 1.25, powerGeneration: 1.0, powerOutageSeverity: 1.35, powerGridVulnerability: 1.35, lowPowerProductionPenalty: 0.65, lowPowerDefensePenalty: 0.55, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.5 },
     combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.2, unitSpeed: 0.98, unitHull: 1.0, vehicleHull: 1.0, infantryHull: 1.0 },
-    defense: { buildingHull: 1.05, turretDurability: 1.05, turretRangeBonus: 1, turretTurnSpeed: 0.95, staticDefensePower: 1.1 },
+    // NOTE (Phase 4b.2a): buildingHull = legacy hp = 1.0 (was aspirational 1.05).
+    defense: { buildingHull: 1.0, turretDurability: 1.05, turretRangeBonus: 1, turretTurnSpeed: 0.95, staticDefensePower: 1.1 },
     production: { buildTimeMultiplier: 1.0, unitProductionSpeed: 0.95, vehicleProductionSpeed: 0.95, infantryProductionSpeed: 0.95, techUnlockSpeed: 1.05 },
     repair: { repairRate: 0.95, autoRepairEfficiency: 1.0 },
     special: { colonyAuraEnabled: true, colonyAuraStrength: 1.15 },
@@ -389,9 +394,12 @@ export const MODIFIER_RUNTIME_METADATA: ModifierRuntimeMetadata[] = [
   { path: 'combat.energyWeaponDamage', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Energiewaffen-Schaden ×. Migriert: resolveUnit (Units) + buildingStats (Türme) lesen getCombatModifiers/getModifiedDamage (spiegelt factions.json energyDamage).' },
   { path: 'defense.turretRangeBonus', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'ADDITIVER Turm-Reichweiten-Bonus (range + bonus). Migriert: buildingStats liest getModifiedTurretRange (spiegelt factions.json turretRange).' },
 
+  // ---- MIGRATED in Phase 4b.2a → now LIVE via FACTION_MODIFIERS (admin-editable) ----
+  { path: 'combat.unitHull', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Einheiten-Hüllen-/HP-Faktor (alle Units). Migriert: resolveUnit liest getModifiedHull (= legacy hp×unitHp). vehicle/infantryHull bleiben neutral 1.0.' },
+  { path: 'defense.buildingHull', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Gebäude-Hüllen-/HP-Faktor. Migriert: buildingStats liest getModifiedHull(building) (= legacy hp).' },
+
   // ---- LEGACY-BACKED (live in-game, but via the old path → migration needed) ----
-  { path: 'combat.unitHull', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (hp/unitHp) in unitStats.' },
-  { path: 'combat.unitSpeed', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantrySpeed) in unitStats — Scope: nur Infanterie.' },
+  { path: 'combat.unitSpeed', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantrySpeed) in unitStats — Scope: nur Infanterie. Phase 4b.2b: rename → infantrySpeed + migrate.' },
 
   // ---- PREPARED only (no effect yet) ----
   { path: 'special.colonyAuraEnabled', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Colony-Aura-Flag; getColonyAura vorbereitet, nicht auf Entities angewandt.' },
