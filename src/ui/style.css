@@ -132,6 +132,7 @@ button.primary:active {
 
 .menu-box { display: flex; flex-direction: column; gap: 12px; padding: 20px 26px; min-width: 420px; align-items: stretch; text-align: center; }
 .menu-box .menu-head { font-size: 12px; color: var(--accent); letter-spacing: 3px; opacity: 0.9; }
+.menu-box .menu-sub { font-size: 11px; color: var(--text-dim); margin-top: -4px; }
 
 /* faction terminals: heavy raised metal buttons that physically depress */
 .faction-row { display: flex; gap: 13px; }

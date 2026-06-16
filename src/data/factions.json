@@ -11,7 +11,7 @@
     },
     "tactical": {
       "build": "Stabil", "attack": "Koordiniert", "defense": "Befestigt",
-      "economy": "Kontrolliert", "difficulty": "Mittel",
+      "economy": "Kontrolliert", "archetype": "Ausgewogen",
       "recommended": "Sichern, aufbauen, koordiniert zuschlagen."
     },
     "strengths": ["Verlässliche Fahrzeuge", "Starke Verteidigung", "Ausgewogene Wirtschaft"],
@@ -29,7 +29,7 @@
     },
     "tactical": {
       "build": "Langsam, stark", "attack": "Konter-fokussiert", "defense": "Exzellent",
-      "economy": "Effizient", "difficulty": "Mittel-Schwer",
+      "economy": "Effizient", "archetype": "Defensiv",
       "recommended": "Befestigen, kontern, Raum kontrollieren."
     },
     "strengths": ["Robuste Einheiten & Gebäude", "Starke Verteidigungstech", "Exzellente Konter"],
@@ -48,7 +48,7 @@
     },
     "tactical": {
       "build": "Sehr schnell", "attack": "Unerbittlich", "defense": "Schwach",
-      "economy": "Ressourcenhungrig", "difficulty": "Aggressiv",
+      "economy": "Ressourcenhungrig", "archetype": "Aggressiv",
       "recommended": "Früh expandieren, billig spammen, Druck halten."
     },
     "strengths": ["Schnelle Produktion", "Billige Einheiten", "Früher Druck"],
@@ -67,7 +67,7 @@
     },
     "tactical": {
       "build": "Energieabhängig", "attack": "Vernichtend", "defense": "Zonenbasiert",
-      "economy": "Energieintensiv", "difficulty": "Schwer",
+      "economy": "Energieintensiv", "archetype": "Tech / Energie",
       "recommended": "Power-Grid sichern, Zonen halten, spät vernichtend zuschlagen."
     },
     "strengths": ["Starke Energiewaffen", "Türme mit großer Reichweite", "Zonenkontrolle"],

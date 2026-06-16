@@ -37,13 +37,15 @@ export async function showStartScreen(): Promise<MissionChoice> {
           <div class="menu-head">SELECT CAMPAIGN</div>
           <div id="campaign-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
-        <div class="menu-box tac-panel" style="min-width:740px;">
-          <div class="menu-head">SELECT FACTION</div>
-          <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
-        </div>
         <div class="menu-box tac-panel">
-          <div class="menu-head">SCHWIERIGKEIT</div>
+          <div class="menu-head">SCHWIERIGKEITSGRAD</div>
+          <div class="menu-sub">Spielstärke der gegnerischen KI — gilt für die ganze Partie</div>
           <div class="difficulty-row" id="difficulty-row" style="display:flex;gap:10px;justify-content:center;"></div>
+        </div>
+        <div class="menu-box tac-panel" style="min-width:740px;">
+          <div class="menu-head">FRAKTION WÄHLEN</div>
+          <div class="menu-sub">Deine Stärken &amp; Schwächen — der Gegner ist eine zufällige der drei anderen Fraktionen</div>
+          <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
         </div>
         <div style="display:flex;gap:14px;align-items:center;">
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
@@ -96,7 +98,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
       const card = el(`
         <div class="faction-card" style="--fc:${f.color}">
           <div class="swatch"></div>
-          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge">${t.difficulty}</span>` : ''}</div>
+          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge">${t.archetype}</span>` : ''}</div>
           <div class="tag">${f.tagline}</div>
           ${profile}
           ${sw}

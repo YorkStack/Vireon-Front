@@ -593,6 +593,20 @@ export function getTechPriority(f, d, g): number {
 
 ---
 
+## 13. Match-Setup & Kampagnen-Vision (separat vom Schwierigkeitsgrad)
+
+Wichtige Trennung im UI/Modell (User-Feedback 2026-06-16):
+- **Schwierigkeitsgrad** (leicht..superschwer) = *global*, gilt für die ganze Partie/Kampagne — steuert nur die **KI-Stärke**. Liegt im Startbildschirm **über** der Fraktionswahl.
+- **Fraktion** = deine Identität (Stärken/Schwächen, Archetyp-Badge: Ausgewogen/Defensiv/Aggressiv/Tech). Das Badge ist KEIN Schwierigkeitsgrad.
+- **Gegner** = aktuell `enemyFaction: "auto"` → das Spiel zieht **eine zufällige der drei anderen** Fraktionen. ✅ bereits implementiert.
+
+**Roadmap Spielmodi/Kampagnen (künftig):**
+1. **Start (jetzt):** 1 Spieler-Fraktion vs. 1 zufällige KI-Fraktion auf einer Map.
+2. **Mehr-Fraktions-Maps:** größere Karten mit bis zu **4 Fraktionen** (1 Spieler + 3 KI), je eigene Doctrine/Schwierigkeit pro KI. Erfordert: mehr Team-Slots im `World`/`TeamState` (heute fix 2), mehrere `EnemyAI`-Instanzen, größere Map-Gen + mehr Startpunkte, Minimap/HUD für >2 Parteien.
+3. **Kampagnen-Narrativ:** „Lande auf einem Planeten, den du erobern willst — eine andere Fraktion ist zufällig auch gelandet." Schwerere Kampagnen = **2 fremde Fraktionen** bereits vor Ort. Pro Mission konfigurierbar: Anzahl/Identität der KI-Gegner, deren Doctrine, deren Schwierigkeits-Bias.
+
+(Diese Punkte sind über den aktuellen MVP/Phase-2-Umfang hinaus; hier nur als Richtungsfestlegung dokumentiert.)
+
 ### Mapping auf bestehenden Code (Kompatibilität)
 - `legacyKey` (red/blue/green/yellow) hält `unitStats`/`buildingStats`/`vehicleGlb`/Varianten lauffähig — keine Massenumbenennung nötig.
 - Bestehende `aiProfile`-Knöpfe bleiben die **Basis**, auf die Difficulty × Doctrine multiplizieren.

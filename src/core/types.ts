@@ -92,7 +92,7 @@ export interface TacticalProfile {
   attack: string;
   defense: string;
   economy: string;
-  difficulty: string;        // flavour rating shown on the card
+  archetype: string;         // faction playstyle tag shown as a badge (NOT the game difficulty)
   recommended?: string;
 }
 
