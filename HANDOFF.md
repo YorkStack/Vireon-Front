@@ -2,7 +2,14 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-16, **Harvester: Beladungsanzeige + manueller Rückruf**)
+## ⏱️ Aktueller Stand (2026-06-16, **Phase 2a — alle 12 Doctrines + Auswahl**)
+- **Alle 12 Tactical Doctrines** in [doctrines.ts](src/data/doctrines.ts) (3 pro Fraktion) mit Build-/Defense-Order, Army-Mix + 13 Persönlichkeitsknöpfen. `DOCTRINES_BY_FACTION`, `doctrinesFor`, `doctrineById`. Test [doctrines.test.ts](src/data/doctrines.test.ts) (12 total, 3/Fraktion, Werte 0..1, armyMix≈1) — **5 Tests**.
+- **Spieler-Doctrine-Auswahl:** Dropdown pro Fraktionskarte im Startbildschirm ([screens.ts](src/ui/screens.ts)); gewählte Doctrine wandert in `MissionChoice.doctrineId` und erscheint im **Briefing** („COMMANDING: <Fraktion> · Doktrin: <Name>"). (Spieler-Doctrine-Gameplay-Effekt folgt; der Spieler kommandiert noch manuell — die Auswahl ist Identität + vorbereitet.)
+- **Variabler Gegner:** [game.ts](src/core/game.ts) zieht für die KI eine **zufällige Doctrine** aus der Gegner-Fraktion (Replay-Varianz) + Toast „Gegner: <Fraktion> · <Doctrine>". Alle 12 Doctrines treiben damit echtes KI-Verhalten.
+- **Verify:** 82 Tests grün (+5), `tsc`+`vite build` sauber; im Browser: alle Dropdowns korrekt (3/Fraktion), Briefing zeigt die gewählte Doctrine.
+- **Offen (Phase 2 Rest):** Economy-/Power-Modell (faction-spezifische Stromausfall-Effekte, Sammel-/Kosten-Mods) · Admin-/Dev-Tuning-Panel (F8).
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Harvester: Beladungsanzeige + manueller Rückruf**)
 - **Beladungsanzeige:** Harvester haben jetzt eine kristall-cyane **Ladeleiste** über dem Fahrzeug (`makeCargoBar` in [models.ts](src/render/models.ts), in `syncVisuals` aktualisiert — sichtbar wenn beladen oder ausgewählt) + im HUD-Panel die Zeile **„◈ Kristalle: X / cap (Y%)"** (Einzel) bzw. Gesamt/Beladen-Zähler (mehrere).
 - **Manueller Rückruf (auch teilbeladen):** `World.orderReturn(u, drop?)` schickt einen beladenen Harvester sofort zur nächsten Abladestelle (Raffinerie) und lädt ab, dann sammelt er weiter. Auslösbar per **Linksklick auf die eigene Raffinerie** (Harvester ausgewählt) ODER **On-Screen-Button „◈ Abladen"** ([input.ts](src/ui/input.ts) `returnLoadedHarvesters`, [hud.ts](src/ui/hud.ts), Callback in [game.ts](src/core/game.ts)).
 - **Verify:** 77 Tests grün, `tsc`+`vite build` sauber. Im Browser live verifiziert: Cargo-Zeile + Harvester-Hinweis („Raffinerie = jetzt abladen") rendern korrekt; das Befüllen nutzt die bestehende Sammel-Mechanik (Ladebalken-`set` = bewährter HP-Balken-Code). (Cargo>0 im Browser nicht final abgegriffen, da die erreichbaren Test-Kristalle auf einem Plateau lagen.)

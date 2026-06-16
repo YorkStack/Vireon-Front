@@ -69,9 +69,86 @@ export const DOCTRINES: Record<string, Doctrine> = {
     defenseOrder: ['lance', 'cannon', 'lance', 'wall', 'cannon', 'lance'],
     armyMix: [['energy', 0.28], ['tank', 0.30], ['siege', 0.14], ['rifle', 0.14], ['antiAir', 0.14]],
   },
+
+  // ----- Crimson Pact (2 + 3) -----
+  crimson_siege: {
+    id: 'crimson_siege', faction: 'red', displayName: 'Siege Doctrine', uiName: 'Siege',
+    description: 'Defensiv: Türme, Mauern, Reparatur — spät, aber massiv.',
+    preferredAttackTiming: 'late',
+    personality: { buildAggression: 0.40, attackAggression: 0.40, defensePriority: 0.85, economyPriority: 0.65, techPriority: 0.55, expansionPriority: 0.30, riskTolerance: 0.25, repairPriority: 0.85, retreatThreshold: 0.45, harassmentPreference: 0.15, staticDefensePreference: 0.90, unitReplacementBias: 0.40, powerDependencyTolerance: 0.50 },
+    defenseOrder: ['cannon', 'cannon', 'wall', 'lance', 'wall', 'cannon', 'lance', 'cannon'],
+    armyMix: [['siege', 0.28], ['tank', 0.30], ['rocket', 0.14], ['rifle', 0.16], ['antiAir', 0.12]],
+  },
+  crimson_armored: {
+    id: 'crimson_armored', faction: 'red', displayName: 'Armored Doctrine', uiName: 'Armored',
+    description: 'Mechanisiert: schnelle Fabrik, mittelfrüher Panzerangriff, weniger Defensive.',
+    preferredAttackTiming: 'mid',
+    personality: { buildAggression: 0.65, attackAggression: 0.70, defensePriority: 0.40, economyPriority: 0.60, techPriority: 0.55, expansionPriority: 0.45, riskTolerance: 0.55, repairPriority: 0.60, retreatThreshold: 0.30, harassmentPreference: 0.35, staticDefensePreference: 0.35, unitReplacementBias: 0.50, powerDependencyTolerance: 0.50 },
+    buildOrder: ['nexus', 'refinery', 'spire', 'foundry', 'spire', 'barracks'],
+    armyMix: [['attackVehicle', 0.25], ['tank', 0.35], ['siege', 0.12], ['rifle', 0.15], ['rocket', 0.10], ['antiAir', 0.03]],
+  },
+
+  // ----- Azure Concorde (2 + 3) -----
+  azure_tide_strategist: {
+    id: 'azure_tide_strategist', faction: 'blue', displayName: 'Tide Strategist Doctrine', uiName: 'Tide Strategist',
+    description: 'Gebietskontrolle, gesicherte Expansion, präzise Konter.',
+    preferredAttackTiming: 'mid',
+    personality: { buildAggression: 0.45, attackAggression: 0.45, defensePriority: 0.70, economyPriority: 0.65, techPriority: 0.55, expansionPriority: 0.60, riskTolerance: 0.35, repairPriority: 0.75, retreatThreshold: 0.50, harassmentPreference: 0.30, staticDefensePreference: 0.65, unitReplacementBias: 0.40, powerDependencyTolerance: 0.45 },
+    armyMix: [['tank', 0.30], ['rocket', 0.18], ['rifle', 0.24], ['siege', 0.10], ['scout', 0.10], ['antiAir', 0.08]],
+  },
+  azure_deep_current: {
+    id: 'azure_deep_current', faction: 'blue', displayName: 'Deep Current Engineer Doctrine', uiName: 'Deep Current',
+    description: 'Tech-orientiert: schwach im Early, starke fortgeschrittene Einheiten im Mid/Late.',
+    preferredAttackTiming: 'late',
+    personality: { buildAggression: 0.35, attackAggression: 0.40, defensePriority: 0.60, economyPriority: 0.75, techPriority: 0.90, expansionPriority: 0.35, riskTolerance: 0.30, repairPriority: 0.70, retreatThreshold: 0.55, harassmentPreference: 0.20, staticDefensePreference: 0.55, unitReplacementBias: 0.35, powerDependencyTolerance: 0.45 },
+    buildOrder: ['nexus', 'refinery', 'spire', 'foundry', 'spire', 'barracks'],
+    armyMix: [['tank', 0.30], ['siege', 0.20], ['energy', 0.14], ['rocket', 0.16], ['rifle', 0.12], ['antiAir', 0.08]],
+  },
+
+  // ----- Verdant Swarm (2 + 3) -----
+  verdant_hive_expander: {
+    id: 'verdant_hive_expander', faction: 'green', displayName: 'Hive Expander Doctrine', uiName: 'Hive Expander',
+    description: 'Schnelle Expansion, sehr hoher Ressourcenverbrauch, Map-Control durch Masse.',
+    preferredAttackTiming: 'mid',
+    personality: { buildAggression: 0.80, attackAggression: 0.70, defensePriority: 0.20, economyPriority: 0.70, techPriority: 0.30, expansionPriority: 0.90, riskTolerance: 0.70, repairPriority: 0.25, retreatThreshold: 0.15, harassmentPreference: 0.45, staticDefensePreference: 0.20, unitReplacementBias: 0.80, powerDependencyTolerance: 0.65 },
+    buildOrder: ['nexus', 'refinery', 'barracks', 'spire', 'refinery', 'foundry'],
+    armyMix: [['rifle', 0.40], ['scout', 0.20], ['rocket', 0.20], ['attackVehicle', 0.12], ['antiAir', 0.08]],
+  },
+  verdant_carapace_broodlord: {
+    id: 'verdant_carapace_broodlord', faction: 'green', displayName: 'Carapace Broodlord Doctrine', uiName: 'Carapace Broodlord',
+    description: 'Robustere Schwarmwellen, weniger Rush, gefährliches Midgame.',
+    preferredAttackTiming: 'mid',
+    personality: { buildAggression: 0.65, attackAggression: 0.75, defensePriority: 0.35, economyPriority: 0.60, techPriority: 0.50, expansionPriority: 0.55, riskTolerance: 0.60, repairPriority: 0.35, retreatThreshold: 0.25, harassmentPreference: 0.30, staticDefensePreference: 0.30, unitReplacementBias: 0.70, powerDependencyTolerance: 0.65 },
+    armyMix: [['rifle', 0.30], ['rocket', 0.25], ['tank', 0.25], ['siege', 0.10], ['antiAir', 0.10]],
+  },
+
+  // ----- Solar Dominion (2 + 3) -----
+  solar_spore_prophet: {
+    id: 'solar_spore_prophet', faction: 'yellow', displayName: 'Spore Prophet Doctrine', uiName: 'Spore Prophet',
+    description: 'Unberechenbare Wellen, Störung/Mutation, nicht-lineares Build-Verhalten.',
+    preferredAttackTiming: 'mid',
+    personality: { buildAggression: 0.60, attackAggression: 0.65, defensePriority: 0.45, economyPriority: 0.55, techPriority: 0.70, expansionPriority: 0.50, riskTolerance: 0.65, repairPriority: 0.45, retreatThreshold: 0.30, harassmentPreference: 0.65, staticDefensePreference: 0.45, unitReplacementBias: 0.55, powerDependencyTolerance: 0.40 },
+    armyMix: [['energy', 0.25], ['scout', 0.15], ['attackVehicle', 0.15], ['rocket', 0.20], ['tank', 0.15], ['antiAir', 0.10]],
+  },
+  solar_annihilator: {
+    id: 'solar_annihilator', faction: 'yellow', displayName: 'Solar Annihilator Doctrine', uiName: 'Solar Annihilator',
+    description: 'Langsamer, energiehungriger Aufbau; extrem starke Late-Game-Energieangriffe; anfällig bei Stromausfall.',
+    preferredAttackTiming: 'late',
+    personality: { buildAggression: 0.35, attackAggression: 0.55, defensePriority: 0.55, economyPriority: 0.70, techPriority: 0.90, expansionPriority: 0.30, riskTolerance: 0.40, repairPriority: 0.60, retreatThreshold: 0.45, harassmentPreference: 0.10, staticDefensePreference: 0.60, unitReplacementBias: 0.40, powerDependencyTolerance: 0.20 },
+    buildOrder: ['nexus', 'spire', 'refinery', 'spire', 'spire', 'foundry'],
+    armyMix: [['energy', 0.32], ['tank', 0.28], ['siege', 0.16], ['rifle', 0.12], ['antiAir', 0.12]],
+  },
 };
 
-/** Each faction's default (enemy-AI) doctrine, keyed by legacy faction id. */
+/** All doctrine ids for a faction (legacy key), in display order. */
+export const DOCTRINES_BY_FACTION: Record<string, string[]> = {
+  red: ['crimson_field_marshal', 'crimson_siege', 'crimson_armored'],
+  blue: ['azure_shield_architect', 'azure_tide_strategist', 'azure_deep_current'],
+  green: ['verdant_brood_rusher', 'verdant_hive_expander', 'verdant_carapace_broodlord'],
+  yellow: ['solar_radiant_cultivator', 'solar_spore_prophet', 'solar_annihilator'],
+};
+
+/** Each faction's default (enemy-AI) doctrine = first in its list. */
 export const DEFAULT_DOCTRINE_BY_FACTION: Record<string, string> = {
   red: 'crimson_field_marshal',
   blue: 'azure_shield_architect',
@@ -79,6 +156,15 @@ export const DEFAULT_DOCTRINE_BY_FACTION: Record<string, string> = {
   yellow: 'solar_radiant_cultivator',
 };
 
+export function doctrinesFor(legacyFactionId: string): Doctrine[] {
+  return (DOCTRINES_BY_FACTION[legacyFactionId] ?? []).map((id) => DOCTRINES[id]).filter(Boolean);
+}
+
 export function defaultDoctrineFor(legacyFactionId: string): Doctrine {
   return DOCTRINES[DEFAULT_DOCTRINE_BY_FACTION[legacyFactionId] ?? 'crimson_field_marshal'];
+}
+
+/** Resolve a doctrine by id, falling back to a faction default. */
+export function doctrineById(id: string | undefined, legacyFactionId: string): Doctrine {
+  return (id && DOCTRINES[id]) || defaultDoctrineFor(legacyFactionId);
 }

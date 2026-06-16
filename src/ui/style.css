@@ -196,6 +196,10 @@ button.primary:active {
 .faction-card ul.sw li.pos { color: #74e0a0; }
 .faction-card ul.sw li.neg { color: #f0a0a0; }
 .faction-card .reco { font-size: 10.5px; color: #8fb8c8; font-style: italic; text-align: left; }
+.faction-card .doctrine-pick { display: flex; align-items: center; gap: 6px; font-size: 10.5px;
+  color: var(--accent); letter-spacing: 1px; margin: 4px 0 6px; text-align: left; }
+.faction-card .doctrine-sel { flex: 1; font-size: 11px; padding: 4px 6px; border-radius: 6px;
+  background: rgba(20, 26, 46, 0.85); color: #dff; border: 1px solid var(--panel-border); cursor: pointer; }
 .difficulty-row { flex-wrap: wrap; }
 .difficulty-btn { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 150px;
   padding: 9px 12px; border-radius: 9px; border: 1px solid var(--panel-border);

@@ -5,6 +5,7 @@ import type { CampaignDef, MissionDef } from '../core/types';
 import { loadCampaignList, loadMission } from '../campaign/campaign';
 import { showUnitCodex } from './unitCodex';
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
+import { doctrinesFor, defaultDoctrineFor, DOCTRINES } from '../data/doctrines';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -19,6 +20,7 @@ export interface MissionChoice {
   mission: MissionDef;
   factionId: string;
   difficulty: DifficultyId;
+  doctrineId: string;     // player's chosen Tactical Doctrine
 }
 
 /** Start screen flow: title -> campaign select -> faction select -> difficulty -> briefing. */
@@ -26,6 +28,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
   const campaigns = await loadCampaignList();
   let factionId = 'red';
   let difficulty: DifficultyId = DEFAULT_DIFFICULTY;
+  let doctrineId = defaultDoctrineFor(factionId).id;
 
   return new Promise<MissionChoice>((resolve) => {
     const screen = el(`
@@ -95,6 +98,8 @@ export async function showStartScreen(): Promise<MissionChoice> {
           ${(f.strengths || []).map(s => `<li class="pos">+ ${s}</li>`).join('')}
           ${(f.weaknesses || []).map(s => `<li class="neg">− ${s}</li>`).join('')}
         </ul>` : `<ul>${f.perks.map(p => `<li>${p}</li>`).join('')}</ul>`;
+      const doctrineOpts = doctrinesFor(f.id)
+        .map(d => `<option value="${d.id}">${d.uiName}</option>`).join('');
       const card = el(`
         <div class="faction-card" style="--fc:${f.color}">
           <div class="swatch"></div>
@@ -102,12 +107,17 @@ export async function showStartScreen(): Promise<MissionChoice> {
           <div class="tag">${f.tagline}</div>
           ${profile}
           ${sw}
+          <label class="doctrine-pick">Doktrin <select class="doctrine-sel">${doctrineOpts}</select></label>
           ${t?.recommended ? `<div class="reco">▸ ${t.recommended}</div>` : ''}
         </div>
       `);
+      const dsel = card.querySelector('.doctrine-sel') as HTMLSelectElement;
+      dsel.addEventListener('click', e => e.stopPropagation());   // opening dropdown ≠ picking faction
+      dsel.addEventListener('change', () => { if (f.id === factionId) doctrineId = dsel.value; });
       if (f.id === factionId) card.classList.add('selected');
       card.addEventListener('click', () => {
         factionId = f.id;
+        doctrineId = dsel.value;     // adopt this faction's currently-shown doctrine
         row.querySelectorAll('.faction-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
       });
@@ -131,7 +141,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
     screen.querySelector('#btn-start')!.addEventListener('click', async () => {
       const mission = await loadMission(chosen.campaign.id, chosen.missionRef.file);
       screen.remove();
-      resolve({ campaign: chosen.campaign, mission, factionId, difficulty });
+      resolve({ campaign: chosen.campaign, mission, factionId, difficulty, doctrineId });
     });
 
     root().appendChild(screen);
@@ -139,14 +149,15 @@ export async function showStartScreen(): Promise<MissionChoice> {
 }
 
 /** Mission briefing; resolves when the player launches. */
-export function showBriefing(mission: MissionDef, factionName: string): Promise<void> {
+export function showBriefing(mission: MissionDef, factionName: string, doctrineId?: string): Promise<void> {
+  const doctrineName = doctrineId ? DOCTRINES[doctrineId]?.uiName : undefined;
   return new Promise((resolve) => {
     const screen = el(`
       <div class="screen cinematic" style="justify-content:center;">
         <h2 style="letter-spacing:6px;">MISSION BRIEFING</h2>
         <div class="briefing-box tac-panel">
           <div style="font-size:22px;font-weight:700;">${mission.name}</div>
-          <div style="font-size:12px;color:var(--text-dim);">COMMANDING: ${factionName}</div>
+          <div style="font-size:12px;color:var(--text-dim);">COMMANDING: ${factionName}${doctrineName ? ` · Doktrin: ${doctrineName}` : ''}</div>
           <p>${mission.briefing}</p>
           <div class="objectives">${mission.objectives.map(o => `<div>${o}</div>`).join('')}</div>
           <button class="primary" id="btn-launch" style="align-self:center;padding:11px 40px;letter-spacing:2px;">COMMENCE OPERATION</button>
