@@ -6,6 +6,7 @@ import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
 import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
+import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedRepairRate, type FactionId } from '../data/factionModifiers';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 
@@ -161,6 +162,7 @@ export interface TeamState {
   powerProduced: number;
   powerUsed: number;
   lowPower: boolean;
+  powerRatio: number; // availablePower / requiredPower (1 = fine, <1 = deficit)
   incomeMul: number; // ore-yield multiplier (AI difficulty handicap; player = 1)
 }
 
@@ -185,8 +187,8 @@ export class World {
     this.map = map; this.scene = scene; this.effects = effects;
     this.crystalGroups = crystalGroups;
     this.teams = [
-      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, incomeMul: 1 },
-      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, incomeMul: 1 },
+      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1 },
+      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1 },
     ];
   }
 
@@ -278,6 +280,13 @@ export class World {
     }
     const t = this.teams[team];
     t.powerProduced = prod; t.powerUsed = used; t.lowPower = used > prod;
+    t.powerRatio = getPowerRatio(t);
+  }
+
+  /** Per-faction consequences of this team's current power level (cached helper). */
+  private powerOutage(team: TeamId) {
+    const t = this.teams[team];
+    return getPowerOutageEffects(t.faction.id as FactionId, t.powerRatio);
   }
 
   // ---------------- queries ----------------
@@ -647,7 +656,11 @@ export class World {
         if (this.nearBuilding(u, b)) {
           u.path = null;
           this.faceToward(u, b.cx, b.cz, dt);
-          b.hp = Math.min(b.def.hp, b.hp + 35 * dt);
+          // Faction repair rate × power-outage repair efficiency (Azure repairs
+          // fast but suffers under low power; Verdant repairs slowly).
+          const fid = this.teams[u.team].faction.id as FactionId;
+          const repairMul = getModifiedRepairRate(1, fid) * this.powerOutage(u.team).repairEfficiencyMultiplier;
+          b.hp = Math.min(b.def.hp, b.hp + 35 * dt * repairMul);
         } else if (!this.stepAlongPath(u, dt)) {
           const t = this.freeTileNear(b, u.isInfantry);
           if (t) this.setPath(u, t[0], t[1]);
@@ -731,7 +744,9 @@ export class World {
       const drop = this.nearestDropoff(u.team, u.x, u.z);
       if (!drop) { u.path = null; return; } // wait until a refinery exists
       if (this.nearBuilding(u, drop)) {
-        this.teams[u.team].credits += u.cargo * this.teams[u.team].incomeMul;
+        // Faction gather-rate (Verdant hauls a touch more, Azure/Solar a touch less).
+        const gatherMul = getEconomyModifiers(this.teams[u.team].faction.id as FactionId).resourceGatherRate;
+        this.teams[u.team].credits += u.cargo * this.teams[u.team].incomeMul * gatherMul;
         u.cargo = 0;
         u.sub = 'toNode';
         if (!o.node || o.node.amount <= 0) o.node = this.nearestCrystal(u.x, u.z);
@@ -829,9 +844,10 @@ export class World {
         this.recomputePower(b.team);
       }
     }
-    // Production queue.
+    // Production queue. Power deficits slow production — faction-specific
+    // (Solar grinds to a halt, Verdant barely notices).
     if (b.complete && b.queue.length) {
-      const rate = this.teams[b.team].lowPower ? 0.5 : 1;
+      const rate = this.powerOutage(b.team).productionSpeedMultiplier;
       const item = b.queue[0];
       item.remaining -= dt * rate;
       if (item.remaining <= 0) {
@@ -848,10 +864,12 @@ export class World {
         }
       }
     }
-    // Turrets.
+    // Turrets. Under a power deficit, defensive systems lose efficiency — power-
+    // dependent factions (Solar/Azure) go dark, resilient ones (Verdant) keep firing.
     const w = b.def.weapon;
     if (b.complete && w) {
-      const offline = b.def.needsPower && this.teams[b.team].lowPower;
+      const turretEff = b.def.needsPower ? this.powerOutage(b.team).turretEfficiencyMultiplier : 1;
+      const offline = turretEff < 0.75;
       b.cooldown = Math.max(0, b.cooldown - dt);
       b.scanTimer -= dt;
       if (!offline) {
@@ -863,7 +881,7 @@ export class World {
           }
         }
         if (b.target && b.target.alive && b.cooldown <= 0 && this.inRange(b, b.target, w)) {
-          b.cooldown = w.cooldown;
+          b.cooldown = w.cooldown / Math.max(0.3, turretEff); // degraded turrets fire slower
           this.fireWeapon(b, b.target, w);
         }
       }
