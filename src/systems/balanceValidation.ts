@@ -13,6 +13,8 @@ import { FACTION_DEFS } from '../core/defs';
 import { UNIT_CLASS_TEMPLATES, VEHICLE_CLASS_IDS } from '../data/unitClasses';
 import { resolveUnit, templateToDef } from './unitFactory';
 import { getVariant } from '../vehicles';
+import { factionHasPerkForField } from '../data/factionModifierValidationMap';
+import type { FactionId } from '../data/factionModifiers';
 import type { UnitDef } from '../core/types';
 
 /** Balance-critical stats compared across factions (per class). */
@@ -32,14 +34,9 @@ const CRITICAL_FIELDS: { key: string; get: (d: UnitDef) => number | null }[] = [
   { key: 'autoAcquireRange', get: d => d.autoAcquireRange ?? null },
 ];
 
-/** Faction modifier keys that legitimately shift unit stats (perks). */
-const PERK_FIELDS: Record<string, string[]> = {
-  cost: ['vehicleCost', 'infantryCost'],
-  buildTime: ['buildTime'],
-  speed: ['infantrySpeed'],
-  maxHitPoints: ['hp', 'unitHp'],
-  damage: ['vehicleDamage', 'energyDamage'],
-};
+// Perk explanations are derived from FACTION_MODIFIERS (the runtime source of
+// truth) via factionHasPerkForField — see factionModifierValidationMap.ts. The
+// old factions.json `modifiers` read is gone; the registry is canonical.
 
 export interface BalanceReport {
   violations: string[];
@@ -63,9 +60,8 @@ export function validateBalance(): BalanceReport {
         const resolved = resolveUnit(classId, f);
         const v = field.get(resolved);
         if (v == null) continue;
-        // Did a faction perk modifier touch this field?
-        const perkKeys = PERK_FIELDS[field.key] ?? [];
-        const viaPerks = perkKeys.some(k => (f.modifiers[k] ?? 1) !== 1 && f.modifiers[k] !== undefined);
+        // Did a faction perk modifier touch this field? (registry-derived)
+        const viaPerks = factionHasPerkForField(f.id as FactionId, field.key);
         // Did the variant declare an explicit override?
         const variant = getVariant(f.id, classId);
         const ov = variant?.balanceOverrides?.find(o =>
