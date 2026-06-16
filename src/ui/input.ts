@@ -210,8 +210,13 @@ export class InputController {
     if (hit?.kind === 'building' && hit.building.team === 0) {
       const b = hit.building;
       const fabs = this.selectedUnits.filter(u => u.def.builder);
-      // ...unless builders are selected and the structure needs work → build/repair.
-      if (haveSel && fabs.length && (!b.complete || b.hp < b.def.hp)) { this.issueCommand(e.clientX, e.clientY); return; }
+      const haulerReturn = b.complete && !!b.def.dropoff
+        && this.selectedUnits.some(u => u.def.harvester && u.cargo > 0);
+      // ...unless builders need to build/repair, or loaded harvesters want to unload → command.
+      if (haveSel && ((fabs.length && (!b.complete || b.hp < b.def.hp)) || haulerReturn)) {
+        this.issueCommand(e.clientX, e.clientY);
+        return;
+      }
       this.selectBuilding(b);
       return;
     }
@@ -302,6 +307,13 @@ export class InputController {
         this.markerAt(b.cx, b.cz, 'move');
         return;
       }
+      // Loaded harvesters → return to this dropoff and unload now (even partial).
+      if (b.team === 0 && b.complete && b.def.dropoff) {
+        const haulers = this.selectedUnits.filter(u => u.def.harvester && u.cargo > 0);
+        let returned = false;
+        for (const h of haulers) returned = this.world.orderReturn(h, b) || returned;
+        if (returned) { this.markerAt(b.cx, b.cz, 'gather'); return; }
+      }
       for (const u of this.selectedUnits) this.world.orderMove(u, b.cx, b.cz);
       this.markerAt(b.cx, b.cz, 'move');
       return;
@@ -339,6 +351,18 @@ export class InputController {
 
   /** Stop selected units (on-screen ⛔ button / S key). */
   stopSelected() { for (const u of this.selectedUnits) this.world.stop(u); }
+
+  /** Send every selected loaded harvester to the nearest dropoff to unload now. */
+  returnLoadedHarvesters() {
+    let any = false;
+    for (const u of this.selectedUnits) {
+      if (u.def.harvester && u.cargo > 0 && this.world.orderReturn(u)) {
+        any = true;
+        this.markerAt(u.x, u.z, 'gather');
+      }
+    }
+    if (any) toast('Harvester laden ab …');
+  }
 
   /** Hold position: stop, and have armed units defend their current spot. */
   holdSelected() {

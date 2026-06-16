@@ -891,6 +891,26 @@ export function makeHealthBar(width: number): HealthBar {
 // sprite that always faces the camera. `set(text)` repaints only on change.
 // baseScale* let the caller counter a parent's animated scale (buildings rise
 // via group.scale.y during construction).
+// Cargo/load bar (harvesters) — a single crystal-cyan fill showing how full the
+// hauler is. Same billboard treatment as the health bar; distinct colour so the
+// two never read as the same thing.
+const cargoBg = new THREE.MeshBasicMaterial({ color: '#06131a', depthTest: false, transparent: true, opacity: 0.85 });
+const cargoFg = new THREE.MeshBasicMaterial({ color: '#3fe0ff', depthTest: false });
+export function makeCargoBar(width: number): HealthBar {
+  const group = new THREE.Group();
+  const bg = new THREE.Mesh(hbGeo, cargoBg);
+  bg.scale.set(width, 0.14, 1); bg.renderOrder = 20;
+  const fg = new THREE.Mesh(hbGeo, cargoFg);
+  fg.scale.set(width, 0.085, 1); fg.position.z = 0.01; fg.renderOrder = 21;
+  group.add(bg, fg);
+  const set = (ratio: number) => {
+    const r = Math.max(0, Math.min(1, ratio));
+    fg.scale.x = width * r;
+    fg.position.x = -(width * (1 - r)) / 2;
+  };
+  return { group, set };
+}
+
 export interface TextLabel {
   sprite: THREE.Sprite;
   set: (text: string) => void;

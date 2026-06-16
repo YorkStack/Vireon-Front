@@ -5,7 +5,7 @@ import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, CrystalNode } from '../m
 import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
-import { makeEntityGroup, makeSelectionRing, makeHealthBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
+import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 
@@ -50,6 +50,7 @@ export class Unit {
   group: THREE.Group;
   ring: THREE.Mesh;
   hb: HealthBar;
+  cargoBar: HealthBar | null = null; // crystal load bar (harvesters only)
 
   constructor(team: TeamId, def: UnitDef, x: number, z: number, accent: string) {
     this.team = team; this.def = def; this.x = x; this.z = z;
@@ -65,6 +66,12 @@ export class Unit {
     this.hb.group.position.y = (this.group.userData.topY ?? 1.5) + 0.5;
     this.hb.group.visible = false;
     this.group.add(this.hb.group);
+    if (def.harvester) {
+      this.cargoBar = makeCargoBar(Math.max(1.0, def.radius * 2));
+      this.cargoBar.group.position.y = (this.group.userData.topY ?? 1.5) + 0.74;
+      this.cargoBar.group.visible = false;
+      this.group.add(this.cargoBar.group);
+    }
   }
   get isInfantry() { return this.def.class === 'infantry'; }
   get tile(): [number, number] { return [Math.floor(this.x / TILE), Math.floor(this.z / TILE)]; }
@@ -395,6 +402,24 @@ export class World {
     u.sub = u.cargo >= (u.def.capacity ?? 1) ? 'toDropoff' : 'toNode';
     const [wx, wz] = this.map.tileToWorld(node.tx, node.tz);
     this.setPath(u, ...this.map.worldToTile(wx, wz));
+  }
+
+  /**
+   * Manually send a (possibly partially-loaded) harvester back to a dropoff to
+   * unload now — for when the player urgently needs credits. It resumes
+   * gathering afterwards. Returns true if it had cargo and a dropoff exists.
+   */
+  orderReturn(u: Unit, drop?: Building): boolean {
+    if (!u.def.harvester || u.cargo <= 0) return false;
+    const dropoff = drop ?? this.nearestDropoff(u.team, u.x, u.z);
+    if (!dropoff) return false;
+    u.harvAttack = false;
+    const node = u.order.kind === 'gather' ? u.order.node : this.nearestCrystal(u.x, u.z);
+    u.order = { kind: 'gather', node };
+    u.sub = 'toDropoff';
+    const t = this.freeTileNear(dropoff, u.isInfantry);
+    if (t) this.setPath(u, t[0], t[1]);
+    return true;
   }
 
   orderBuild(u: Unit, site: Building) {
@@ -873,6 +898,16 @@ export class World {
       if (u.hb.group.visible) {
         u.hb.set(u.hp / u.def.hp);
         u.hb.group.quaternion.copy(this.camQuat);
+      }
+      // Harvester crystal-load bar: visible when carrying or selected.
+      if (u.cargoBar) {
+        const cap = u.def.capacity ?? 0;
+        const show = cap > 0 && (u.cargo > 0.01 || u.selected);
+        u.cargoBar.group.visible = show;
+        if (show) {
+          u.cargoBar.set(cap > 0 ? u.cargo / cap : 0);
+          u.cargoBar.group.quaternion.copy(this.camQuat);
+        }
       }
       this.animateUnit(u, dt);
     }

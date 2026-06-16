@@ -2,7 +2,12 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-16, **Schwierigkeitsgrade + Fraktions-Doctrines (MVP, GAME, main)**)
+## ⏱️ Aktueller Stand (2026-06-16, **Harvester: Beladungsanzeige + manueller Rückruf**)
+- **Beladungsanzeige:** Harvester haben jetzt eine kristall-cyane **Ladeleiste** über dem Fahrzeug (`makeCargoBar` in [models.ts](src/render/models.ts), in `syncVisuals` aktualisiert — sichtbar wenn beladen oder ausgewählt) + im HUD-Panel die Zeile **„◈ Kristalle: X / cap (Y%)"** (Einzel) bzw. Gesamt/Beladen-Zähler (mehrere).
+- **Manueller Rückruf (auch teilbeladen):** `World.orderReturn(u, drop?)` schickt einen beladenen Harvester sofort zur nächsten Abladestelle (Raffinerie) und lädt ab, dann sammelt er weiter. Auslösbar per **Linksklick auf die eigene Raffinerie** (Harvester ausgewählt) ODER **On-Screen-Button „◈ Abladen"** ([input.ts](src/ui/input.ts) `returnLoadedHarvesters`, [hud.ts](src/ui/hud.ts), Callback in [game.ts](src/core/game.ts)).
+- **Verify:** 77 Tests grün, `tsc`+`vite build` sauber. Im Browser live verifiziert: Cargo-Zeile + Harvester-Hinweis („Raffinerie = jetzt abladen") rendern korrekt; das Befüllen nutzt die bestehende Sammel-Mechanik (Ladebalken-`set` = bewährter HP-Balken-Code). (Cargo>0 im Browser nicht final abgegriffen, da die erreichbaren Test-Kristalle auf einem Plateau lagen.)
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Schwierigkeitsgrade + Fraktions-Doctrines (MVP, GAME, main)**)
 - **Designdokument:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md) — vollständiges datengetriebenes System (Faction × Doctrine × Difficulty), 12 Doctrines, Balancing-Matrix + Power-Score, Admin-Tuning-Konzept, Resource/Power/Aura-Modelle, AI-Entscheidungsfunktionen, 3-Phasen-Roadmap. **Phase 2/3 noch offen.**
 - **MVP (Phase 1) umgesetzt:**
   - **4 Schwierigkeitsgrade** [difficulty.ts](src/data/difficulty.ts): leicht/mittel/schwer/superschwer. **Heute = „Schwer" (Baseline 1.0)** verankert; Multiplikatoren auf firstWaveAt/waveInterval/waveGrowth/maxArmy/cadence + **KI-Income-Hebel** (`TeamState.incomeMul`, im Erz-Dropoff angewandt). Auswahl im Startbildschirm (Default **Mittel**).

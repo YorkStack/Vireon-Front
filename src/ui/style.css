@@ -249,6 +249,7 @@ button.primary:active {
 #cmdpanel.visible { display: flex; }
 #cmdpanel .sel-title { font-size: 15px; font-weight: 700; }
 #cmdpanel .sel-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+#cmdpanel .sel-sub.cargo { color: #6fe6ff; font-weight: 600; }
 #cmdpanel .btn-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
 .cmd-btn {
   position: relative; padding: 7px 6px 6px; border-radius: 8px; text-align: center;

@@ -10,6 +10,7 @@ export interface HudCallbacks {
   armAttack: () => void;   // toggle attack-move arming
   stopSel: () => void;     // stop selected units
   holdSel: () => void;     // hold position
+  returnHarvesters: () => void; // send loaded harvesters to a dropoff now
   isArmed: () => boolean;  // attack-move currently armed?
 }
 
@@ -108,10 +109,24 @@ export class Hud {
       : [...names.entries()].map(([n, c]) => `${c}× ${n}`).join(', ');
     const one = units.length === 1 ? units[0] : null;
 
+    // Harvester crystal load (single = exact, multi = total + how many are loaded).
+    const haulers = units.filter(u => u.def.harvester);
+    const loaded = haulers.filter(u => u.cargo > 0);
+    let cargoLine = '';
+    if (haulers.length === 1) {
+      const h = haulers[0]; const cap = h.def.capacity ?? 0;
+      const pct = cap > 0 ? Math.round(100 * h.cargo / cap) : 0;
+      cargoLine = `<div class="sel-sub cargo">◈ Kristalle: ${Math.round(h.cargo)} / ${cap} (${pct}%)</div>`;
+    } else if (haulers.length > 1) {
+      const total = haulers.reduce((s, h) => s + h.cargo, 0);
+      cargoLine = `<div class="sel-sub cargo">◈ Kristalle gesamt: ${Math.round(total)} — ${loaded.length}/${haulers.length} beladen</div>`;
+    }
+
     let html = `
       <div>
         <div class="sel-title">${title}</div>
         <div class="sel-sub">${one ? `${Math.ceil(one.hp)} / ${one.def.hp} HP — ${one.def.description}` : `${units.length} units selected`}</div>
+        ${cargoLine}
       </div>
     `;
 
@@ -120,6 +135,7 @@ export class Hud {
     const armed = this.cb.isArmed();
     html += `<div class="cmd-actions">
       ${anyWeapon ? `<button class="cmd-act${armed ? ' active' : ''}" data-act="attack" title="Angriffsbewegung — dann Ziel/Boden anklicken (Taste A)">⚔ Angriff</button>` : ''}
+      ${loaded.length ? `<button class="cmd-act" data-act="return" title="Beladene Harvester sofort zur Raffinerie schicken">◈ Abladen</button>` : ''}
       <button class="cmd-act" data-act="stop" title="Stoppen (Taste S)">⛔ Stopp</button>
       <button class="cmd-act" data-act="hold" title="Position halten">✋ Halten</button>
     </div>`;
@@ -142,7 +158,7 @@ export class Hud {
       }
       html += `</div><div class="hint">Struktur wählen, dann auf Gelände klicken zum Bauen. ESC bricht ab.</div>`;
     } else {
-      html += `<div class="hint">Linksklick: Boden = bewegen · Gegner = angreifen${units.some(u => u.def.harvester) ? ' · Kristall = sammeln' : ''} · ⚔/Taste A = Angriffsbewegung · eigene Einheit = neu wählen · ESC = abwählen</div>`;
+      html += `<div class="hint">Linksklick: Boden = bewegen · Gegner = angreifen${haulers.length ? ' · Kristall = sammeln · Raffinerie = jetzt abladen' : ''} · ⚔/Taste A = Angriffsbewegung · eigene Einheit = neu wählen · ESC = abwählen</div>`;
     }
     return html;
   }
@@ -207,6 +223,7 @@ export class Hud {
         if (a === 'attack') this.cb.armAttack();
         else if (a === 'stop') this.cb.stopSel();
         else if (a === 'hold') this.cb.holdSel();
+        else if (a === 'return') this.cb.returnHarvesters();
         this.renderPanel();
       });
     });
