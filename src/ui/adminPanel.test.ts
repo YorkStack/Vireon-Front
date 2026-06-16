@@ -45,14 +45,22 @@ describe('F8 admin panel — governance & DOM', () => {
     expect(p.root.querySelector('.sheet')!.textContent).toContain('Admin / Balancing Panel');
   });
 
-  it('2. editable paths come from getAdminEditableFactionModifierPaths()', () => {
-    const fromRegistry = getAdminEditableFactionModifierPaths().map((m) => m.path).sort();
+  it('2. editable paths come from getAdminEditableFactionModifierPaths() (incl. Phase 4a migrated)', () => {
+    // Derived, not hard-coded: every admin-editable registry path that also has a
+    // slider range shows up as editable.
+    const fromRegistry = getAdminEditableFactionModifierPaths()
+      .map((m) => m.path).filter((p) => p in SLIDER_RANGES).sort();
     expect(editablePaths().sort()).toEqual(fromRegistry);
-    // and exactly the six live ones
-    expect(editablePaths().sort()).toEqual([
-      'economy.resourceGatherRate', 'power.lowPowerDefensePenalty', 'power.lowPowerProductionPenalty',
-      'power.lowPowerRepairPenalty', 'power.powerOutageSeverity', 'repair.repairRate',
-    ]);
+    // the six originals…
+    for (const p of ['economy.resourceGatherRate', 'power.lowPowerDefensePenalty', 'power.lowPowerProductionPenalty',
+      'power.lowPowerRepairPenalty', 'power.powerOutageSeverity', 'repair.repairRate']) {
+      expect(editablePaths()).toContain(p);
+    }
+    // …plus the five migrated economy/power cost dimensions
+    for (const p of ['economy.unitCost', 'economy.infantryCost', 'economy.vehicleCost',
+      'economy.buildingCost', 'power.powerUsage']) {
+      expect(editablePaths()).toContain(p);
+    }
   });
 
   it('3. only live modifiers are editable (prepared/legacy are not)', () => {

@@ -9,6 +9,7 @@ import factionsJson from '../data/factions.json';
 import type { UnitDef, BuildingDef, FactionDef } from './types';
 import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import { templateToDef, resolveUnit } from '../systems/unitFactory';
+import { getModifiedBuildingCost, getModifiedPowerUsage, type FactionId } from '../data/factionModifiers';
 
 export const UNIT_DEFS: Record<string, UnitDef> = {};
 export const BUILDING_DEFS: Record<string, BuildingDef> = {};
@@ -39,9 +40,14 @@ export function buildingStats(defId: string, faction: FactionDef): BuildingDef {
       range: weapon.range + (faction.modifiers['turretRange'] ?? 0),
     };
   }
-  const power = base.power < 0 ? Math.round(base.power * mod(faction, 'powerUse')) : base.power;
+  // Power usage MIGRATED to FACTION_MODIFIERS (Phase 4a): registry mirrors the
+  // legacy factions.json powerUse, applied only to consumers (negative power),
+  // same rounding → identical behaviour. Building cost likewise centralised.
+  const fid = faction.id as FactionId;
+  const power = base.power < 0 ? Math.round(getModifiedPowerUsage(base.power, fid)) : base.power;
   return {
     ...base,
+    cost: getModifiedBuildingCost(base.cost, fid),
     hp: Math.round(base.hp * mod(faction, 'hp')),
     buildTime: base.buildTime * mod(faction, 'buildTime'),
     power,

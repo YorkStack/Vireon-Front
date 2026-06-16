@@ -13,6 +13,7 @@ import { UNIT_CLASS_TEMPLATES, type UnitClassTemplate } from '../data/unitClasse
 import { WEAPONS, toLegacyWeapon } from '../data/weapons';
 import { getVariant } from '../vehicles';
 import type { VehicleVariant } from '../vehicles/types';
+import { getModifiedUnitCost, type FactionId, type UnitKind } from '../data/factionModifiers';
 
 /** Old units.json ids → new class template ids (campaign compat). */
 export const LEGACY_ALIASES: Record<string, string> = {
@@ -126,7 +127,6 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
   const isInf = def.class === 'infantry';
   const isVeh = def.class === 'vehicle';
   const hpMul = mod(faction, 'hp') * mod(faction, 'unitHp');
-  const costMul = (isInf ? mod(faction, 'infantryCost') : 1) * (isVeh ? mod(faction, 'vehicleCost') : 1);
   const speedMul = isInf ? mod(faction, 'infantrySpeed') : 1;
   let weapon: WeaponDef | null = def.weapon;
   if (weapon) {
@@ -135,10 +135,13 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
     if (weapon.damageType === 'energy') dmgMul *= mod(faction, 'energyDamage');
     weapon = { ...weapon, damage: Math.round(weapon.damage * dmgMul) };
   }
+  // Cost MIGRATED to FACTION_MODIFIERS (Phase 4a): single source of truth, same
+  // 5-credit rounding as before → no price change. Override-responsive via F8.
+  const kind: UnitKind = isInf ? 'infantry' : isVeh ? 'vehicle' : 'general';
   return {
     ...def,
     hp: Math.round(def.hp * hpMul),
-    cost: Math.round(def.cost * costMul / 5) * 5,
+    cost: getModifiedUnitCost(def.cost, faction.id as FactionId, kind),
     speed: def.speed * speedMul,
     buildTime: def.buildTime * mod(faction, 'buildTime'),
     weapon,

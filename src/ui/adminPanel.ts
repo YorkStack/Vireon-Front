@@ -49,6 +49,12 @@ export const SLIDER_RANGES: Record<string, { min: number; max: number; step: num
   'power.lowPowerRepairPenalty': { min: 0.1, max: 1.0, step: 0.01 },
   'economy.resourceGatherRate': { min: 0.5, max: 1.5, step: 0.01 },
   'repair.repairRate': { min: 0.3, max: 1.8, step: 0.01 },
+  // Phase 4a — migrated economy/power cost dimensions (now live & editable):
+  'economy.unitCost': { min: 0.5, max: 2.0, step: 0.05 },
+  'economy.infantryCost': { min: 0.5, max: 2.0, step: 0.05 },
+  'economy.vehicleCost': { min: 0.5, max: 2.0, step: 0.05 },
+  'economy.buildingCost': { min: 0.5, max: 2.0, step: 0.05 },
+  'power.powerUsage': { min: 0.5, max: 2.0, step: 0.05 },
 };
 
 // ── Editable-path governance ─────────────────────────────────────────────────

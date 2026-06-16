@@ -112,9 +112,14 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     repair: { repairRate: 1.1, autoRepairEfficiency: 1.0 },
   },
   // Azure Concorde — shielded control: slower, durable, defensive.
+  // NOTE (Phase 4a migration): cost/powerUsage MIRROR the live legacy values
+  // (factions.json has no blue cost/powerUse perk → all 1.0). The previously
+  // aspirational 1.05/1.1 numbers were never live; setting them to 1.0 keeps the
+  // game identical. Re-introducing a blue economy identity is a future balance
+  // decision (now editable via F8), not part of this no-balance-change migration.
   blue: {
-    economy: { resourceGatherRate: 0.95, resourceEfficiency: 1.1, resourceConsumption: 0.95, unitCost: 1.05, infantryCost: 1.05, vehicleCost: 1.05, buildingCost: 1.05, techCost: 1.05, upkeepPressure: 0.95 },
-    power: { powerUsage: 1.1, powerGeneration: 1.0, powerOutageSeverity: 1.15, powerGridVulnerability: 1.1, lowPowerProductionPenalty: 0.8, lowPowerDefensePenalty: 0.72, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.85 },
+    economy: { resourceGatherRate: 0.95, resourceEfficiency: 1.1, resourceConsumption: 0.95, unitCost: 1.0, infantryCost: 1.0, vehicleCost: 1.0, buildingCost: 1.0, techCost: 1.05, upkeepPressure: 0.95 },
+    power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 1.15, powerGridVulnerability: 1.1, lowPowerProductionPenalty: 0.8, lowPowerDefensePenalty: 0.72, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.85 },
     combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.05, unitSpeed: 0.95, unitHull: 1.12, vehicleHull: 1.12, infantryHull: 1.08 },
     defense: { buildingHull: 1.15, turretDurability: 1.2, turretRangeBonus: 0, turretTurnSpeed: 0.9, staticDefensePower: 1.15, shieldStrength: 1.2 },
     production: { buildSpeed: 0.88, unitProductionSpeed: 0.92, vehicleProductionSpeed: 0.92, infantryProductionSpeed: 0.95, techUnlockSpeed: 0.95 },
@@ -122,9 +127,12 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     special: { shieldNetworkEfficiency: 1.15 },
   },
   // Verdant Swarm — swarm consumption: fast, cheap, hungry, less power-dependent.
+  // NOTE (Phase 4a migration): only infantryCost (0.85) is a live legacy perk.
+  // unitCost/vehicleCost/buildingCost/powerUsage are mirrored to their live 1.0
+  // values (factions.json has no green vehicleCost/powerUse) — no balance change.
   green: {
-    economy: { resourceGatherRate: 1.05, resourceEfficiency: 0.92, resourceConsumption: 1.18, unitCost: 0.9, infantryCost: 0.85, vehicleCost: 0.95, buildingCost: 0.95, techCost: 1.0, upkeepPressure: 1.15 },
-    power: { powerUsage: 0.75, powerGeneration: 1.0, powerOutageSeverity: 0.45, powerGridVulnerability: 0.5, lowPowerProductionPenalty: 0.92, lowPowerDefensePenalty: 0.9, lowPowerRepairPenalty: 0.95, lowPowerWeaponPenalty: 0.95 },
+    economy: { resourceGatherRate: 1.05, resourceEfficiency: 0.92, resourceConsumption: 1.18, unitCost: 1.0, infantryCost: 0.85, vehicleCost: 1.0, buildingCost: 1.0, techCost: 1.0, upkeepPressure: 1.15 },
+    power: { powerUsage: 1.0, powerGeneration: 1.0, powerOutageSeverity: 0.45, powerGridVulnerability: 0.5, lowPowerProductionPenalty: 0.92, lowPowerDefensePenalty: 0.9, lowPowerRepairPenalty: 0.95, lowPowerWeaponPenalty: 0.95 },
     combat: { infantryDamage: 1.0, vehicleDamage: 0.98, energyWeaponDamage: 0.95, unitSpeed: 1.15, unitHull: 0.95, vehicleHull: 0.95, infantryHull: 0.92 },
     defense: { buildingHull: 0.9, turretDurability: 0.85, turretRangeBonus: 0, turretTurnSpeed: 1.05, staticDefensePower: 0.8 },
     production: { buildSpeed: 1.2, unitProductionSpeed: 1.25, vehicleProductionSpeed: 1.12, infantryProductionSpeed: 1.3, techUnlockSpeed: 0.9 },
@@ -132,8 +140,11 @@ export const FACTION_MODIFIERS: Record<FactionId, FactionModifiers> = {
     special: { replacementBias: 1.25, biologicalResilience: 1.1 },
   },
   // Solar Dominion — radiant colony: power-intensive, zone control, late-game.
+  // NOTE (Phase 4a migration): only powerUsage (1.25) is a live legacy perk.
+  // Cost modifiers mirror their live 1.0 values (factions.json has no solar cost
+  // perk) — no balance change.
   yellow: {
-    economy: { resourceGatherRate: 0.95, resourceEfficiency: 0.98, resourceConsumption: 1.05, unitCost: 1.05, infantryCost: 1.05, vehicleCost: 1.05, buildingCost: 1.05, techCost: 1.1, upkeepPressure: 1.05 },
+    economy: { resourceGatherRate: 0.95, resourceEfficiency: 0.98, resourceConsumption: 1.05, unitCost: 1.0, infantryCost: 1.0, vehicleCost: 1.0, buildingCost: 1.0, techCost: 1.1, upkeepPressure: 1.05 },
     power: { powerUsage: 1.25, powerGeneration: 1.0, powerOutageSeverity: 1.35, powerGridVulnerability: 1.35, lowPowerProductionPenalty: 0.65, lowPowerDefensePenalty: 0.55, lowPowerRepairPenalty: 0.65, lowPowerWeaponPenalty: 0.5 },
     combat: { infantryDamage: 0.98, vehicleDamage: 1.0, energyWeaponDamage: 1.2, unitSpeed: 0.98, unitHull: 1.0, vehicleHull: 1.0, infantryHull: 1.0 },
     defense: { buildingHull: 1.05, turretDurability: 1.05, turretRangeBonus: 1, turretTurnSpeed: 0.95, staticDefensePower: 1.1 },
@@ -169,7 +180,9 @@ export function getPowerModifiers(factionId: FactionId): FactionPowerModifiers {
 export function getModifiedUnitCost(baseCost: number, factionId: FactionId, unitKind: UnitKind = 'general'): number {
   const e = getEconomyModifiers(factionId);
   const kindMul = unitKind === 'infantry' ? e.infantryCost : unitKind === 'vehicle' ? e.vehicleCost : 1;
-  return Math.round(baseCost * e.unitCost * kindMul);
+  // 5-credit granularity — identical to the legacy resolveUnit rounding so the
+  // Phase 4a cost migration does not shift any unit price.
+  return Math.round(baseCost * e.unitCost * kindMul / 5) * 5;
 }
 export function getModifiedBuildingCost(baseCost: number, factionId: FactionId): number {
   return Math.round(baseCost * getEconomyModifiers(factionId).buildingCost);
@@ -334,6 +347,8 @@ export interface ModifierRuntimeMetadata {
   runtimeSource: 'FACTION_MODIFIERS' | 'factions.json' | 'unitStats' | 'buildingStats' | 'mixed' | 'not_yet_integrated';
   adminEditable: boolean;
   migrationNeeded?: boolean;
+  /** True when a value is intentionally left legacy-backed this phase (risk-managed). */
+  migrationDeferred?: boolean;
 }
 
 /**
@@ -353,16 +368,20 @@ export const MODIFIER_RUNTIME_METADATA: ModifierRuntimeMetadata[] = [
   { path: 'economy.resourceGatherRate', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Erz-Ertrag pro Harvester-Abladung.' },
   { path: 'repair.repairRate', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, description: 'Reparatur-Tempo der Fabricator an Gebäuden.' },
 
+  // ---- MIGRATED in Phase 4a → now LIVE via FACTION_MODIFIERS (admin-editable) ----
+  { path: 'economy.unitCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Globaler Einheiten-Kostenfaktor (×kind). Migriert: resolveUnit liest getModifiedUnitCost.' },
+  { path: 'economy.infantryCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Infanterie-Kostenfaktor. Migriert: resolveUnit liest getModifiedUnitCost (spiegelt factions.json).' },
+  { path: 'economy.vehicleCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Fahrzeug-Kostenfaktor. Migriert: resolveUnit liest getModifiedUnitCost (spiegelt factions.json).' },
+  { path: 'economy.buildingCost', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Gebäude-Kostenfaktor. Migriert: buildingStats liest getModifiedBuildingCost.' },
+  { path: 'power.powerUsage', status: 'live', runtimeSource: 'FACTION_MODIFIERS', adminEditable: true, migrationNeeded: false, description: 'Gebäude-Stromverbrauch. Migriert: buildingStats liest getModifiedPowerUsage (spiegelt factions.json powerUse).' },
+
   // ---- LEGACY-BACKED (live in-game, but via the old path → migration needed) ----
   { path: 'combat.vehicleDamage', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (vehicleDamage) in unitStats.' },
   { path: 'combat.energyWeaponDamage', status: 'legacy_backed', runtimeSource: 'mixed', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (energyDamage) in unit/buildingStats.' },
   { path: 'combat.unitHull', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (hp/unitHp) in unitStats.' },
   { path: 'combat.unitSpeed', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantrySpeed) in unitStats.' },
-  { path: 'economy.vehicleCost', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (vehicleCost) in unitStats.' },
-  { path: 'economy.infantryCost', status: 'legacy_backed', runtimeSource: 'unitStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (infantryCost) in unitStats.' },
-  { path: 'production.buildSpeed', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Bauzeit aktiv via factions.json (buildTime) in building/unitStats.' },
+  { path: 'production.buildSpeed', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, migrationDeferred: true, description: 'Bauzeit aktiv via factions.json (buildTime) in building/unitStats. Bewusst NICHT in 4a migriert: Registry-Semantik ist Speed (Kehrwert), Legacy ist buildTime-Multiplikator → Inversions-/Präzisionsrisiko, und der Pfad wird an zwei Runtime-Stellen (Units+Buildings) angewandt.' },
   { path: 'defense.turretRangeBonus', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Aktiv via factions.json (turretRange) in buildingStats.' },
-  { path: 'power.powerUsage', status: 'legacy_backed', runtimeSource: 'buildingStats', adminEditable: false, migrationNeeded: true, description: 'Gebäude-Stromverbrauch aktiv via factions.json (powerUse) in buildingStats.' },
 
   // ---- PREPARED only (no effect yet) ----
   { path: 'special.colonyAuraEnabled', status: 'prepared', runtimeSource: 'not_yet_integrated', adminEditable: false, description: 'Colony-Aura-Flag; getColonyAura vorbereitet, nicht auf Entities angewandt.' },
