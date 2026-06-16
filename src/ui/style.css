@@ -196,10 +196,20 @@ button.primary:active {
 .faction-card ul.sw li.pos { color: #74e0a0; }
 .faction-card ul.sw li.neg { color: #f0a0a0; }
 .faction-card .reco { font-size: 10.5px; color: #8fb8c8; font-style: italic; text-align: left; }
-.faction-card .doctrine-pick { display: flex; align-items: center; gap: 6px; font-size: 10.5px;
-  color: var(--accent); letter-spacing: 1px; margin: 4px 0 6px; text-align: left; }
-.faction-card .doctrine-sel { flex: 1; font-size: 11px; padding: 4px 6px; border-radius: 6px;
+.faction-card .tac-label { font-size: 11.5px; color: #bfe3e0; margin: 2px 0 6px; text-align: left; }
+.faction-card .tac-label b { color: #eafffb; }
+/* Advanced doctrine preview (hidden by default; no player gameplay effect yet) */
+.adv-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.adv-toggle { font-size: 11px; letter-spacing: 1px; padding: 5px 14px; border-radius: 7px;
+  background: rgba(30, 34, 60, 0.6); color: var(--text-dim); border: 1px solid var(--panel-border); cursor: pointer; }
+.adv-toggle:hover { color: var(--text); }
+.adv-box .doctrine-pick { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-dim); }
+.adv-box .doctrine-pick select { font-size: 11px; padding: 4px 6px; border-radius: 6px;
   background: rgba(20, 26, 46, 0.85); color: #dff; border: 1px solid var(--panel-border); cursor: pointer; }
+/* Briefing faction tactical profile */
+.brief-profile { font-size: 13px; color: #bfe3e0; margin-top: 2px; }
+.brief-profile b { color: #eafffb; }
+.brief-stats { font-size: 11px; color: var(--text-dim); margin-top: 1px; }
 .difficulty-row { flex-wrap: wrap; }
 .difficulty-btn { display: flex; flex-direction: column; gap: 2px; align-items: center; min-width: 150px;
   padding: 9px 12px; border-radius: 9px; border: 1px solid var(--panel-border);

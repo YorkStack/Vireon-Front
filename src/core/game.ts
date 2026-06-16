@@ -14,7 +14,7 @@ import { showPauseMenu, showEndScreen, toast } from '../ui/screens';
 import { FACTION_DEFS } from './defs';
 import type { MissionDef, TeamId } from './types';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
-import { doctrinesFor } from '../data/doctrines';
+import { randomDoctrineFor } from '../data/doctrines';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -90,13 +90,12 @@ export class Game {
       return b;
     };
 
-    // Enemy adopts a random doctrine from its faction (variety across matches).
-    const enemyDoctrines = doctrinesFor(enemyId);
-    const enemyDoctrine = enemyDoctrines.length
-      ? enemyDoctrines[Math.floor(Math.random() * enemyDoctrines.length)]
-      : undefined;
+    // Enemy faction = fixed identity; enemy doctrine = this match's AI persona,
+    // drawn at random from that faction's doctrines (replay variety).
+    const enemyDoctrine = randomDoctrineFor(enemyId);
     this.ai = new EnemyAI(this.world, mission.aiProfile, this.map.enemyStart.tx, this.map.enemyStart.tz, difficulty, enemyDoctrine);
-    toast(`Gegner: ${enemyFaction.name}${enemyDoctrine ? ` · ${enemyDoctrine.uiName}` : ''}`);
+    const enemyLabel = enemyFaction.tactical?.doctrineLabel;
+    toast(`Gegner: ${enemyFaction.name}${enemyLabel ? ` (${enemyLabel})` : ''} — KI-Doktrin: ${enemyDoctrine.uiName}`);
 
     this.input = new InputController(this.rig, this.world, this.effects, built.terrain);
     this.input.openPause = () => this.openPause();

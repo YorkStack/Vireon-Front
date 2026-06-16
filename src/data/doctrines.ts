@@ -15,6 +15,19 @@ export interface CommanderPersonality {
   unitReplacementBias: number; powerDependencyTolerance: number;
 }
 
+/**
+ * Optional, SMALL modulation a doctrine may apply on top of the faction's fixed
+ * modifiers — it biases, it never replaces the faction identity. Unused for now
+ * (reserved for Phase 2 economy/power); kept here so the data model is complete.
+ */
+export interface DoctrineModifierBias {
+  buildSpeed?: number;
+  unitCost?: number;
+  defensePower?: number;
+  energyFocus?: number;
+  expansionFocus?: number;
+}
+
 export interface Doctrine {
   id: string;
   faction: 'red' | 'blue' | 'green' | 'yellow'; // legacy faction key
@@ -26,6 +39,7 @@ export interface Doctrine {
   buildOrder?: string[];        // overrides the AI's CORE_PLAN
   defenseOrder?: string[];      // overrides the AI's DEFENSE_PLAN
   armyMix?: [string, number][]; // overrides the AI's ARMY_ROLE_MIX (role, weight)
+  optionalModifierBias?: DoctrineModifierBias; // small modulation only — never replaces faction identity
   heroUnitId?: string;          // optional future visible commander
 }
 
@@ -148,11 +162,16 @@ export const DOCTRINES_BY_FACTION: Record<string, string[]> = {
   yellow: ['solar_radiant_cultivator', 'solar_spore_prophet', 'solar_annihilator'],
 };
 
-/** Each faction's default (enemy-AI) doctrine = first in its list. */
+/**
+ * Each faction's DEFAULT doctrine (the AI persona used when none is set). This
+ * is the canonical source; factions.json mirrors it as `defaultDoctrineId` for
+ * the data model (a test keeps them in sync). Note: green's default is the
+ * Hive Expander (expansionist), not the first-listed Brood Rusher.
+ */
 export const DEFAULT_DOCTRINE_BY_FACTION: Record<string, string> = {
   red: 'crimson_field_marshal',
   blue: 'azure_shield_architect',
-  green: 'verdant_brood_rusher',
+  green: 'verdant_hive_expander',
   yellow: 'solar_radiant_cultivator',
 };
 
@@ -167,4 +186,15 @@ export function defaultDoctrineFor(legacyFactionId: string): Doctrine {
 /** Resolve a doctrine by id, falling back to a faction default. */
 export function doctrineById(id: string | undefined, legacyFactionId: string): Doctrine {
   return (id && DOCTRINES[id]) || defaultDoctrineFor(legacyFactionId);
+}
+
+/**
+ * Pick a doctrine for the enemy AI — ALWAYS from the enemy faction's own list
+ * (enemy faction = identity; enemy doctrine = this match's AI persona). `rand`
+ * is injectable for tests; defaults to Math.random.
+ */
+export function randomDoctrineFor(legacyFactionId: string, rand: () => number = Math.random): Doctrine {
+  const list = doctrinesFor(legacyFactionId);
+  if (!list.length) return defaultDoctrineFor(legacyFactionId);
+  return list[Math.floor(rand() * list.length) % list.length];
 }

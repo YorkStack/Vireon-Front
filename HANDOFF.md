@@ -2,7 +2,16 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-16, **Phase 2a — alle 12 Doctrines + Auswahl**)
+## ⏱️ Aktueller Stand (2026-06-16, **Doctrine-Konzept korrigiert — Faction-Identität sauber getrennt**)
+- **Klare 3-Ebenen-Trennung** (User-Korrektur): **Faction = feste Identität** (Tactical Profile, Stärken/Schwächen, Modifiers, Default-Doctrine) · **Doctrine = KI-Persona-Variante** innerhalb der Fraktion (Build/Angriff/Verteidigung/Army-Mix) · **Difficulty = global**.
+- **Datenmodell** ([types.ts](src/core/types.ts)): `TacticalProfile` = `{ doctrineLabel, build, attack, defense, economy, difficulty, shortDescription }` (feste Fraktionsidentität); `FactionDef.defaultDoctrineId`; `Doctrine.optionalModifierBias?` (kleine Modulation, ersetzt nie die Faction-Identität). [factions.json](src/data/factions.json) trägt Tactical Profile + `defaultDoctrineId` je Fraktion.
+- **Default-Doctrine je Fraktion:** Crimson→Field Marshal, Azure→Shield Architect, **Verdant→Hive Expander**, Solar→Radiant Cultivator (`DEFAULT_DOCTRINE_BY_FACTION` in [doctrines.ts](src/data/doctrines.ts); factions.json gespiegelt, Test hält's in sync).
+- **UI-Entscheidung:** Spieler-Doctrine-Dropdown **raus aus der Hauptauswahl**. Die Fraktionskarte zeigt jetzt **„Tactical Profile: <doctrineLabel>"** + „Anspruch: …" (klar ≠ Schwierigkeitsgrad). Die Doctrine-Vorschau liegt unter **„⚙ Erweitert"** (standardmäßig versteckt, beschriftet „Advanced — verändert dein Gameplay noch nicht").
+- **Briefing** zeigt das **Fraktions**-Tactical-Profile (COMMANDING + Tactical Profile + Bau/Angriff/Verteid./Wirtschaft), KEINE Spieler-Doctrine-Zeile. **Gegner-Toast** trennt Identität & KI-Persona: „Gegner: <Fraktion> (<doctrineLabel>) — KI-Doktrin: <Name>".
+- **Gegner-Doctrine** weiterhin zufällig **aus der Gegner-Fraktion** (`randomDoctrineFor`, testbar/seedbar).
+- **Verify:** **87 Tests grün** (Doctrine-Registry 9, Briefing-Test 1: Faction-Profil sichtbar, keine Spieler-Doctrine-Wahl), `tsc`+`vite build` sauber; im Browser bestätigt (Karten ohne Doctrine-Dropdown, Tactical-Profile-Zeile, Advanced versteckt, Briefing korrekt).
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Phase 2a — alle 12 Doctrines + Auswahl**)
 - **Alle 12 Tactical Doctrines** in [doctrines.ts](src/data/doctrines.ts) (3 pro Fraktion) mit Build-/Defense-Order, Army-Mix + 13 Persönlichkeitsknöpfen. `DOCTRINES_BY_FACTION`, `doctrinesFor`, `doctrineById`. Test [doctrines.test.ts](src/data/doctrines.test.ts) (12 total, 3/Fraktion, Werte 0..1, armyMix≈1) — **5 Tests**.
 - **Spieler-Doctrine-Auswahl:** Dropdown pro Fraktionskarte im Startbildschirm ([screens.ts](src/ui/screens.ts)); gewählte Doctrine wandert in `MissionChoice.doctrineId` und erscheint im **Briefing** („COMMANDING: <Fraktion> · Doktrin: <Name>"). (Spieler-Doctrine-Gameplay-Effekt folgt; der Spieler kommandiert noch manuell — die Auswahl ist Identität + vorbereitet.)
 - **Variabler Gegner:** [game.ts](src/core/game.ts) zieht für die KI eine **zufällige Doctrine** aus der Gegner-Fraktion (Replay-Varianz) + Toast „Gegner: <Fraktion> · <Doctrine>". Alle 12 Doctrines treiben damit echtes KI-Verhalten.

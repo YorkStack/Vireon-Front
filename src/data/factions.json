@@ -10,12 +10,14 @@
       "vehicleCost": 1.10
     },
     "tactical": {
+      "doctrineLabel": "Balanced Military Doctrine",
       "build": "Stabil", "attack": "Koordiniert", "defense": "Befestigt",
-      "economy": "Kontrolliert", "archetype": "Ausgewogen",
-      "recommended": "Sichern, aufbauen, koordiniert zuschlagen."
+      "economy": "Kontrolliert", "difficulty": "Mittel",
+      "shortDescription": "Sichern, aufbauen, koordiniert zuschlagen."
     },
-    "strengths": ["Verlässliche Fahrzeuge", "Starke Verteidigung", "Ausgewogene Wirtschaft"],
-    "weaknesses": ["Fahrzeuge kosten mehr", "Wenig explosiver Früh-Druck"]
+    "strengths": ["Verlässliche Fahrzeuge", "Starke Verteidigung", "Ausgewogene Wirtschaft", "Gute Reparatur & Erholung"],
+    "weaknesses": ["Wenig explosiver Früh-Druck", "Fahrzeuge etwas teurer", "Nicht auf Extrem-Rush oder Extrem-Lategame spezialisiert"],
+    "defaultDoctrineId": "crimson_field_marshal"
   },
   "blue": {
     "name": "Azure Concord",
@@ -28,12 +30,14 @@
       "buildTime": 1.12
     },
     "tactical": {
+      "doctrineLabel": "Shielded Control Doctrine",
       "build": "Langsam, stark", "attack": "Konter-fokussiert", "defense": "Exzellent",
-      "economy": "Effizient", "archetype": "Defensiv",
-      "recommended": "Befestigen, kontern, Raum kontrollieren."
+      "economy": "Effizient", "difficulty": "Mittel-Schwer",
+      "shortDescription": "Befestigen, kontern, Raum kontrollieren."
     },
-    "strengths": ["Robuste Einheiten & Gebäude", "Starke Verteidigungstech", "Exzellente Konter"],
-    "weaknesses": ["Langsamer Aufbau", "Energieabhängige Verteidigung"]
+    "strengths": ["Robuste Einheiten & Gebäude", "Starke Verteidigungstech", "Gutes Reparatur-/Schild-Potenzial", "Exzellente Konter"],
+    "weaknesses": ["Langsamer Aufbau", "Energieabhängige Verteidigung", "Kann überdehnt werden, wenn zu passiv"],
+    "defaultDoctrineId": "azure_shield_architect"
   },
   "green": {
     "name": "Verdant Swarm",
@@ -47,12 +51,14 @@
       "unitHp": 0.90
     },
     "tactical": {
+      "doctrineLabel": "Swarm Consumption Doctrine",
       "build": "Sehr schnell", "attack": "Unerbittlich", "defense": "Schwach",
-      "economy": "Ressourcenhungrig", "archetype": "Aggressiv",
-      "recommended": "Früh expandieren, billig spammen, Druck halten."
+      "economy": "Ressourcenhungrig", "difficulty": "Aggressiv",
+      "shortDescription": "Früh expandieren, billig spammen, Druck halten."
     },
-    "strengths": ["Schnelle Produktion", "Billige Einheiten", "Früher Druck"],
-    "weaknesses": ["Schwache statische Verteidigung", "Hoher Ressourcenverbrauch", "Geringere Panzerung"]
+    "strengths": ["Schnelle Produktion", "Billige Einheiten", "Früher Druck", "Starke Map-Ausbreitung"],
+    "weaknesses": ["Schwache statische Verteidigung", "Hoher Ressourcenverbrauch", "Geringere Panzerung", "Bricht ein, wenn eingedämmt & ausgehungert"],
+    "defaultDoctrineId": "verdant_hive_expander"
   },
   "yellow": {
     "name": "Solar Dominion",
@@ -66,11 +72,13 @@
       "powerUse": 1.25
     },
     "tactical": {
+      "doctrineLabel": "Radiant Colony Doctrine",
       "build": "Energieabhängig", "attack": "Vernichtend", "defense": "Zonenbasiert",
-      "economy": "Energieintensiv", "archetype": "Tech / Energie",
-      "recommended": "Power-Grid sichern, Zonen halten, spät vernichtend zuschlagen."
+      "economy": "Energieintensiv", "difficulty": "Schwer",
+      "shortDescription": "Power-Grid sichern, Zonen halten, spät vernichtend zuschlagen."
     },
-    "strengths": ["Starke Energiewaffen", "Türme mit großer Reichweite", "Zonenkontrolle"],
-    "weaknesses": ["Hoher Stromverbrauch", "Schwach bei Stromausfall", "Langsames Frühspiel"]
+    "strengths": ["Starke Energiewaffen", "Zonenkontrolle mit großer Reichweite", "Kolonie-Aura-Potenzial", "Starkes Spätspiel"],
+    "weaknesses": ["Hoher Stromverbrauch", "Schwach bei Stromausfall", "Langsames Frühspiel", "Verwundbar bei zerstörtem Kolonie-Netz"],
+    "defaultDoctrineId": "solar_radiant_cultivator"
   }
 }

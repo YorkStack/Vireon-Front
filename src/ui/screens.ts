@@ -1,11 +1,11 @@
 // Full-screen UI: start screen (campaign + faction select), mission briefing,
 // pause menu, win/loss screens.
 import { FACTION_DEFS } from '../core/defs';
-import type { CampaignDef, MissionDef } from '../core/types';
+import type { CampaignDef, MissionDef, FactionDef } from '../core/types';
 import { loadCampaignList, loadMission } from '../campaign/campaign';
 import { showUnitCodex } from './unitCodex';
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
-import { doctrinesFor, defaultDoctrineFor, DOCTRINES } from '../data/doctrines';
+import { doctrinesFor, defaultDoctrineFor } from '../data/doctrines';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -47,8 +47,15 @@ export async function showStartScreen(): Promise<MissionChoice> {
         </div>
         <div class="menu-box tac-panel" style="min-width:740px;">
           <div class="menu-head">FRAKTION WÄHLEN</div>
-          <div class="menu-sub">Deine Stärken &amp; Schwächen — der Gegner ist eine zufällige der drei anderen Fraktionen</div>
+          <div class="menu-sub">Jede Fraktion hat eine feste Identität (Tactical Profile, Stärken/Schwächen) — der Gegner ist eine zufällige der drei anderen Fraktionen</div>
           <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
+        </div>
+        <div class="adv-wrap">
+          <button id="adv-toggle" class="adv-toggle" type="button">⚙ Erweitert</button>
+          <div id="adv-box" class="adv-box" style="display:none;">
+            <label class="doctrine-pick">KI-Doktrin-Vorschau (Advanced — verändert dein Gameplay noch nicht)
+              <select id="adv-doctrine"></select></label>
+          </div>
         </div>
         <div style="display:flex;gap:14px;align-items:center;">
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
@@ -98,31 +105,44 @@ export async function showStartScreen(): Promise<MissionChoice> {
           ${(f.strengths || []).map(s => `<li class="pos">+ ${s}</li>`).join('')}
           ${(f.weaknesses || []).map(s => `<li class="neg">− ${s}</li>`).join('')}
         </ul>` : `<ul>${f.perks.map(p => `<li>${p}</li>`).join('')}</ul>`;
-      const doctrineOpts = doctrinesFor(f.id)
-        .map(d => `<option value="${d.id}">${d.uiName}</option>`).join('');
       const card = el(`
         <div class="faction-card" style="--fc:${f.color}">
           <div class="swatch"></div>
-          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge">${t.archetype}</span>` : ''}</div>
+          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge" title="Anspruch dieser Fraktion — NICHT der Schwierigkeitsgrad">Anspruch: ${t.difficulty}</span>` : ''}</div>
           <div class="tag">${f.tagline}</div>
+          ${t ? `<div class="tac-label">Tactical Profile: <b>${t.doctrineLabel}</b></div>` : ''}
           ${profile}
           ${sw}
-          <label class="doctrine-pick">Doktrin <select class="doctrine-sel">${doctrineOpts}</select></label>
-          ${t?.recommended ? `<div class="reco">▸ ${t.recommended}</div>` : ''}
+          ${t?.shortDescription ? `<div class="reco">▸ ${t.shortDescription}</div>` : ''}
         </div>
       `);
-      const dsel = card.querySelector('.doctrine-sel') as HTMLSelectElement;
-      dsel.addEventListener('click', e => e.stopPropagation());   // opening dropdown ≠ picking faction
-      dsel.addEventListener('change', () => { if (f.id === factionId) doctrineId = dsel.value; });
       if (f.id === factionId) card.classList.add('selected');
       card.addEventListener('click', () => {
         factionId = f.id;
-        doctrineId = dsel.value;     // adopt this faction's currently-shown doctrine
+        doctrineId = defaultDoctrineFor(f.id).id;   // faction's default AI persona
         row.querySelectorAll('.faction-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
+        renderAdvDoctrine();
       });
       row.appendChild(card);
     }
+
+    // Advanced (hidden by default): preview/override the AI persona. This has NO
+    // player-gameplay effect yet — the player still commands manually — so it is
+    // tucked away to avoid implying a mandatory doctrine choice.
+    function renderAdvDoctrine() {
+      const advSel = screen.querySelector('#adv-doctrine') as HTMLSelectElement;
+      advSel.innerHTML = doctrinesFor(factionId).map(d => `<option value="${d.id}">${d.uiName}</option>`).join('');
+      advSel.value = doctrineId;
+    }
+    const advBox = screen.querySelector('#adv-box') as HTMLElement;
+    screen.querySelector('#adv-toggle')!.addEventListener('click', () => {
+      advBox.style.display = advBox.style.display === 'none' ? 'block' : 'none';
+    });
+    screen.querySelector('#adv-doctrine')!.addEventListener('change', (e) => {
+      doctrineId = (e.target as HTMLSelectElement).value;
+    });
+    renderAdvDoctrine();
 
     // Difficulty selector (default = Mittel).
     const diffRow = screen.querySelector('#difficulty-row')!;
@@ -148,16 +168,22 @@ export async function showStartScreen(): Promise<MissionChoice> {
   });
 }
 
-/** Mission briefing; resolves when the player launches. */
-export function showBriefing(mission: MissionDef, factionName: string, doctrineId?: string): Promise<void> {
-  const doctrineName = doctrineId ? DOCTRINES[doctrineId]?.uiName : undefined;
+/** Mission briefing; resolves when the player launches. Shows the player's
+ *  FACTION tactical profile (the fixed identity) — not a per-match doctrine. */
+export function showBriefing(mission: MissionDef, faction: FactionDef): Promise<void> {
+  const tp = faction.tactical;
+  const profileLine = tp
+    ? `<div class="brief-profile">Tactical Profile: <b>${tp.doctrineLabel}</b></div>
+       <div class="brief-stats">Bau: ${tp.build} · Angriff: ${tp.attack} · Verteidigung: ${tp.defense} · Wirtschaft: ${tp.economy}</div>`
+    : '';
   return new Promise((resolve) => {
     const screen = el(`
       <div class="screen cinematic" style="justify-content:center;">
         <h2 style="letter-spacing:6px;">MISSION BRIEFING</h2>
         <div class="briefing-box tac-panel">
           <div style="font-size:22px;font-weight:700;">${mission.name}</div>
-          <div style="font-size:12px;color:var(--text-dim);">COMMANDING: ${factionName}${doctrineName ? ` · Doktrin: ${doctrineName}` : ''}</div>
+          <div style="font-size:12px;color:var(--text-dim);">COMMANDING: ${faction.name}</div>
+          ${profileLine}
           <p>${mission.briefing}</p>
           <div class="objectives">${mission.objectives.map(o => `<div>${o}</div>`).join('')}</div>
           <button class="primary" id="btn-launch" style="align-self:center;padding:11px 40px;letter-spacing:2px;">COMMENCE OPERATION</button>

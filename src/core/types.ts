@@ -87,13 +87,17 @@ export interface BuildingDef {
   description: string;
 }
 
+// The faction's FIXED identity (always active when you pick the faction). This
+// is NOT a per-match choice — Doctrines (see data/doctrines.ts) are the AI
+// strategy variants WITHIN a faction and never replace this identity.
 export interface TacticalProfile {
+  doctrineLabel: string;     // faction signature, e.g. "Balanced Military Doctrine"
   build: string;
   attack: string;
   defense: string;
   economy: string;
-  archetype: string;         // faction playstyle tag shown as a badge (NOT the game difficulty)
-  recommended?: string;
+  difficulty: string;        // faction complexity/ambition rating (NOT the global game difficulty)
+  shortDescription: string;
 }
 
 export interface FactionDef {
@@ -107,6 +111,7 @@ export interface FactionDef {
   tactical?: TacticalProfile;
   strengths?: string[];
   weaknesses?: string[];
+  defaultDoctrineId?: string; // the AI persona used when none is set explicitly
 }
 
 export interface MissionDef {

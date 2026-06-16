@@ -21,7 +21,7 @@ if (import.meta.env.DEV) {
 async function main() {
   for (;;) {
     const choice = await showStartScreen();
-    await showBriefing(choice.mission, FACTION_DEFS[choice.factionId].name, choice.doctrineId);
+    await showBriefing(choice.mission, FACTION_DEFS[choice.factionId]);
     let result: 'restart' | 'menu';
     await glbReady; // ensure baked vehicle GLBs are cached before units spawn
     do {
