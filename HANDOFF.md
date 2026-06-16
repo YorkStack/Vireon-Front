@@ -2,7 +2,15 @@
 
 > Sprache: **Antworten immer auf Deutsch** (User-Präferenz, in Memory hinterlegt).
 
-## ⏱️ Aktueller Stand (2026-06-15, **P8 — Verdant-Warden als echte spielbare Einheit (GAME, main)**)
+## ⏱️ Aktueller Stand (2026-06-16, **Spiel-UX: Bau-%, HP-Farben, Mac-freundliche Linksklick-Steuerung**)
+- **Drei UX-Verbesserungen im Spiel (GAME, main).**
+  - **Bau-Fortschritt in %:** Gebäude im Bau zeigen ein schwebendes %-Label (Canvas-Sprite, `makePctLabel` in [models.ts](src/render/models.ts)); in [world.ts](src/sim/world.ts) `syncVisuals` während des Baus sichtbar (HP-Balken solange ausgeblendet), Y-Scale der Bau-Animation wird gegengerechnet. Live verifiziert: Label zählt 0→1→2% hoch, deckungsgleich mit dem Panel.
+  - **HP-Balken-Ampel:** Schwellen in `makeHealthBar` auf Vorgabe gesetzt — **grün ≥50 %, gelb ≥25 %, rot <25 %**. Gesichert durch [healthbar.test.ts](src/render/healthbar.test.ts) (4 Tests an den 50/25-Grenzen).
+  - **Mac-freundliche Linksklick-Steuerung** ([input.ts](src/ui/input.ts)): Linksklick kommandiert — eigene Einheit/Gebäude = Auswahl, Gegner/Kristall/Boden = Kommando (wenn etwas gewählt). **Angriffsbewegung per A-TIPPEN** (kein Halten) bzw. On-Screen-Button **⚔ Angriff** scharfschalten → nächster Klick = Angriffsbewegung → Auto-Entwaffnen; ESC bricht ab. On-Screen-Buttons **⚔/⛔ Stopp/✋ Halten** ([hud.ts](src/ui/hud.ts), [style.css](src/ui/style.css)); ⚔ nur bei bewaffneten Einheiten. Rechtsklick funktioniert weiterhin. Live verifiziert (Auswahl bleibt bei Boden-Kommando, Arm/Disarm + Fadenkreuz).
+  - **Verify:** 67 Tests grün, `tsc`+`vite build` sauber, im Browser (Port 5180) end-to-end durchgespielt.
+  - Entscheidung Steuerungsmodell: User wählte „Linksklick kommandiert".
+
+## ⏱️ Vorheriger Stand (2026-06-15, **P8 — Verdant-Warden als echte spielbare Einheit (GAME, main)**)
 - **Die fabrik-gebaute Einheit ist im Spiel angekommen.** Der **Verdant-Warden** (6-Bein-Walker mit Organik-Lauf, Studio-Factory-Output) ist jetzt eine reguläre, baubare Klasse — der erste Beweis, dass der Studio-Factory-Pipeline-Output direkt ins Spiel fließt.
   - **GLB:** `vireon-design-studio/exports/green_warden/green_warden_final.glb` (1674 Tris, turret+muzzle, mat_<slot>) → kopiert nach `public/assets/vehicles/green_warden.glb` + Companion `green_warden.json`.
   - **Klassen-Template:** neues `warden` in `src/data/unitClasses.ts` (Tier 3, `builtAt:'foundry'`, `defaultMovementType:'walker'`, 640 HP heavy, `tankCannon`, Kosten 1000) + in `VEHICLE_CLASS_IDS` aufgenommen → erscheint automatisch in `UNIT_DEFS`/Foundry/Codex aller Fraktionen.

@@ -236,6 +236,15 @@ button.primary:active {
 .cmd-btn .nm { font-size: 11.5px; font-weight: 600; line-height: 1.15; }
 .cmd-btn .cost { font-size: 10.5px; color: var(--accent); }
 .cmd-btn .req { font-size: 9.5px; color: var(--warn); }
+#cmdpanel .cmd-actions { display: flex; gap: 7px; }
+.cmd-act {
+  flex: 1; padding: 8px 6px; border-radius: 8px; text-align: center;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--panel-border); background: rgba(40, 44, 80, 0.6);
+  color: var(--text); transition: background .12s, border-color .12s;
+}
+.cmd-act:hover { background: rgba(60, 66, 112, 0.7); }
+.cmd-act.active { border-color: var(--warn); background: rgba(120, 60, 40, 0.6); color: #ffd9c0; }
 .queue-row { display: flex; gap: 6px; }
 .queue-item {
   position: relative; width: 52px; height: 40px; border-radius: 6px; overflow: hidden;

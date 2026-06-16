@@ -5,7 +5,7 @@ import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, CrystalNode } from '../m
 import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
-import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar } from '../render/models';
+import { makeEntityGroup, makeSelectionRing, makeHealthBar, makePctLabel, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 
@@ -94,6 +94,7 @@ export class Building {
   group: THREE.Group;
   ring: THREE.Mesh;
   hb: HealthBar;
+  pct: TextLabel; // construction-progress % label (visible only while building)
 
   constructor(team: TeamId, def: BuildingDef, tx: number, tz: number, level: number, accent: string, complete: boolean) {
     this.team = team; this.def = def; this.tx = tx; this.tz = tz;
@@ -122,6 +123,10 @@ export class Building {
     this.hb.group.position.y = (this.group.userData.topY ?? 3) + 0.6;
     this.hb.group.visible = false;
     this.group.add(this.hb.group);
+    this.pct = makePctLabel();
+    this.pct.sprite.position.y = (this.group.userData.topY ?? 3) + 1.05;
+    this.pct.sprite.visible = false;
+    this.group.add(this.pct.sprite);
     if (!complete) this.group.scale.y = 0.15;
   }
   get cx() { return (this.tx + this.w / 2) * TILE; }
@@ -858,11 +863,25 @@ export class World {
     }
     for (const b of this.buildings) {
       b.ring.visible = b.selected;
-      const hurt = b.hp < b.def.hp - 0.5 || !b.complete;
-      b.hb.group.visible = b.selected || hurt;
-      if (b.hb.group.visible) {
-        b.hb.set(b.hp / b.def.hp);
-        b.hb.group.quaternion.copy(this.camQuat);
+      if (!b.complete) {
+        // Under construction: show the build-progress %, hide the HP bar.
+        b.hb.group.visible = false;
+        const pct = Math.round(100 * b.progress / Math.max(0.001, b.def.buildTime));
+        b.pct.set(`${pct}%`);
+        b.pct.sprite.visible = true;
+        // Counter the building's animated Y-scale (0.15→1) so the label keeps a
+        // constant world height and stays undistorted.
+        const s = b.group.scale.y || 1;
+        b.pct.sprite.position.y = ((b.group.userData.topY ?? 3) + 1.05) / s;
+        b.pct.sprite.scale.set(b.pct.baseScaleX, b.pct.baseScaleY / s, 1);
+      } else {
+        b.pct.sprite.visible = false;
+        const hurt = b.hp < b.def.hp - 0.5;
+        b.hb.group.visible = b.selected || hurt;
+        if (b.hb.group.visible) {
+          b.hb.set(b.hp / b.def.hp);
+          b.hb.group.quaternion.copy(this.camQuat);
+        }
       }
       this.animateBuilding(b, dt);
     }

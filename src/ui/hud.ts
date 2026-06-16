@@ -7,6 +7,10 @@ export interface HudCallbacks {
   startPlacement: (defId: string) => void;
   openPause: () => void;
   getSelection: () => { units: Unit[]; building: Building | null };
+  armAttack: () => void;   // toggle attack-move arming
+  stopSel: () => void;     // stop selected units
+  holdSel: () => void;     // hold position
+  isArmed: () => boolean;  // attack-move currently armed?
 }
 
 const BUILD_ORDER = ['nexus', 'spire', 'refinery', 'barracks', 'foundry', 'wall', 'cannon', 'lance'];
@@ -97,6 +101,15 @@ export class Hud {
       </div>
     `;
 
+    // Mac-friendly command buttons (work without right-click / keyboard).
+    const anyWeapon = units.some(u => u.def.weapon);
+    const armed = this.cb.isArmed();
+    html += `<div class="cmd-actions">
+      ${anyWeapon ? `<button class="cmd-act${armed ? ' active' : ''}" data-act="attack" title="Angriffsbewegung — dann Ziel/Boden anklicken (Taste A)">⚔ Angriff</button>` : ''}
+      <button class="cmd-act" data-act="stop" title="Stoppen (Taste S)">⛔ Stopp</button>
+      <button class="cmd-act" data-act="hold" title="Position halten">✋ Halten</button>
+    </div>`;
+
     if (builder) {
       html += `<div class="sel-sub" style="letter-spacing:1.5px;">CONSTRUCT</div><div class="btn-grid">`;
       for (const defId of BUILD_ORDER) {
@@ -113,14 +126,23 @@ export class Hud {
             ${reason ? `<span class="req">${reason}</span>` : ''}
           </button>`;
       }
-      html += `</div><div class="hint">Click a structure, then click terrain to place it. Right-click to cancel.</div>`;
+      html += `</div><div class="hint">Struktur wählen, dann auf Gelände klicken zum Bauen. ESC bricht ab.</div>`;
     } else {
-      html += `<div class="hint">Right-click: move · on enemy: attack${units.some(u => u.def.harvester) ? ' · on crystals: gather' : ''} · hold A: attack-move</div>`;
+      html += `<div class="hint">Linksklick: Boden = bewegen · Gegner = angreifen${units.some(u => u.def.harvester) ? ' · Kristall = sammeln' : ''} · ⚔/Taste A = Angriffsbewegung · eigene Einheit = neu wählen · ESC = abwählen</div>`;
     }
 
     this.panel.innerHTML = html;
     this.panel.querySelectorAll<HTMLButtonElement>('[data-build]').forEach(btn => {
       btn.addEventListener('click', () => this.cb.startPlacement(btn.dataset.build!));
+    });
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-act]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const a = btn.dataset.act;
+        if (a === 'attack') this.cb.armAttack();
+        else if (a === 'stop') this.cb.stopSel();
+        else if (a === 'hold') this.cb.holdSel();
+        this.renderPanel();
+      });
     });
   }
 

@@ -95,6 +95,10 @@ export class Game {
       startPlacement: (defId) => this.input.startPlacement(defId),
       openPause: () => this.openPause(),
       getSelection: () => ({ units: this.input.selectedUnits, building: this.input.selectedBuilding }),
+      armAttack: () => this.input.armAttackMove(),
+      stopSel: () => this.input.stopSelected(),
+      holdSel: () => this.input.holdSelected(),
+      isArmed: () => this.input.attackArmed,
     });
     this.input.onSelectionChanged = () => this.hud.renderPanel();
 

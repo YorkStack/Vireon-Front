@@ -879,9 +879,47 @@ export function makeHealthBar(width: number): HealthBar {
   group.add(bg, fg);
   const set = (ratio: number) => {
     const r = Math.max(0, Math.min(1, ratio));
-    fg.material = r > 0.55 ? hbG : r > 0.25 ? hbY : hbR;
+    // Tri-colour by remaining health: green 100–50 %, yellow 49–25 %, red <25 %.
+    fg.material = r >= 0.5 ? hbG : r >= 0.25 ? hbY : hbR;
     fg.scale.x = width * r;
     fg.position.x = -(width * (1 - r)) / 2;
   };
   return { group, set };
+}
+
+// Floating text label (e.g. a building's construction %) — a canvas-textured
+// sprite that always faces the camera. `set(text)` repaints only on change.
+// baseScale* let the caller counter a parent's animated scale (buildings rise
+// via group.scale.y during construction).
+export interface TextLabel {
+  sprite: THREE.Sprite;
+  set: (text: string) => void;
+  baseScaleX: number;
+  baseScaleY: number;
+}
+export function makePctLabel(): TextLabel {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128; canvas.height = 64;
+  const ctx = canvas.getContext('2d')!;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  let last = '';
+  const draw = (text: string) => {
+    ctx.clearRect(0, 0, 128, 64);
+    ctx.font = 'bold 40px system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 7; ctx.strokeStyle = 'rgba(8, 10, 18, 0.95)';
+    ctx.strokeText(text, 64, 34);
+    ctx.fillStyle = '#d8ecff';
+    ctx.fillText(text, 64, 34);
+    tex.needsUpdate = true;
+  };
+  draw('0%');
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  const baseScaleX = 2.0, baseScaleY = 1.0;
+  sprite.scale.set(baseScaleX, baseScaleY, 1);
+  sprite.renderOrder = 22;
+  const set = (text: string) => { if (text !== last) { last = text; draw(text); } };
+  return { sprite, set, baseScaleX, baseScaleY };
 }

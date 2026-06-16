@@ -33,7 +33,10 @@ export class InputController {
   private dragStart: { x: number; y: number } | null = null;
   private dragging = false;
   private selboxEl: HTMLElement;
+  private canvas: HTMLElement;
   private enabled = true;
+  /** Attack-move is "armed": the next command click issues an attack-move, then disarms. */
+  attackArmed = false;
   onSelectionChanged: () => void = () => {};
   openPause: () => void = () => {};
 
@@ -45,6 +48,7 @@ export class InputController {
     document.getElementById('ui-root')!.appendChild(this.selboxEl);
 
     const canvas = rig.renderer.domElement;
+    this.canvas = canvas;
     canvas.addEventListener('pointerdown', this.onPointerDown);
     window.addEventListener('pointermove', this.onPointerMove);
     window.addEventListener('pointerup', this.onPointerUp);
@@ -102,6 +106,7 @@ export class InputController {
     if (this.selectedBuilding) this.selectedBuilding.selected = false;
     this.selectedUnits = [];
     this.selectedBuilding = null;
+    this.setAttackArmed(false);
   }
 
   private selectUnits(units: Unit[]) {
@@ -189,11 +194,34 @@ export class InputController {
       return;
     }
 
-    // Single click select.
+    // ---- Single left-click: select OR command (Mac-friendly, no right-click needed) ----
     const hit = this.pick(e.clientX, e.clientY);
-    if (hit?.kind === 'unit' && hit.unit.team === 0) this.selectUnits([hit.unit]);
-    else if (hit?.kind === 'building' && hit.building.team === 0) this.selectBuilding(hit.building);
-    else { this.clearSelection(); this.onSelectionChanged(); }
+    const haveSel = this.selectedUnits.length > 0;
+
+    // Armed attack-move: the next click commands an attack-move, then disarms.
+    if (this.attackArmed && haveSel) {
+      this.issueCommand(e.clientX, e.clientY, true);
+      this.setAttackArmed(false);
+      return;
+    }
+
+    // Own units/buildings are SELECTION targets (selection always wins for them)...
+    if (hit?.kind === 'unit' && hit.unit.team === 0) { this.selectUnits([hit.unit]); return; }
+    if (hit?.kind === 'building' && hit.building.team === 0) {
+      const b = hit.building;
+      const fabs = this.selectedUnits.filter(u => u.def.builder);
+      // ...unless builders are selected and the structure needs work → build/repair.
+      if (haveSel && fabs.length && (!b.complete || b.hp < b.def.hp)) { this.issueCommand(e.clientX, e.clientY); return; }
+      this.selectBuilding(b);
+      return;
+    }
+
+    // Enemy / crystal / ground → command (move/attack/gather) when we have a selection.
+    if (haveSel && hit) { this.issueCommand(e.clientX, e.clientY); return; }
+
+    // Nothing actionable → clear the selection.
+    this.clearSelection();
+    this.onSelectionChanged();
   };
 
   private onWheel = (e: WheelEvent) => {
@@ -207,8 +235,13 @@ export class InputController {
     this.keys.add(k);
     if (!this.enabled) return;
     if (k === 'escape') {
-      if (this.placement) this.cancelPlacement();
+      if (this.attackArmed) this.setAttackArmed(false);
+      else if (this.placement) this.cancelPlacement();
       else this.openPause();
+    }
+    if (k === 'a' && !e.repeat && this.selectedUnits.length) {
+      // Tap A to arm/disarm attack-move (no holding needed); then click a target.
+      this.setAttackArmed(!this.attackArmed);
     }
     if (k === 's') {
       for (const u of this.selectedUnits) this.world.stop(u);
@@ -227,11 +260,11 @@ export class InputController {
 
   // ---------------- commands ----------------
 
-  private issueCommand(clientX: number, clientY: number) {
+  private issueCommand(clientX: number, clientY: number, forceAttackMove = false) {
     if (!this.selectedUnits.length) return;
     const hit = this.pick(clientX, clientY);
     if (!hit) return;
-    const attackMod = this.keys.has('a');
+    const attackMod = forceAttackMove || this.keys.has('a');
 
     if (hit.kind === 'unit' && hit.unit.team !== 0) {
       for (const u of this.selectedUnits) this.world.orderAttack(u, hit.unit);
@@ -287,6 +320,32 @@ export class InputController {
       const oz = (Math.floor(i / cols) - (Math.ceil(units.length / cols) - 1) / 2) * spacing;
       this.world.orderMove(u, x + ox, z + oz, attackMove);
     });
+  }
+
+  // ---------------- on-screen command actions (Mac-friendly) ----------------
+
+  /** Arm/disarm attack-move; shows a crosshair cursor + hint while armed. */
+  setAttackArmed(v: boolean) {
+    const next = v && this.selectedUnits.length > 0;
+    if (next === this.attackArmed) { if (!next && this.canvas) this.canvas.style.cursor = ''; return; }
+    this.attackArmed = next;
+    if (this.canvas) this.canvas.style.cursor = next ? 'crosshair' : '';
+    if (next) toast('Angriffsbewegung: Ziel anklicken (ESC bricht ab)');
+    this.onSelectionChanged();
+  }
+
+  /** Toggle attack-move arming (on-screen ⚔ button / A key). */
+  armAttackMove() { this.setAttackArmed(!this.attackArmed); }
+
+  /** Stop selected units (on-screen ⛔ button / S key). */
+  stopSelected() { for (const u of this.selectedUnits) this.world.stop(u); }
+
+  /** Hold position: stop, and have armed units defend their current spot. */
+  holdSelected() {
+    for (const u of this.selectedUnits) {
+      this.world.stop(u);
+      if (u.def.weapon) { u.stance = 'defendArea'; u.anchorX = u.x; u.anchorZ = u.z; }
+    }
   }
 
   private markerAt(x: number, z: number, kind: 'move' | 'attack' | 'gather') {
