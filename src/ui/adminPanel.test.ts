@@ -66,7 +66,7 @@ describe('F8 admin panel — governance & DOM', () => {
   it('3. only live modifiers are editable (prepared/legacy are not)', () => {
     for (const p of editablePaths()) expect(isEditablePath(p)).toBe(true);
     expect(isEditablePath('special.colonyAuraStrength')).toBe(false);
-    expect(isEditablePath('combat.vehicleDamage')).toBe(false);
+    expect(isEditablePath('combat.unitHull')).toBe(false);
     expect(isEditablePath('nonsense.path')).toBe(false);
   });
 
@@ -101,8 +101,8 @@ describe('F8 admin panel — governance & DOM', () => {
     const clamped = setOverrideValue('yellow', 'power.powerOutageSeverity', 99);
     expect(clamped).toBe(SLIDER_RANGES['power.powerOutageSeverity'].max);
     // a non-editable path is rejected (NaN, no override)
-    expect(Number.isNaN(setOverrideValue('yellow', 'combat.vehicleDamage', 2))).toBe(true);
-    expect(hasOverride('yellow', 'combat.vehicleDamage')).toBe(false);
+    expect(Number.isNaN(setOverrideValue('yellow', 'combat.unitHull', 2))).toBe(true);
+    expect(hasOverride('yellow', 'combat.unitHull')).toBe(false);
   });
 
   it('7. reset removes overrides from runtime and storage', () => {
@@ -143,7 +143,7 @@ describe('F8 admin panel — governance & DOM', () => {
       factionModifierOverrides: {
         yellow: {
           economy: { resourceGatherRate: 1.3 },        // live → accepted
-          combat: { vehicleDamage: 9 },                 // legacy-backed → rejected
+          combat: { unitHull: 9 },                      // legacy-backed → rejected
           special: { colonyAuraStrength: 5 },           // prepared → rejected
         },
         bogus: { economy: { resourceGatherRate: 2 } },  // unknown faction → rejected
@@ -153,7 +153,7 @@ describe('F8 admin panel — governance & DOM', () => {
     expect(r.ok).toBe(true);
     expect(getFactionModifiers('yellow').economy.resourceGatherRate).toBe(1.3);
     // rejected paths did NOT become overrides
-    expect(hasOverride('yellow', 'combat.vehicleDamage' as string)).toBe(false);
+    expect(hasOverride('yellow', 'combat.unitHull' as string)).toBe(false);
     expect(hasOverride('yellow', 'special.colonyAuraStrength' as string)).toBe(false);
     expect(getCurrentOverrides().yellow?.combat).toBeUndefined();
     expect(getCurrentOverrides().yellow?.special).toBeUndefined();
@@ -161,7 +161,7 @@ describe('F8 admin panel — governance & DOM', () => {
 
   it('11. import reports warnings for every rejected path', () => {
     const { warnings } = sanitizeOverrides({
-      yellow: { combat: { vehicleDamage: 9 }, special: { colonyAuraStrength: 5 } },
+      yellow: { combat: { unitHull: 9 }, special: { colonyAuraStrength: 5 } },
       bogus: { economy: { resourceGatherRate: 2 } },
     });
     expect(warnings.some((w) => w.includes('legacy-backed'))).toBe(true);

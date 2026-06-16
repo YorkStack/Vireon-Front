@@ -13,7 +13,7 @@ import { UNIT_CLASS_TEMPLATES, type UnitClassTemplate } from '../data/unitClasse
 import { WEAPONS, toLegacyWeapon } from '../data/weapons';
 import { getVariant } from '../vehicles';
 import type { VehicleVariant } from '../vehicles/types';
-import { getModifiedUnitCost, getModifiedBuildDuration, type FactionId, type UnitKind } from '../data/factionModifiers';
+import { getModifiedUnitCost, getModifiedBuildDuration, getCombatModifiers, type FactionId, type UnitKind } from '../data/factionModifiers';
 
 /** Old units.json ids → new class template ids (campaign compat). */
 export const LEGACY_ALIASES: Record<string, string> = {
@@ -130,9 +130,12 @@ export function resolveUnit(defId: string, faction: FactionDef): UnitDef {
   const speedMul = isInf ? mod(faction, 'infantrySpeed') : 1;
   let weapon: WeaponDef | null = def.weapon;
   if (weapon) {
+    // Damage MIGRATED to FACTION_MODIFIERS (Phase 4b.1): same composition as the
+    // legacy perks (vehicle × energy), now sourced centrally — no double apply.
+    const cm = getCombatModifiers(faction.id as FactionId);
     let dmgMul = 1;
-    if (isVeh) dmgMul *= mod(faction, 'vehicleDamage');
-    if (weapon.damageType === 'energy') dmgMul *= mod(faction, 'energyDamage');
+    if (isVeh) dmgMul *= cm.vehicleDamage;
+    if (weapon.damageType === 'energy') dmgMul *= cm.energyWeaponDamage;
     weapon = { ...weapon, damage: Math.round(weapon.damage * dmgMul) };
   }
   // Cost MIGRATED to FACTION_MODIFIERS (Phase 4a): single source of truth, same

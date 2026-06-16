@@ -9,7 +9,7 @@ import factionsJson from '../data/factions.json';
 import type { UnitDef, BuildingDef, FactionDef } from './types';
 import { UNIT_CLASS_TEMPLATES } from '../data/unitClasses';
 import { templateToDef, resolveUnit } from '../systems/unitFactory';
-import { getModifiedBuildingCost, getModifiedPowerUsage, getModifiedBuildDuration, type FactionId } from '../data/factionModifiers';
+import { getModifiedBuildingCost, getModifiedPowerUsage, getModifiedBuildDuration, getModifiedDamage, getModifiedTurretRange, type FactionId } from '../data/factionModifiers';
 
 export const UNIT_DEFS: Record<string, UnitDef> = {};
 export const BUILDING_DEFS: Record<string, BuildingDef> = {};
@@ -31,19 +31,21 @@ export function unitStats(defId: string, faction: FactionDef): UnitDef {
 /** Building stats with the faction's balance modifiers baked in. */
 export function buildingStats(defId: string, faction: FactionDef): BuildingDef {
   const base = BUILDING_DEFS[defId];
+  const fid = faction.id as FactionId;
   let weapon = base.weapon;
   if (weapon) {
-    let dmgMul = weapon.damageType === 'energy' ? mod(faction, 'energyDamage') : 1;
+    // Energy-weapon damage + additive turret range MIGRATED to FACTION_MODIFIERS
+    // (Phase 4b.1): turrets only carry the energy multiplier; range is additive
+    // (range + bonus). Same math as the legacy energyDamage/turretRange perks.
     weapon = {
       ...weapon,
-      damage: Math.round(weapon.damage * dmgMul),
-      range: weapon.range + (faction.modifiers['turretRange'] ?? 0),
+      damage: getModifiedDamage(weapon.damage, fid, weapon.damageType === 'energy' ? 'energy' : 'general'),
+      range: getModifiedTurretRange(weapon.range, fid),
     };
   }
   // Power usage MIGRATED to FACTION_MODIFIERS (Phase 4a): registry mirrors the
   // legacy factions.json powerUse, applied only to consumers (negative power),
   // same rounding → identical behaviour. Building cost likewise centralised.
-  const fid = faction.id as FactionId;
   const power = base.power < 0 ? Math.round(getModifiedPowerUsage(base.power, fid)) : base.power;
   return {
     ...base,

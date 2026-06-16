@@ -106,11 +106,12 @@ describe('Phase 4a migration — runtime metadata', () => {
 
   it('non-migrated legacy combat dims remain read-only and out of the editable set', () => {
     const legacyPaths = getLegacyBackedModifierPaths().map((m) => m.path);
-    expect(legacyPaths).toContain('combat.vehicleDamage');
-    expect(legacyPaths).toContain('combat.unitHull');
-    expect(legacyPaths).not.toContain('economy.vehicleCost');            // migrated out
-    expect(legacyPaths).not.toContain('production.buildTimeMultiplier'); // migrated out
+    expect(legacyPaths).toContain('combat.unitHull');                    // still legacy (Phase 4b deferred)
+    expect(legacyPaths).toContain('combat.unitSpeed');                   // still legacy
+    expect(legacyPaths).not.toContain('economy.vehicleCost');            // migrated out (4a)
+    expect(legacyPaths).not.toContain('production.buildTimeMultiplier'); // migrated out (4a.2)
+    expect(legacyPaths).not.toContain('combat.vehicleDamage');           // migrated out (4b.1)
     const editable = getAdminEditableFactionModifierPaths().map((m) => m.path);
-    expect(editable).not.toContain('combat.vehicleDamage');
+    expect(editable).not.toContain('combat.unitHull');
   });
 });

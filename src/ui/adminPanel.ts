@@ -57,6 +57,10 @@ export const SLIDER_RANGES: Record<string, { min: number; max: number; step: num
   'power.powerUsage': { min: 0.5, max: 2.0, step: 0.05 },
   // Phase 4a.2 — build-time multiplier (higher = SLOWER):
   'production.buildTimeMultiplier': { min: 0.5, max: 2.0, step: 0.05 },
+  // Phase 4b.1 — damage (multiplicative) + turret range (ADDITIVE, integer tiles):
+  'combat.vehicleDamage': { min: 0.5, max: 2.0, step: 0.05 },
+  'combat.energyWeaponDamage': { min: 0.5, max: 2.0, step: 0.05 },
+  'defense.turretRangeBonus': { min: 0, max: 5, step: 1 },
 };
 
 // Short semantic hints shown inline next to a slider so the direction is
@@ -71,6 +75,9 @@ export const PATH_HINTS: Record<string, string> = {
   'power.powerOutageSeverity': '↑ = härtere Strafe',
   'economy.resourceGatherRate': '↑ = mehr Ertrag',
   'repair.repairRate': '↑ = schneller',
+  'combat.vehicleDamage': '↑ = mehr Schaden',
+  'combat.energyWeaponDamage': '↑ = mehr Schaden',
+  'defense.turretRangeBonus': 'additiv: +Reichweite (Felder)',
 };
 
 // ── Editable-path governance ─────────────────────────────────────────────────
