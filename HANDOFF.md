@@ -4,27 +4,28 @@
 
 ---
 
-## 🚀 QUICK RESUME (Stand 2026-06-16, nach Compact hier weiterlesen)
+## 🚀 QUICK RESUME (Stand 2026-06-17, nach Compact hier weiterlesen)
 
-**Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`, Studio-Unification gemergt). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
+**Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Test-/Build-Stand:** `npm test` → **154 grün**; `npx tsc --noEmit`, `npm run build`, `npm run validate:balance` sauber. Dev-Server: `npm run dev` → http://localhost:5199. Letzter Commit auf origin/main: **`58b6c27`** (4c.1; 4c.2 lokal committet, push ausstehend).
+**Test-/Build-Stand:** `npm test` → **173 grün** (24 Dateien); `npx tsc --noEmit`, `npm run build`, `npm run validate:balance` sauber (0 Violations, 42 intentional). Dev-Server: `npm run dev` → http://localhost:5199 (Preview-Tool nutzt 5180). **Alles auf origin/main gepusht; letzter Commit `c16a4d2`.** Working-Tree nur mit vorbestehenden, untracked `public/assets/vehicles/blue_lightTank.*` (nicht von uns — nicht committen ohne Rückfrage).
 
-**Was zuletzt lief (letzte Sitzungen):** großer Fraktions-/KI-Ausbau + zentrale Modifier-Migration.
-1. Spiel-UX, Schwierigkeitsgrade, Doctrines (alle 12, Faction-Identität vs. KI-Doctrine getrennt) — siehe ältere Stände unten.
-2. **Faction-Modifier-System (Economy/Power)** zentral in [factionModifiers.ts](src/data/factionModifiers.ts); Strommangel/Gather/Repair live.
-3. **F8 Admin-/Balancing-Panel** ([adminPanel.ts](src/ui/adminPanel.ts), Commit `365ce5f`): Dev-Tool (F8), nur `live`-Modifier editierbar (aus `getAdminEditableFactionModifierPaths()`), legacy/prepared read-only; localStorage + Export/Import JSON, Import lehnt non-live ab; `calculateFactionPowerScore`-Overview.
-4. **Phase 4a — Economy/Power-Migration** (Commit `18f7264`, **gepusht**): `economy.{unitCost,infantryCost,vehicleCost,buildingCost}` + `power.powerUsage` jetzt **live über FACTION_MODIFIERS**, im F8-Panel editierbar; **keine Balance-Änderung** (Registry spiegelt die Legacy-Effektivwerte, runtime liest nur eine Quelle).
-5. **Phase 4a.2 — Build-Time-Klärung** (Commit `ca5cb95`, **gepusht**): `production.buildSpeed` **ersetzt durch** `production.buildTimeMultiplier` (höher = langsamer, `effectiveDuration = baseDuration × multiplier`), live + editierbar, F8-Hinweis „↑ = langsamer". Keine Inversion, keine Balance-Änderung.
-6. **Phase 4b.1 — Turret-Range + Vehicle/Energy-Damage** (Commit `bc5b3c9`, **gepusht**): `defense.turretRangeBonus` (additiv), `combat.vehicleDamage`, `combat.energyWeaponDamage` live über FACTION_MODIFIERS, F8-editierbar.
-7. **Phase 4b.2a — Unit/Building Hull** (Commit `bb7bf29`, **gepusht**): `combat.unitHull` (= legacy hp×unitHp) + `defense.buildingHull` (= legacy hp) live/editierbar; vehicle/infantryHull neutral 1.0. Keine Balance-Änderung.
-8. **Phase 4b.2b — Infantry-Speed Rename + Migration** (Commit `6ec311b`, **gepusht**): `combat.unitSpeed` (zu breiter Name) **ersetzt durch** `combat.infantrySpeed` (nur Infanterie; green 1.15, sonst 1.0); Fahrzeuge unverändert. `combat.unitSpeed` bleibt nur als **deprecated read-only Marker** (kein Runtime-Effekt, kein Registry-Feld). **Meilenstein: alle je-live Fraktionsdimensionen sind jetzt zentral in FACTION_MODIFIERS.** F8: 18 Pfade / 72 Rows.
-9. **Phase 4c.1 — Validator auf Registry** (Commit `58b6c27`, **gepusht**): `balanceValidation.ts` `viaPerks` leitet die Perk-Erklärung jetzt aus `FACTION_MODIFIERS` ab ([factionModifierValidationMap.ts](src/data/factionModifierValidationMap.ts)) statt aus `factions.json.modifiers`. Keine Verhaltensänderung (0 Violations).
-10. **Phase 4c.2 — Legacy-Cleanup** (lokal committet, **push ausstehend**): `factions.json.modifiers` **vollständig entfernt** (alle 4 Fraktionen); `FactionDef.modifiers` → optional/`@deprecated`. Alle 5 Migrations-/Paritätstests von `factions.json`-`legacy()` auf **Registry-/zentrale-Getter-Erwartungen** umgestellt. Keine Balance-/Runtime-/F8-Änderung.
+**Konventionen:** committen/pushen NUR auf Ansage; nach jedem Schritt tsc+vitest+build(+validate:balance)+Browser-Smoke verifizieren; **Antworten auf Deutsch**. `FACTION_MODIFIERS` ([factionModifiers.ts](src/data/factionModifiers.ts)) ist die alleinige Balance-Source-of-Truth (Runtime+F8+Validator); `factions.json` trägt nur Identität/`tactical`/`perks`-Flavor (kein `modifiers` mehr).
 
-**Design-Doku:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md) (vollständiges System, Roadmap MVP/P2/P3).
+**Was zuletzt fertig wurde (alles gepusht):**
+1. **Faction-Modifier-Migration Phase 4a–4c.2 ABGESCHLOSSEN** — alle je-live Dimensionen (cost/power/buildTime/damage/range/hull/infantrySpeed) zentral in `FACTION_MODIFIERS`; Validator liest Registry ([factionModifierValidationMap.ts](src/data/factionModifierValidationMap.ts)); `factions.json.modifiers` entfernt. Keine Balance-Änderung in der ganzen Migration. Drift-/Paritäts-Tests in `src/systems/*Migration*.test.ts`.
+2. **F8 Admin-/Balancing-Panel** ([adminPanel.ts](src/ui/adminPanel.ts)): Dev-Tool (Taste F8), nur `live`-Modifier editierbar, legacy/prepared read-only, localStorage + Export/Import, Power-Score. 18 live-Pfade / 72 Rows.
+3. **Building-GLB-Loader** ([buildingGlb.ts](src/render/buildingGlb.ts)): GLTFLoader+Cache wie Vehicles, **Fallback → prozedural** ([models.ts](src/render/models.ts) `buildingParts`). Aktiv: **HQ (`nexus`) + Powerplant (`spire`)** für alle 4 Fraktionen (GLBs in `public/assets/buildings/{hq,power,defense}/<fraktion>/`). **Defense-Tower-GLBs liegen bereit, sind aber NICHT aktiviert** (`ACTIVE_ASSET_ROLES = {'power','hq'}`) — cannon/lance bleiben prozedural (Turm-Aim). Asset-Registry + Roles/Tags: [buildingAssets.ts](src/data/buildingAssets.ts), [buildingRoles.ts](src/data/buildingRoles.ts).
+4. **Terrain — organische Höhenstufen-Kanten** ([terrain.ts](src/render/terrain.ts), Commit `2415afd`): `cliffProximity` + kanten-lokalisierte Erosion im finalen Warp-Loop → Cliffs mäandern wie erodierte Küsten statt Tile-Treppen. Boden bleibt flach (1. Wellen-Versuch verworfen). Rein visuell, watertight, pathfinding-neutral.
+5. **Startscreen viewport-safe** ([screens.ts](src/ui/screens.ts)+[style.css](src/ui/style.css), Commit `c16a4d2`): `.deploy-layout` = scrollbarer `.screen-scroll` + sticky `.screen-cta`-Footer → **DEPLOY immer sichtbar**. Nur Startscreen betroffen.
 
-**➡️ NÄCHSTER SCHRITT (Empfehlung):** entweder **erster F8-basierter Balancing-Pass** (jetzt gefahrlos, da FACTION_MODIFIERS alleinige Quelle ist) ODER **Building Roles/Tags** als Vorbereitung für TurretDurability / Solar Colony Aura / Azure Shields. **Migration ist abgeschlossen** (4a–4c.2); keine zweite Zahlenquelle mehr.
+**➡️ NÄCHSTE SCHRITTE (offene Roadmap, NICHT begonnen):**
+- **World/Foundation Phase 1b** — Kristall-Resource-System in ein eigenes Modul extrahieren (Daten + Visual-Lifecycle entkoppeln von map.ts/terrain.ts/world.ts), **No-Balance**.
+- **Phase 1c** — Building-GLB-Material-Fidelity (Slot-Material-Remap analog Fahrzeuge; aktuell wird nur `mat_accent` getintet) + optionale dezente HQ-Animation.
+- Optional: Defense-Tower-GLBs aktivieren (Turm-Pivots prüfen), erster F8-Balancing-Pass.
+- **Nicht starten ohne Ansage:** Colony Aura, Azure Shields, Verdant Upkeep, TurretDurability-Effekt, Balancing-Pass.
+
+**Design-Doku:** [docs/design/faction-doctrine-system.md](docs/design/faction-doctrine-system.md).
 
 **Wichtige Konventionen:** committen/pushen nur auf Ansage; nach jedem Schritt tsc+vitest+build+Browser verifizieren; Faction-Modifiers ≠ Doctrine (Doctrine moduliert nur KI). **`FACTION_MODIFIERS` ([factionModifiers.ts](src/data/factionModifiers.ts)) ist die alleinige technische Source-of-Truth für Balance** — Runtime, F8-Panel und Validator lesen nur sie. `factions.json` trägt nur noch Identität/`tactical`/`perks`-Flavortext (kein `modifiers`-Objekt mehr).
 
