@@ -30,7 +30,12 @@
 
 ---
 
-## ⏱️ Aktueller Stand (2026-06-17, **World/Foundation Phase 1a — organischere Höhenstufen-Kanten**)
+## ⏱️ Aktueller Stand (2026-06-17, **UI-Fix — Startscreen viewport-safe (DEPLOY immer sichtbar)**)
+- **Problem:** Startscreen war eine Full-Viewport-Flex-Spalte mit `overflow:hidden`, ohne Scroll/sticky-Footer → bei hohem Inhalt (großer Titel + 4 Fraktionskarten) wurde der **DEPLOY-Button unter den sichtbaren Bereich** geschoben; Fraktionsbox `min-width:740px` erzwang H-Overflow.
+- **Fix** ([screens.ts](src/ui/screens.ts) + [style.css](src/ui/style.css)): Startscreen-Container `.deploy-layout` = Flex-Spalte mit **scrollbarem `.screen-scroll`** (Inhalt) + **immer sichtbarem `.screen-cta`-Footer** (DEPLOY/Codex). Titel `clamp(30px,6vmin,60px)`, Fraktionsreihe `flex-wrap`, `min-width:740px` entfernt, Media-Query für niedrige Höhen, Texte gekürzt. Globaler Safety-Net: `.screen { overflow-y:auto }`. **Nur Startscreen** betroffen — Briefing/Pause/End (`.screen.cinematic` ohne `.deploy-layout`) unverändert.
+- **Keine Gameplay-/Balance-Änderung.** Verify: 173 Tests grün (+1 Startscreen-DOM-Test), `tsc`+`vite build`+`validate:balance` sauber. Browser-Smoke: DEPLOY bei 1280×800, 1100×560 und niedriger Höhe **immer sichtbar/klickbar**, kein H-Overflow, voller Flow (DEPLOY→Briefing→Spiel) + F8 ok, keine Konsolenfehler.
+
+## ⏱️ Vorheriger Stand (2026-06-17, **World/Foundation Phase 1a — organischere Höhenstufen-Kanten**)
 - **Ziel (User-Klarstellung):** nicht der Boden soll wellen (1. Versuch verworfen), sondern die **Kanten der Höhenstufen** sollen organisch statt blockig/rechteckig aussehen.
 - **Umsetzung** ([terrain.ts](src/render/terrain.ts)): `cliffProximity(map,wx,wz)` (0 im Plateau-Inneren → 1 an der Stufengrenze, smoothstep über ~2 Tiles) + **kanten-lokalisierte Erosion** im finalen Warp-Loop: zusätzliche 2-Oktaven-Seitenverschiebung (bis ~1.5 Welt-Einheiten) **nur** dort, wo `cliffProximity>0`. Beides reine Funktion der PRE-warp-XZ → geteilte Vertices verschieben sich identisch (**watertight**); Plateau-Inneres bleibt unbewegt (**kein Floating**, Props/Einheiten bleiben ausgerichtet). `groundHeight`/`walkHeight`/Pathfinding unberührt.
 - **Ergebnis:** Cliff-Outlines mäandern wie erodierte Küsten (Buchten/Landzungen) statt rechteckiger Tile-Treppen; Boden bleibt flach.

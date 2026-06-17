@@ -78,7 +78,38 @@ button.primary:active {
   gap: 20px;
   background: radial-gradient(ellipse at 50% 30%, rgba(46, 40, 90, 0.55), rgba(8, 7, 18, 0.96) 70%);
   z-index: 50;
-  overflow: hidden;
+  /* Safety net: never clip content unreachably — overflow becomes scrollable. */
+  overflow-x: hidden; overflow-y: auto;
+}
+
+/* Viewport-safe DEPLOY screen: scrollable content + an always-visible CTA footer
+   so the primary button is never pushed below the fold (any window height). */
+.screen.cinematic.deploy-layout {
+  justify-content: stretch; padding: 0; gap: 0; overflow: hidden;
+}
+.deploy-layout .screen-scroll {
+  flex: 1 1 auto; min-height: 0; width: 100%;
+  overflow-x: hidden; overflow-y: auto;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 30px 24px 18px;
+}
+.deploy-layout .screen-cta {
+  flex: 0 0 auto; width: 100%; z-index: 2;
+  display: flex; gap: 14px; align-items: center; justify-content: center;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, rgba(8, 7, 18, 0), rgba(8, 7, 18, 0.9) 45%);
+  border-top: 1px solid rgba(140, 200, 255, 0.14);
+}
+.deploy-layout .menu-box { max-width: min(96vw, 880px); }
+.deploy-layout .faction-row { flex-wrap: wrap; }
+/* Title scales with the viewport so it never eats the whole screen.
+   (.cinematic.deploy-layout out-specifies the base `.screen h1` rule.) */
+.cinematic.deploy-layout h1 { font-size: clamp(30px, 6vmin, 60px); }
+@media (max-height: 820px) {
+  .deploy-layout .screen-scroll { gap: 9px; padding-top: 16px; }
+  .deploy-layout .menu-box { padding: 12px 18px; gap: 8px; }
+  .cinematic.deploy-layout h2 { font-size: 15px; }
+  .deploy-layout .screen-cta { padding: 10px 24px; }
 }
 /* Cinematic screens (start, briefing) use the generated command-deck artwork. */
 .screen.cinematic {

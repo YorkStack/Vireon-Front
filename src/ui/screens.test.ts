@@ -1,7 +1,15 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from 'vitest';
-import { showBriefing } from './screens';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { showBriefing, showStartScreen } from './screens';
 import type { FactionDef, MissionDef } from '../core/types';
+
+// Stub the campaign loader (it uses fetch, unavailable in the test env).
+vi.mock('../campaign/campaign', () => ({
+  loadCampaignList: async () => [
+    { id: 'demo', name: 'Demo Campaign', description: 'A short demo.', missions: [{ file: 'm1.json', name: 'First Light' }] },
+  ],
+  loadMission: async () => ({ name: 'First Light', briefing: 'b', objectives: ['o'] }),
+}));
 
 const mission = {
   name: 'Foothold', briefing: 'Establish a foothold.', objectives: ['Destroy the enemy Nexus'],
@@ -27,5 +35,30 @@ describe('briefing: faction tactical profile (not a per-match player doctrine)',
     expect(text).toContain('Swarm Consumption Doctrine'); // the fixed faction identity label
     expect(text).toContain('Unerbittlich');               // a tactical-profile stat
     expect(text).not.toContain('Doktrin:');               // briefing must not imply a player doctrine pick
+  });
+});
+
+describe('start screen: viewport-safe DEPLOY layout', () => {
+  beforeEach(() => { document.body.innerHTML = '<div id="ui-root"></div>'; });
+
+  it('renders the DEPLOY button inside the always-visible CTA footer, not the scroll area', async () => {
+    void showStartScreen();                 // resolves only on DEPLOY click; inspect the DOM
+    await new Promise((r) => setTimeout(r, 0));
+    await new Promise((r) => setTimeout(r, 0)); // let the mocked campaign load + DOM build settle
+
+    const btn = document.getElementById('btn-start');
+    expect(btn, 'DEPLOY button present').not.toBeNull();
+    expect(btn!.textContent).toContain('DEPLOY');
+
+    const cta = document.querySelector('.deploy-layout .screen-cta');
+    const scroll = document.querySelector('.deploy-layout .screen-scroll');
+    expect(cta, 'CTA footer present').not.toBeNull();
+    expect(scroll, 'scrollable content present').not.toBeNull();
+    // DEPLOY lives in the sticky footer, NOT in the scrollable content
+    expect(cta!.contains(btn!)).toBe(true);
+    expect(scroll!.contains(btn!)).toBe(false);
+    // long faction/campaign content sits in the scroll area, so it can never push
+    // the CTA off-screen
+    expect(scroll!.querySelector('#faction-row')).not.toBeNull();
   });
 });

@@ -32,32 +32,34 @@ export async function showStartScreen(): Promise<MissionChoice> {
 
   return new Promise<MissionChoice>((resolve) => {
     const screen = el(`
-      <div class="screen cinematic">
-        <div class="subtitle">A real-time strategy game</div>
-        <h1>Vireon Front</h1>
-        <h2>HOSTILE WORLD &middot; CRYSTAL WAR</h2>
-        <div class="menu-box tac-panel">
-          <div class="menu-head">SELECT CAMPAIGN</div>
-          <div id="campaign-list" style="display:flex;flex-direction:column;gap:8px;"></div>
-        </div>
-        <div class="menu-box tac-panel">
-          <div class="menu-head">SCHWIERIGKEITSGRAD</div>
-          <div class="menu-sub">Spielstärke der gegnerischen KI — gilt für die ganze Partie</div>
-          <div class="difficulty-row" id="difficulty-row" style="display:flex;gap:10px;justify-content:center;"></div>
-        </div>
-        <div class="menu-box tac-panel" style="min-width:740px;">
-          <div class="menu-head">FRAKTION WÄHLEN</div>
-          <div class="menu-sub">Jede Fraktion hat eine feste Identität (Tactical Profile, Stärken/Schwächen) — der Gegner ist eine zufällige der drei anderen Fraktionen</div>
-          <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
-        </div>
-        <div class="adv-wrap">
-          <button id="adv-toggle" class="adv-toggle" type="button">⚙ Erweitert</button>
-          <div id="adv-box" class="adv-box" style="display:none;">
-            <label class="doctrine-pick">KI-Doktrin-Vorschau (Advanced — verändert dein Gameplay noch nicht)
-              <select id="adv-doctrine"></select></label>
+      <div class="screen cinematic deploy-layout">
+        <div class="screen-scroll">
+          <div class="subtitle">A real-time strategy game</div>
+          <h1>Vireon Front</h1>
+          <h2>HOSTILE WORLD &middot; CRYSTAL WAR</h2>
+          <div class="menu-box tac-panel">
+            <div class="menu-head">SELECT CAMPAIGN</div>
+            <div id="campaign-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+          <div class="menu-box tac-panel">
+            <div class="menu-head">SCHWIERIGKEITSGRAD</div>
+            <div class="menu-sub">Stärke der gegnerischen KI (ganze Partie)</div>
+            <div class="difficulty-row" id="difficulty-row" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;"></div>
+          </div>
+          <div class="menu-box tac-panel">
+            <div class="menu-head">FRAKTION WÄHLEN</div>
+            <div class="menu-sub">Feste Identität je Fraktion · Gegner = zufällige andere</div>
+            <div class="faction-row" id="faction-row" style="justify-content:center;"></div>
+          </div>
+          <div class="adv-wrap">
+            <button id="adv-toggle" class="adv-toggle" type="button">⚙ Erweitert</button>
+            <div id="adv-box" class="adv-box" style="display:none;">
+              <label class="doctrine-pick">KI-Doktrin-Vorschau (Advanced — verändert dein Gameplay noch nicht)
+                <select id="adv-doctrine"></select></label>
+            </div>
           </div>
         </div>
-        <div style="display:flex;gap:14px;align-items:center;">
+        <div class="screen-cta">
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
           <button id="btn-codex" style="padding:12px 30px;letter-spacing:2px;">⬡ UNIT CODEX</button>
         </div>
