@@ -4,7 +4,7 @@
 // (pebbles, alien grass, spore lamps, crystal shards, glow pools).
 import * as THREE from 'three';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
-import { hash2, warpXZ } from './terrainNoise';
+import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
@@ -176,6 +176,32 @@ function makeGlowTexture(): THREE.Texture {
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;
+}
+
+// How close a world XZ is to a height-level boundary (cliff), 0 (interior) → 1
+// (right at the edge). Used to localise the organic edge-erosion warp so plateau
+// interiors stay put while only the cliff outlines meander. Pure function of the
+// PRE-warp world position → shared vertices erode identically (mesh watertight).
+function cliffProximity(map: GameMap, wx: number, wz: number): number {
+  const tx = Math.floor(wx / TILE), tz = Math.floor(wz / TILE);
+  if (!map.inBounds(tx, tz)) return 0;
+  const l = map.level[map.idx(tx, tz)];
+  let minD = 1e9;
+  for (let dz = -2; dz <= 2; dz++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const nx = tx + dx, nz = tz + dz;
+      if (!map.inBounds(nx, nz)) continue;
+      if (map.level[map.idx(nx, nz)] === l) continue;
+      // distance from the vertex to that differing tile's nearest edge
+      const ex = Math.max((nx) * TILE - wx, 0, wx - (nx + 1) * TILE);
+      const ez = Math.max((nz) * TILE - wz, 0, wz - (nz + 1) * TILE);
+      const d = Math.hypot(ex, ez);
+      if (d < minD) minD = d;
+    }
+  }
+  const falloff = TILE * 2.0;           // erosion reaches ~2 tiles inland
+  const p = 1 - Math.min(1, minD / falloff);
+  return p * p * (3 - 2 * p);           // smoothstep
 }
 
 function cornerLevel(map: GameMap, tx: number, tz: number, cx: number, cz: number): number {
@@ -378,8 +404,25 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   // Break the grid: warp every vertex horizontally so plateau/cliff outlines
   // meander instead of following straight tile rows. UVs keep using the original
   // (pre-warp) world coords baked above, so textures don't smear.
+  // On top of the global warp, add a stronger EDGE-EROSION that only kicks in
+  // near height-level boundaries (cliffProximity) — this is what turns the hard
+  // rectangular cliff outlines into organic, eroded coastlines. Plateau interiors
+  // (proximity 0) are left untouched, so units/buildings stay aligned. Both terms
+  // are pure functions of the pre-warp XZ → shared vertices move identically and
+  // the mesh stays watertight; heights/pathfinding are unaffected.
   for (let k = 0; k < allPos.length; k += 3) {
-    const [wx, wz] = warpXZ(allPos[k], allPos[k + 2]);
+    const ox = allPos[k], oz = allPos[k + 2];
+    let [wx, wz] = warpXZ(ox, oz);
+    const prox = cliffProximity(map, ox, oz);
+    if (prox > 0.001) {
+      // Two octaves of organic crenellation along the edge.
+      const ex = (vnoise(ox * 0.55 + 11, oz * 0.55) - 0.5)
+        + (vnoise(ox * 1.3 + 4, oz * 1.3 + 9) - 0.5) * 0.5;
+      const ez = (vnoise(ox * 0.55, oz * 0.55 + 19) - 0.5)
+        + (vnoise(ox * 1.3 + 6, oz * 1.3 + 2) - 0.5) * 0.5;
+      const amp = prox * 1.5; // up to ~1.5 world units of lateral erosion at edges
+      wx += ex * amp; wz += ez * amp;
+    }
     allPos[k] = wx; allPos[k + 2] = wz;
   }
   geo.setAttribute('position', new THREE.Float32BufferAttribute(allPos, 3));

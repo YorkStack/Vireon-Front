@@ -30,7 +30,14 @@
 
 ---
 
-## ⏱️ Aktueller Stand (2026-06-17, **Asset/Foundation Phase 2 — Building-GLB-Loader mit Fallback**)
+## ⏱️ Aktueller Stand (2026-06-17, **World/Foundation Phase 1a — organischere Höhenstufen-Kanten**)
+- **Ziel (User-Klarstellung):** nicht der Boden soll wellen (1. Versuch verworfen), sondern die **Kanten der Höhenstufen** sollen organisch statt blockig/rechteckig aussehen.
+- **Umsetzung** ([terrain.ts](src/render/terrain.ts)): `cliffProximity(map,wx,wz)` (0 im Plateau-Inneren → 1 an der Stufengrenze, smoothstep über ~2 Tiles) + **kanten-lokalisierte Erosion** im finalen Warp-Loop: zusätzliche 2-Oktaven-Seitenverschiebung (bis ~1.5 Welt-Einheiten) **nur** dort, wo `cliffProximity>0`. Beides reine Funktion der PRE-warp-XZ → geteilte Vertices verschieben sich identisch (**watertight**); Plateau-Inneres bleibt unbewegt (**kein Floating**, Props/Einheiten bleiben ausgerichtet). `groundHeight`/`walkHeight`/Pathfinding unberührt.
+- **Ergebnis:** Cliff-Outlines mäandern wie erodierte Küsten (Buchten/Landzungen) statt rechteckiger Tile-Treppen; Boden bleibt flach.
+- **Verify:** 172 Tests grün, `tsc` + `vite build` sauber. Browser-Smoke: organische Kanten (Screenshot), keine Risse, kein Floating, keine Konsolenfehler.
+- **➡️ Nächster Schritt:** Phase 1b Kristall-Resource-Modul (No-Balance) → Phase 1c Building-GLB-Material-Fidelity.
+
+## ⏱️ Vorheriger Stand (2026-06-17, **Asset/Foundation Phase 2 — Building-GLB-Loader mit Fallback**)
 - **Building-GLB-Loader** [buildingGlb.ts](src/render/buildingGlb.ts) nach dem Vehicle-Muster: Preload aller AKTIVEN Building-GLBs ([main.ts](src/main.ts) `Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs()])`), dann synchroner `makeGlbBuildingGroup` aus dem Cache (userData.topY/inner/anim) — sonst `null` → **prozeduraler Fallback**. **Fehlendes/kaputtes GLB bricht das Spiel nie** (jeder Pfad → `null`).
 - **Aktiviert: Powerplants (`spire`) + Command-Center (`nexus`/HQ)** — beide statisch. **Option B konservativ:** Defense-Tower-GLBs bleiben inventarisiert, aber **nicht** auf cannon/lance verdrahtet (Turm-Aim-Visual unangetastet; `ACTIVE_ASSET_ROLES = {'power','hq'}`).
 - **Asset-Nachschub eingebunden (2026-06-17):** 4 Command-Center (crimson_command_fortress, azure_command_headquarters, verdant_apex_hive_core, solar_singularity_nexus) + die fehlenden 2 Powerplants (verdant_bio_reactor, solar_radiant_nexus). Damit haben **alle 4 Fraktionen** HQ + Powerplant + Defense-Tower-GLBs; `UNMAPPED_BUILDING_ASSETS` ist jetzt **leer**.
