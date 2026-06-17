@@ -21,6 +21,23 @@ function fakeScene(): THREE.Group {
   return g;
 }
 
+/** A scene mirroring the real GLBs: a baked concrete body + a named emissive glow. */
+function fakeGlowScene(): { scene: THREE.Group; concrete: THREE.MeshStandardMaterial; glow: THREE.MeshStandardMaterial } {
+  const g = new THREE.Group();
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  concrete.name = 'Concrete';
+  const glow = new THREE.MeshStandardMaterial({ color: 0x111111 });
+  glow.name = 'Status_Glow';
+  glow.emissive = new THREE.Color(1, 0.42, 0); // baked emissiveFactor
+  glow.emissiveIntensity = 1;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 3, 2), concrete);
+  body.position.y = 1.5;
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), glow);
+  lamp.position.y = 2.5;
+  g.add(body, lamp);
+  return { scene: g, concrete, glow };
+}
+
 afterEach(() => {
   for (const k of [CRIMSON_KEY, AZURE_KEY, VERDANT_KEY, SOLAR_KEY, CRIMSON_HQ]) __setBuildingGlbForTest(k, null);
 });
@@ -89,5 +106,54 @@ describe('building GLB loader — mapping + fallback (powerplants only this phas
     // craft an asset object whose key is not in the cache
     const ghost = { ...powerPlantAsset('red')!, assetKey: 'ghost.key' };
     expect(makeGlbBuildingGroup(ghost, '#fff', 2)).toBeNull();
+  });
+});
+
+describe('building GLB material fidelity (Visual/Fidelity Phase 1)', () => {
+  function findMat(g: THREE.Group, name: string): THREE.MeshStandardMaterial | undefined {
+    let found: THREE.MeshStandardMaterial | undefined;
+    g.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
+      if (mat && mat.name === name) found = mat;
+    });
+    return found;
+  }
+
+  it('preserves non-emissive materials exactly (no replacement)', () => {
+    const { scene, concrete } = fakeGlowScene();
+    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
+    const c = findMat(g, 'Concrete')!;
+    expect(c.color.getHex()).toBe(concrete.color.getHex()); // untouched colour
+    expect(c.emissiveIntensity).toBe(1);                    // not boosted
+  });
+
+  it('preserves baked emissive look and registers it for the idle pulse', () => {
+    const { scene } = fakeGlowScene();
+    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
+    const glow = findMat(g, 'Status_Glow')!;
+    expect(glow.emissiveIntensity).toBe(1);                     // baked strength preserved
+    expect(glow.emissive.getHex()).toBe(new THREE.Color(1, 0.42, 0).getHex()); // colour preserved
+    const pulse = (g.userData.anim as { pulseMats?: { base: number }[] }).pulseMats!;
+    expect(pulse.length).toBe(1);
+    expect(pulse[0].base).toBe(1);                              // pulse centres on baked value
+  });
+
+  it('clones emissive materials per instance — no leak between buildings or to the template', () => {
+    const { scene, glow: templateGlow } = fakeGlowScene();
+    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    const a = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
+    const b = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
+    const ga = findMat(a, 'Status_Glow')!, gb = findMat(b, 'Status_Glow')!;
+    expect(ga).not.toBe(gb);              // separate instances
+    expect(ga).not.toBe(templateGlow);    // not the cached template material
+    expect(templateGlow.emissiveIntensity).toBe(1); // template never mutated
+  });
+
+  it('a non-emissive-only scene yields no pulse and an empty anim (no crash)', () => {
+    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene()); // default material, no emissive
+    const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
+    expect(g.userData.anim).toEqual({});
   });
 });

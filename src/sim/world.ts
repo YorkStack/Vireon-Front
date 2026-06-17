@@ -1085,6 +1085,14 @@ export class World {
       }
     }
     if (!anim || !b.complete) return;
+    // Gentle emissive idle pulse for GLB buildings with baked glow materials
+    // (HQs/powerplants). Touches only emissiveIntensity — no geometry, no
+    // position/scale, so it can never affect footprint or gameplay.
+    const pulseMats = (b.group.userData.anim as { pulseMats?: { mat: THREE.MeshStandardMaterial; base: number }[] }).pulseMats;
+    if (pulseMats) {
+      const k = 0.82 + 0.18 * Math.sin(this.time * 1.5 + b.id);
+      for (const pm of pulseMats) pm.mat.emissiveIntensity = pm.base * k;
+    }
     if (anim.turret) {
       const t = b.target;
       if (t && t.alive) {
