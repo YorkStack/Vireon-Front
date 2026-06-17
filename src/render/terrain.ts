@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
 import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
+import { crystalStageImagePath } from '../data/crystalAssets';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
 const LEVEL_COLORS = [
@@ -111,12 +112,21 @@ function makeBlendGroundMaterial(texs: THREE.Texture[], tint: string): THREE.Mes
   return mat;
 }
 
-// High-quality crystal sprite for resource nodes (replaces procedural shards).
-const CRYSTAL_TEX = (() => {
-  const t = groundLoader.load('/assets/terrain/crystal/crystal.png');
-  t.colorSpace = THREE.SRGBColorSpace;
+// Crystal stage sprites (full / reduced / small) per resource type. Cached by
+// path so the few PNGs load once, not once per node. Each crystal node owns ONE
+// billboard whose material.map is swapped to the stage texture as it depletes
+// (see world.ts updateCrystalVisual). All textures are pre-loaded here so the
+// runtime swap never triggers a network fetch.
+const crystalTexCache = new Map<string, THREE.Texture>();
+function crystalStageTex(path: string): THREE.Texture {
+  let t = crystalTexCache.get(path);
+  if (!t) {
+    t = groundLoader.load(path);
+    t.colorSpace = THREE.SRGBColorSpace;
+    crystalTexCache.set(path, t);
+  }
   return t;
-})();
+}
 // (Rock textures + boulder placement + vegetation now live in props.ts.)
 
 /** Tileable grain/noise texture multiplied over vertex colors for surface detail. */
@@ -598,14 +608,12 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   }
 
   // ---------------- crystal nodes ----------------
-  // High-quality crystal sprite billboards in tight clusters (vire-crystal
-  // fields) with an additive teal glow pool, so they stay readable in the dark.
+  // One pre-rendered crystal-cluster billboard per node + an additive teal glow
+  // pool so it stays readable in the dark. Each node owns its OWN SpriteMaterial
+  // and references to the three stage textures (full/reduced/small), stored in
+  // grp.userData, so the depletion stage can be swapped at runtime with a single
+  // material.map assignment — no geometry rebuild, no per-frame work.
   const crystalGroups = new Map<number, THREE.Group>();
-  // SpriteMaterial is unlit -> the sprite reads as self-luminous (the emissive
-  // glow). Shared across all sprites; variety comes from scale/placement.
-  const crystalSpriteMat = new THREE.SpriteMaterial({
-    map: CRYSTAL_TEX, transparent: true, depthWrite: false, fog: true,
-  });
   const glowTex = makeGlowTexture();
   const glowMat = new THREE.MeshBasicMaterial({
     map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
@@ -613,42 +621,40 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   const glowGeo = new THREE.PlaneGeometry(6.5, 6.5);
   glowGeo.rotateX(-Math.PI / 2);
 
-  const crystalSprite = (w: number, h: number, x: number, y: number, z: number): THREE.Sprite => {
-    const sp = new THREE.Sprite(crystalSpriteMat);
-    sp.scale.set(w, h, 1);
-    // Sprites pivot at centre; lift by half-height so the base sits on the ground.
-    sp.position.set(x, y + h / 2, z);
-    return sp;
-  };
+  // Sprite aspect ≈ 1.587 (768×484). Sized so the cluster reads as a node and
+  // its base sits on the ground (pivot is centred → lift by ~0.4·height).
+  const SPRITE_W = 4.6, SPRITE_H = SPRITE_W / 1.587; // ≈ 2.9
 
   for (const node of map.crystals) {
     const grp = new THREE.Group();
     const [wx, wz] = warpXZ(...map.tileToWorld(node.tx, node.tz));
     const gy = map.level[map.idx(node.tx, node.tz)] * LEVEL_H;
 
-    // Additive glow pool first (drawn under the sprites).
+    // Additive glow pool first (drawn under the sprite).
     const glow = new THREE.Mesh(glowGeo, glowMat);
     glow.position.y = 0.1;
     glow.renderOrder = 3;
     grp.add(glow);
 
-    // Tall central cluster.
-    grp.add(crystalSprite(2.3, 2.7, 0, 0.05, 0));
-    // Tight ring of mid shards.
-    const ring = 5;
-    for (let s = 0; s < ring; s++) {
-      const a = (s / ring) * Math.PI * 2 + node.id * 0.7;
-      const r = 0.55 + hash2(node.id + s, s) * 0.25;
-      const h = 1.3 + hash2(s, node.id * 3) * 0.7;
-      grp.add(crystalSprite(h * 0.85, h, Math.cos(a) * r, 0.02, Math.sin(a) * r));
-    }
-    // A few small ground shards further out.
-    for (let s = 0; s < 4; s++) {
-      const a = hash2(node.id * 5 + s, s * 9) * Math.PI * 2;
-      const r = 1.2 + hash2(s, node.id) * 1.0;
-      const h = 0.55 + hash2(node.id, s * 3) * 0.4;
-      grp.add(crystalSprite(h * 0.85, h, Math.cos(a) * r, 0, Math.sin(a) * r));
-    }
+    // Pre-load the three stage textures for this node's resource type (default
+    // today). Nodes start full (amount === max), so the billboard begins at full.
+    const rt = node.resourceType ?? 'default';
+    const texFull = crystalStageTex(crystalStageImagePath(rt, 'full')!);
+    const texReduced = crystalStageTex(crystalStageImagePath(rt, 'reduced')!);
+    const texSmall = crystalStageTex(crystalStageImagePath(rt, 'small')!);
+
+    const mat = new THREE.SpriteMaterial({
+      map: texFull, transparent: true, depthWrite: false, fog: true,
+    });
+    const sp = new THREE.Sprite(mat);
+    // Slight per-node size variety so a field doesn't look stamped.
+    const sv = 0.9 + hash2(node.id, 3) * 0.25;
+    sp.scale.set(SPRITE_W * sv, SPRITE_H * sv, 1);
+    sp.position.set(0, SPRITE_H * sv * 0.4, 0);
+    grp.add(sp);
+
+    // Metadata read by world.ts updateCrystalVisual for the stage swap.
+    grp.userData = { stage: 'full', mat, tex: { full: texFull, reduced: texReduced, small: texSmall } };
 
     grp.position.set(wx, gy, wz);
     crystalGroups.set(node.id, grp);

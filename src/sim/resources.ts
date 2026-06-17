@@ -13,27 +13,42 @@ import type { CrystalNode } from '../map/map';
 import {
   type CrystalResourceType,
   type CrystalVisualSize,
+  type CrystalVisualStage,
   getCrystalYieldMultiplier,
 } from '../data/crystalAssets';
 
-/** Discrete depletion phase derived from amount/max. Decoupled from intrinsic size. */
-export type CrystalVisualStage = 'full' | 'reduced' | 'depleted';
+// Canonical stage type lives in crystalAssets.ts (it selects the sprite asset);
+// re-exported here so the logic layer + map.ts can keep importing it from sim.
+export type { CrystalVisualStage } from '../data/crystalAssets';
 
-/** Fraction thresholds for the stages. Deterministic; pure function of amount/max. */
-export const CRYSTAL_STAGE_REDUCED_BELOW = 0.5; // amount/max < 0.5 → reduced (until depleted)
+/**
+ * Fraction thresholds for the three visible stages (Option B). Deterministic;
+ * pure function of amount/max.
+ *   full   : amount/max >= 0.66
+ *   reduced: 0.33 <= amount/max < 0.66
+ *   small  : 0 < amount/max < 0.33
+ *   depleted: amount <= 0
+ */
+export const CRYSTAL_STAGE_FULL_AT = 0.66;    // >= → full
+export const CRYSTAL_STAGE_REDUCED_AT = 0.33; // >= → reduced, else small
+
+/** Per-stage group scale, layered on top of the texture swap for a smoother shrink. */
+export const CRYSTAL_STAGE_SCALE: Record<Exclude<CrystalVisualStage, 'depleted'>, number> = {
+  full: 1.0,
+  reduced: 0.82,
+  small: 0.62,
+};
 
 /** Default resource type for a freshly-generated node (today: always 'default'). */
 export const DEFAULT_CRYSTAL_RESOURCE_TYPE: CrystalResourceType = 'default';
 
-/**
- * Derive the visual depletion stage from remaining/max.
- * full   : amount/max >= 0.5
- * reduced: 0 < amount/max < 0.5
- * depleted: amount <= 0 (or max <= 0)
- */
+/** Derive the visual depletion stage from remaining/max. Pure + deterministic. */
 export function getCrystalVisualStage(amount: number, max: number): CrystalVisualStage {
   if (amount <= 0 || max <= 0) return 'depleted';
-  return amount / max < CRYSTAL_STAGE_REDUCED_BELOW ? 'reduced' : 'full';
+  const r = amount / max;
+  if (r >= CRYSTAL_STAGE_FULL_AT) return 'full';
+  if (r >= CRYSTAL_STAGE_REDUCED_AT) return 'reduced';
+  return 'small';
 }
 
 /** A node is depleted once nothing remains. */

@@ -8,18 +8,31 @@ import {
   crystalSizeFromMax,
 } from './resources';
 
-describe('crystal visual stage (deterministic from amount/max)', () => {
-  it('full at >= 50% remaining', () => {
+describe('crystal visual stage (deterministic from amount/max, Option B)', () => {
+  it('full at >= 66% remaining', () => {
     expect(getCrystalVisualStage(100, 100)).toBe('full');
-    expect(getCrystalVisualStage(50, 100)).toBe('full');
+    expect(getCrystalVisualStage(66, 100)).toBe('full');
   });
-  it('reduced between 0 and 50%', () => {
-    expect(getCrystalVisualStage(49, 100)).toBe('reduced');
-    expect(getCrystalVisualStage(1, 100)).toBe('reduced');
+  it('reduced between 33% and 66%', () => {
+    expect(getCrystalVisualStage(65, 100)).toBe('reduced');
+    expect(getCrystalVisualStage(33, 100)).toBe('reduced');
+  });
+  it('small between 0 and 33%', () => {
+    expect(getCrystalVisualStage(32, 100)).toBe('small');
+    expect(getCrystalVisualStage(1, 100)).toBe('small');
   });
   it('depleted at zero or negative', () => {
     expect(getCrystalVisualStage(0, 100)).toBe('depleted');
     expect(getCrystalVisualStage(-5, 100)).toBe('depleted');
+  });
+  it('monotonically shrinks as amount drops (full→reduced→small→depleted)', () => {
+    const order = ['full', 'reduced', 'small', 'depleted'];
+    const seq = [80, 50, 20, 0].map(a => getCrystalVisualStage(a, 100));
+    expect(seq).toEqual(order);
+    // never goes backwards
+    for (let i = 1; i < seq.length; i++) {
+      expect(order.indexOf(seq[i])).toBeGreaterThan(order.indexOf(seq[i - 1]));
+    }
   });
   it('is a pure function — same input, same output', () => {
     expect(getCrystalVisualStage(30, 100)).toBe(getCrystalVisualStage(30, 100));

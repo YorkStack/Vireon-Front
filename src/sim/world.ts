@@ -10,6 +10,14 @@ import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedR
 import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../render/buildingGlb';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
+import { getCrystalVisualStage, CRYSTAL_STAGE_SCALE, type CrystalVisualStage } from './resources';
+
+/** Per-crystal-group render metadata stashed in THREE.Group.userData by terrain.ts. */
+interface CrystalGroupUD {
+  stage: CrystalVisualStage;
+  mat?: THREE.SpriteMaterial;
+  tex?: { full: THREE.Texture; reduced: THREE.Texture; small: THREE.Texture };
+}
 
 let nextId = 1;
 
@@ -786,12 +794,28 @@ export class World {
   updateCrystalVisual(node: CrystalNode) {
     const g = this.crystalGroups.get(node.id);
     if (!g) return;
-    if (node.amount <= 0) {
+    const stage = getCrystalVisualStage(node.amount, node.max);
+    const ud = g.userData as CrystalGroupUD;
+
+    if (stage === 'depleted') {
       g.visible = false;
       this.map.flags[this.map.idx(node.tx, node.tz)] &= ~F_CRYSTAL;
-    } else {
-      const s = 0.35 + 0.65 * (node.amount / node.max);
-      g.scale.set(s, s, s);
+      ud.stage = 'depleted';
+      return;
+    }
+
+    g.visible = true; // a node only ever depletes in play, but stay correct if it refills
+    // Discrete per-stage group scale (full 1.0 → reduced 0.82 → small 0.62),
+    // applied together with the texture swap so the change reads as a deliberate
+    // depletion step rather than a glitch.
+    g.scale.setScalar(CRYSTAL_STAGE_SCALE[stage]);
+
+    // Swap the sprite texture ONLY when the discrete stage actually changes —
+    // textures are pre-loaded in terrain.ts, so this is a cheap pointer assign.
+    if (ud.stage !== stage && ud.mat && ud.tex) {
+      ud.mat.map = ud.tex[stage];
+      ud.mat.needsUpdate = true;
+      ud.stage = stage;
     }
   }
 

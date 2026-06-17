@@ -6,6 +6,7 @@ import {
   getCrystalYieldMultiplier,
   isEventOnlyCrystal,
   crystalVisualAsset,
+  crystalStageImagePath,
   type CrystalResourceType,
 } from './crystalAssets';
 
@@ -70,5 +71,30 @@ describe('crystal visual asset registry', () => {
     const a = crystalVisualAsset('default', 'large');
     expect(a).not.toBeNull();
     expect(a?.resourceType).toBe('default');
+  });
+});
+
+describe('crystalStageImagePath (depletion stage → sprite)', () => {
+  const types: CrystalResourceType[] = ['default', 'blazeOfTheSun', 'plasmaFilament'];
+
+  it('returns a distinct existing .png for each visible stage', () => {
+    for (const t of types) {
+      const paths = (['full', 'reduced', 'small'] as const).map(s => crystalStageImagePath(t, s));
+      // all resolved, all .png, all distinct (a real 3-step shrink)
+      expect(paths.every(p => typeof p === 'string' && p!.endsWith('.png'))).toBe(true);
+      expect(new Set(paths).size).toBe(3);
+      // every path corresponds to a real registry asset of that type
+      for (const p of paths) {
+        expect(CRYSTAL_VISUAL_ASSETS.some(a => a.imagePath === p && a.resourceType === t)).toBe(true);
+      }
+    }
+  });
+
+  it('depleted stage has no sprite (hidden, not drawn)', () => {
+    for (const t of types) expect(crystalStageImagePath(t, 'depleted')).toBeNull();
+  });
+
+  it('default full uses the medium sprite (no large in source)', () => {
+    expect(crystalStageImagePath('default', 'full')).toContain('/default/medium.png');
   });
 });

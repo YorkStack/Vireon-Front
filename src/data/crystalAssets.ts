@@ -15,6 +15,16 @@ export type CrystalResourceType = 'default' | 'blazeOfTheSun' | 'plasmaFilament'
 /** Intrinsic size class of a crystal node — picks the asset family + harvest budget. */
 export type CrystalVisualSize = 'small' | 'medium' | 'large';
 
+/**
+ * Discrete depletion phase shown for a node. Decoupled from intrinsic size.
+ * Canonical here (data layer) because it selects which sprite asset to show;
+ * the derivation logic (amount/max → stage) lives in sim/resources.ts.
+ */
+export type CrystalVisualStage = 'full' | 'reduced' | 'small' | 'depleted';
+
+/** The three VISIBLE stages, in shrink order (depleted is hidden, not drawn). */
+export type CrystalVisibleStage = Exclude<CrystalVisualStage, 'depleted'>;
+
 /** Per-resource-type balance + spawn metadata (single source of truth). */
 export interface CrystalResourceMeta {
   resourceType: CrystalResourceType;
@@ -94,6 +104,24 @@ export const CRYSTAL_VISUAL_ASSETS: CrystalVisualAsset[] = [
 export const UNMAPPED_CRYSTAL_ASSETS: ReadonlyArray<{ resourceType: CrystalResourceType; size: CrystalVisualSize; reason: string }> = [
   { resourceType: 'default', size: 'large', reason: 'No big/large PNG in source "Default Cristalls" set — falls back to default_medium.' },
 ];
+
+/**
+ * Stage → asset key per resource type, in shrink order (full → reduced → small).
+ * Default has no `large` sprite, so its `full` uses the biggest available (medium);
+ * the late stages step down through the smaller default variants.
+ */
+const STAGE_ASSET_KEY: Record<CrystalResourceType, Record<CrystalVisibleStage, string>> = {
+  default:        { full: 'default_medium', reduced: 'default_medium_small', small: 'default_small_alt' },
+  blazeOfTheSun:  { full: 'blaze_large',    reduced: 'blaze_medium',         small: 'blaze_small' },
+  plasmaFilament: { full: 'plasma_large',   reduced: 'plasma_medium',        small: 'plasma_small' },
+};
+
+/** Resolve the sprite image path for a node's resource type + visible stage. */
+export function crystalStageImagePath(type: CrystalResourceType, stage: CrystalVisualStage): string | null {
+  if (stage === 'depleted') return null;
+  const key = STAGE_ASSET_KEY[type][stage];
+  return CRYSTAL_VISUAL_ASSETS.find(a => a.assetKey === key)?.imagePath ?? null;
+}
 
 /** Lookup a sprite by type + size. Falls back to the largest available for that type. */
 export function crystalVisualAsset(type: CrystalResourceType, size: CrystalVisualSize): CrystalVisualAsset | null {
