@@ -1,6 +1,17 @@
 // Lightweight pooled VFX: projectiles, laser beams, muzzle flashes,
 // explosions, hit sparks and ground command markers.
+//
+// VFX Phase 2: beam/projectile/muzzle can render faction shot SPRITES when a
+// texture is loaded (see shotVfx.ts). The sprite path ONLY swaps the visual mesh
+// + material — travel, ttl, onHit and damage timing are identical to (and shared
+// with) the procedural path, which stays the fallback whenever a texture or
+// faction is missing.
 import * as THREE from 'three';
+import type { FactionId } from '../data/factionModifiers';
+import { beamTextureFor, bulletTextureFor, muzzleTextureFor, makeGlowMaterial } from './shotVfx';
+
+/** Fixed visual width of a sprite beam quad (world units). Cosmetic only. */
+const BEAM_SPRITE_WIDTH = 1.5;
 
 interface Fx {
   mesh: THREE.Object3D;
@@ -23,6 +34,9 @@ export class Effects {
   private shellGeo = new THREE.SphereGeometry(0.16, 6, 4);
   private rocketGeo = new THREE.ConeGeometry(0.1, 0.45, 6);
   private beamGeo = new THREE.CylinderGeometry(0.05, 0.05, 1, 6);
+  // Flat quad lying in XZ (spans local X=length, Z=width, normal +Y) for sprite
+  // beams. UV u=0 (texture left/flare) at -X, u=1 (tip) at +X.
+  private beamPlaneGeo = (() => { const g = new THREE.PlaneGeometry(1, 1); g.rotateX(-Math.PI / 2); return g; })();
   private boomGeo = new THREE.IcosahedronGeometry(1, 0);
   private flashGeo = new THREE.SphereGeometry(0.22, 6, 4);
   private ringGeo = (() => { const g = new THREE.RingGeometry(0.6, 0.78, 24); g.rotateX(-Math.PI / 2); return g; })();
@@ -49,10 +63,24 @@ export class Effects {
   /** Fires a visual projectile; calls onHit when it lands. */
   projectile(
     kind: 'bullet' | 'shell' | 'rocket', from: THREE.Vector3, to: THREE.Vector3, onHit: () => void,
+    factionId?: FactionId,
   ) {
-    const geo = kind === 'bullet' ? this.bulletGeo : kind === 'shell' ? this.shellGeo : this.rocketGeo;
-    const mat = kind === 'bullet' ? this.bulletMat : kind === 'shell' ? this.shellMat : this.rocketMat;
-    const m = new THREE.Mesh(geo, mat);
+    // Sprite path: a textured bullet sprite for the faction (crimson) — purely a
+    // visual swap. Travel/ttl/onHit below are IDENTICAL to the procedural path.
+    const bulletTex = kind === 'bullet' && factionId ? bulletTextureFor(factionId) : null;
+    let m: THREE.Object3D;
+    let isSprite = false;
+    if (bulletTex) {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: bulletTex, transparent: true, depthWrite: false, toneMapped: false,
+      }));
+      sp.scale.set(1.1, 1.15, 1); // bullet_tracer ~ square; cosmetic size
+      m = sp; isSprite = true;
+    } else {
+      const geo = kind === 'bullet' ? this.bulletGeo : kind === 'shell' ? this.shellGeo : this.rocketGeo;
+      const mat = kind === 'bullet' ? this.bulletMat : kind === 'shell' ? this.shellMat : this.rocketMat;
+      m = new THREE.Mesh(geo, mat);
+    }
     m.position.copy(from);
     const speed = kind === 'bullet' ? 38 : kind === 'rocket' ? 22 : 28;
     const dist = from.distanceTo(to);
@@ -66,8 +94,8 @@ export class Effects {
       prev.copy(fx.mesh.position);
       fx.mesh.position.lerpVectors(start, end, t);
       fx.mesh.position.y += Math.sin(t * Math.PI) * arc;
-      if (kind === 'bullet') {
-        fx.mesh.lookAt(prev); // tracer points along its actual flight path
+      if (kind === 'bullet' && !isSprite) {
+        fx.mesh.lookAt(prev); // tracer mesh points along its flight path (sprites auto-billboard)
       } else if (kind === 'rocket') {
         V.copy(end).sub(start);
         fx.mesh.lookAt(fx.mesh.position.x + V.x, fx.mesh.position.y, fx.mesh.position.z + V.z);
@@ -78,15 +106,29 @@ export class Effects {
   }
 
   /** Instant laser beam between two points (damage applied by caller). */
-  beam(from: THREE.Vector3, to: THREE.Vector3, colorHex: string) {
-    const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.95 });
-    const m = new THREE.Mesh(this.beamGeo, mat);
+  beam(from: THREE.Vector3, to: THREE.Vector3, colorHex: string, factionId?: FactionId) {
     const dist = from.distanceTo(to);
-    m.position.lerpVectors(from, to, 0.5);
-    m.scale.set(1, dist, 1);
-    m.lookAt(to);
-    m.rotateX(Math.PI / 2);
-    this.add(m, 0.12, (fx) => { mat.opacity = 0.95 * (fx.ttl / fx.life); });
+    const beamTex = factionId ? beamTextureFor(factionId) : null;
+    if (beamTex) {
+      // Sprite path: stretch ONE full-beam quad along the shot line (no UV tiling).
+      // Flare (texture left, u=0) at -X = `from`/muzzle; tip (u=1) at +X = `to`.
+      const mat = makeGlowMaterial(beamTex, 1);
+      const m = new THREE.Mesh(this.beamPlaneGeo, mat);
+      m.position.lerpVectors(from, to, 0.5);
+      m.rotation.y = Math.atan2(-(to.z - from.z), to.x - from.x);
+      m.scale.set(dist, 1, BEAM_SPRITE_WIDTH);
+      m.renderOrder = 5;
+      this.add(m, 0.14, (fx) => { mat.opacity = fx.ttl / fx.life; });
+    } else {
+      // Procedural fallback: a thin faction-coloured cylinder.
+      const mat = new THREE.MeshBasicMaterial({ color: colorHex, transparent: true, opacity: 0.95 });
+      const m = new THREE.Mesh(this.beamGeo, mat);
+      m.position.lerpVectors(from, to, 0.5);
+      m.scale.set(1, dist, 1);
+      m.lookAt(to);
+      m.rotateX(Math.PI / 2);
+      this.add(m, 0.12, (fx) => { mat.opacity = 0.95 * (fx.ttl / fx.life); });
+    }
     // bright impact spark
     const spark = new THREE.Mesh(this.flashGeo, this.sparkMat.clone());
     spark.position.copy(to);
@@ -96,7 +138,21 @@ export class Effects {
     });
   }
 
-  muzzleFlash(at: THREE.Vector3) {
+  muzzleFlash(at: THREE.Vector3, factionId?: FactionId) {
+    const tex = factionId ? muzzleTextureFor(factionId) : null;
+    if (tex) {
+      // Sprite path: a brief textured flash (crimson). Billboards to the camera.
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: tex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
+      }));
+      sp.position.copy(at);
+      this.add(sp, 0.1, (fx) => {
+        const k = fx.ttl / fx.life;
+        fx.mesh.scale.setScalar(2.2 - 0.9 * (1 - k));
+        (fx.mesh as THREE.Sprite).material.opacity = k;
+      });
+      return;
+    }
     const m = new THREE.Mesh(this.flashGeo, this.flashMat.clone());
     m.position.copy(at);
     m.scale.setScalar(1.4);

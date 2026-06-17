@@ -5,9 +5,11 @@ import { Game } from './core/game';
 import { FACTION_DEFS } from './core/defs';
 import { preloadVehicleGlbs } from './render/vehicleGlb';
 import { preloadBuildingGlbs } from './render/buildingGlb';
+import { preloadShotVfx } from './render/shotVfx';
 
-// Warm the runtime-GLB cache (vehicles + buildings) before any match starts.
-const glbReady = Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs()]);
+// Warm the runtime-GLB cache (vehicles + buildings) + shot-VFX textures before
+// any match starts. Shot-VFX failures are swallowed → procedural fallback.
+const glbReady = Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs(), preloadShotVfx()]);
 
 // Dev-only F8 admin/balancing panel (live faction-modifier tuning). Not shown in
 // normal player UI — hidden until F8. Self-installs its own hotkeys.

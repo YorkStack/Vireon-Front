@@ -540,17 +540,19 @@ export class World {
     const muzzle = shooter.group.userData.muzzle as THREE.Object3D | undefined;
     if (muzzle) { muzzle.updateWorldMatrix(true, false); muzzle.getWorldPosition(from); }
 
-    this.effects.muzzleFlash(from);
+    // Faction id is passed PURELY for VFX sprite selection (no gameplay effect).
+    const fid = this.teams[team].faction.id as FactionId;
+    this.effects.muzzleFlash(from, fid);
     if (weapon.projectile === 'laser') {
       const color = this.teams[team].faction.emissive;
-      this.effects.beam(from, to, color);
+      this.effects.beam(from, to, color, fid);
       this.applyDamage(target, weapon, team);
     } else {
       this.effects.projectile(weapon.projectile, from, to, () => {
         if (weapon.projectile !== 'bullet') this.effects.explosion(to, 0.5);
         else this.effects.hitSpark(to);
         this.applyDamage(target, weapon, team);
-      });
+      }, fid);
     }
   }
 
