@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   BUILDING_ASSETS, UNMAPPED_BUILDING_ASSETS, CANONICAL_FACTION,
-  getBuildingAsset, defenseTowerAsset, powerPlantAsset,
+  getBuildingAsset, defenseTowerAsset, powerPlantAsset, hqAsset,
 } from './buildingAssets';
 import {
   BUILDING_ROLES, BUILDING_ROLES_ALL, BUILDING_TAGS_ALL, buildingsWithTag, buildingsWithRole,
@@ -60,18 +60,28 @@ describe('building asset registry — inventory only, no gameplay values', () =>
     }
   });
 
-  it('7. powerplant assets have role power + tags powerPlant + energyProducer (red/blue only)', () => {
-    for (const id of ['red', 'blue'] as FactionId[]) {
+  it('7. powerplant assets have role power + tags powerPlant + energyProducer (all four factions)', () => {
+    for (const id of FACTIONS) {
       const a = powerPlantAsset(id);
       expect(a, `power ${id}`).toBeDefined();
       expect(a!.role).toBe('power');
+      expect(a!.buildingId).toBe('spire');
       expect(a!.tags).toEqual(expect.arrayContaining(['powerPlant', 'energyProducer']));
       expect(a!.fallbackShape).toBe('powerPlant');
     }
-    // green + solar powerplants are missing → explicitly unmapped, no fake path
-    expect(powerPlantAsset('green')).toBeUndefined();
-    expect(powerPlantAsset('yellow')).toBeUndefined();
-    expect(UNMAPPED_BUILDING_ASSETS.map((u) => u.factionId).sort()).toEqual(['green', 'yellow']);
+    // all assets are delivered now → no unmapped gaps
+    expect(UNMAPPED_BUILDING_ASSETS).toHaveLength(0);
+  });
+
+  it('7b. HQ assets have role hq + buildingId nexus (one per faction)', () => {
+    for (const id of FACTIONS) {
+      const a = hqAsset(id);
+      expect(a, `hq ${id}`).toBeDefined();
+      expect(a!.role).toBe('hq');
+      expect(a!.buildingId).toBe('nexus');
+      expect(a!.fallbackShape).toBe('hq');
+      expect(BUILDING_DEFS.nexus).toBeDefined();
+    }
   });
 
   it('8. the registry carries no gameplay/stat fields (purely descriptive)', () => {

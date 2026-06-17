@@ -43,9 +43,32 @@ export interface BuildingAssetDefinition {
 
 const DEF = '/assets/buildings/defense';
 const PWR = '/assets/buildings/power';
+const HQ = '/assets/buildings/hq';
 
 /** Live, file-backed asset mappings (each modelPath exists under /public). */
 export const BUILDING_ASSETS: BuildingAssetDefinition[] = [
+  // ---- Command centers (role hq) → buildings.json `nexus`, one per faction ----
+  {
+    assetKey: 'crimson.hq.fortress', factionId: 'red', buildingId: 'nexus', role: 'hq', tags: [],
+    modelPath: `${HQ}/crimson/crimson_command_fortress.glb`, fallbackShape: 'hq',
+    sourceFileName: 'crimson_command_fortress.glb',
+  },
+  {
+    assetKey: 'azure.hq.headquarters', factionId: 'blue', buildingId: 'nexus', role: 'hq', tags: [],
+    modelPath: `${HQ}/azure/azure_command_headquarters.glb`, fallbackShape: 'hq',
+    sourceFileName: 'azure_command_headquarters.glb',
+  },
+  {
+    assetKey: 'verdant.hq.hivecore', factionId: 'green', buildingId: 'nexus', role: 'hq', tags: [],
+    modelPath: `${HQ}/verdant/verdant_apex_hive_core.glb`, fallbackShape: 'hq',
+    sourceFileName: 'verdant_apex_hive_core.glb',
+  },
+  {
+    assetKey: 'solar.hq.singularity', factionId: 'yellow', buildingId: 'nexus', role: 'hq', tags: [],
+    modelPath: `${HQ}/solar/solar_singularity_nexus.glb`, fallbackShape: 'hq',
+    sourceFileName: 'solar_singularity_nexus.glb',
+  },
+
   // ---- Defense towers (role defense, tag turret) — one per faction ----
   {
     assetKey: 'crimson.defense.vulcan', factionId: 'red', role: 'defense', tags: ['turret'],
@@ -85,17 +108,25 @@ export const BUILDING_ASSETS: BuildingAssetDefinition[] = [
     modelPath: `${PWR}/azure/azure_resonance_core.glb`, fallbackShape: 'powerPlant',
     sourceFileName: 'azure_resonance_core.glb',
   },
+  {
+    assetKey: 'verdant.power.reactor', factionId: 'green', buildingId: 'spire', role: 'power',
+    tags: ['powerPlant', 'energyProducer'],
+    modelPath: `${PWR}/verdant/verdant_bio_reactor.glb`, fallbackShape: 'powerPlant',
+    sourceFileName: 'verdant_bio_reactor.glb',
+  },
+  {
+    assetKey: 'solar.power.nexus', factionId: 'yellow', buildingId: 'spire', role: 'power',
+    tags: ['powerPlant', 'energyProducer'],
+    modelPath: `${PWR}/solar/solar_radiant_nexus.glb`, fallbackShape: 'powerPlant',
+    sourceFileName: 'solar_radiant_nexus.glb',
+  },
 ];
 
 /**
- * Known-but-missing assets (no GLB delivered yet). Listed so the gap is explicit
- * and Phase 2 falls back to the procedural renderer for these — NOT given a fake
- * modelPath.
+ * Known-but-missing assets (no GLB delivered yet). Now EMPTY — all four factions
+ * have HQ + powerplant + defense-tower GLBs. Kept for structure/future gaps.
  */
-export const UNMAPPED_BUILDING_ASSETS: { assetKey: string; factionId: FactionId; role: BuildingRole; tags: BuildingTag[]; reason: string }[] = [
-  { assetKey: 'verdant.power.plant', factionId: 'green', role: 'power', tags: ['powerPlant', 'energyProducer'], reason: 'No Verdant powerplant GLB delivered.' },
-  { assetKey: 'solar.power.plant', factionId: 'yellow', role: 'power', tags: ['powerPlant', 'energyProducer'], reason: 'No Solar powerplant GLB delivered.' },
-];
+export const UNMAPPED_BUILDING_ASSETS: { assetKey: string; factionId: FactionId; role: BuildingRole; tags: BuildingTag[]; reason: string }[] = [];
 
 // ── Lookups (data only — no loading) ─────────────────────────────────────────
 export function getBuildingAsset(assetKey: string): BuildingAssetDefinition | undefined {
@@ -117,4 +148,8 @@ export function defenseTowerAsset(factionId: FactionId): BuildingAssetDefinition
 /** Powerplant for a faction (role power + powerPlant tag), if a GLB exists. */
 export function powerPlantAsset(factionId: FactionId): BuildingAssetDefinition | undefined {
   return BUILDING_ASSETS.find((a) => a.factionId === factionId && a.role === 'power' && a.tags.includes('powerPlant'));
+}
+/** Command-center (HQ) model for a faction, if a GLB exists. */
+export function hqAsset(factionId: FactionId): BuildingAssetDefinition | undefined {
+  return BUILDING_ASSETS.find((a) => a.factionId === factionId && a.role === 'hq');
 }

@@ -4,11 +4,14 @@ import {
   activeBuildingAsset, makeGlbBuildingGroup, __setBuildingGlbForTest, hasBuildingGlb,
   ACTIVE_ASSET_ROLES,
 } from './buildingGlb';
-import { powerPlantAsset } from '../data/buildingAssets';
+import { powerPlantAsset, hqAsset } from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
 
 const CRIMSON_KEY = 'crimson.power.plant';
 const AZURE_KEY = 'azure.power.core';
+const VERDANT_KEY = 'verdant.power.reactor';
+const SOLAR_KEY = 'solar.power.nexus';
+const CRIMSON_HQ = 'crimson.hq.fortress';
 
 function fakeScene(): THREE.Group {
   const g = new THREE.Group();
@@ -19,8 +22,7 @@ function fakeScene(): THREE.Group {
 }
 
 afterEach(() => {
-  __setBuildingGlbForTest(CRIMSON_KEY, null);
-  __setBuildingGlbForTest(AZURE_KEY, null);
+  for (const k of [CRIMSON_KEY, AZURE_KEY, VERDANT_KEY, SOLAR_KEY, CRIMSON_HQ]) __setBuildingGlbForTest(k, null);
 });
 
 describe('building GLB loader — mapping + fallback (powerplants only this phase)', () => {
@@ -37,16 +39,20 @@ describe('building GLB loader — mapping + fallback (powerplants only this phas
     expect(activeBuildingAsset('spire', 'red')).toBeNull();
   });
 
-  it('3. powerplant mapping: red/blue use GLB (when cached); green/yellow fall back', () => {
-    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene());
-    __setBuildingGlbForTest(AZURE_KEY, fakeScene());
-    expect(activeBuildingAsset('spire', 'red')).not.toBeNull();
-    expect(activeBuildingAsset('spire', 'blue')).not.toBeNull();
-    // verdant + solar have NO powerplant asset at all
-    expect(powerPlantAsset('green')).toBeUndefined();
-    expect(powerPlantAsset('yellow')).toBeUndefined();
-    expect(activeBuildingAsset('spire', 'green')).toBeNull();
-    expect(activeBuildingAsset('spire', 'yellow')).toBeNull();
+  it('3. powerplant + HQ mapping: spire→powerplant, nexus→HQ for all four factions when cached', () => {
+    const keys: Record<FactionId, string> = { red: CRIMSON_KEY, blue: AZURE_KEY, green: VERDANT_KEY, yellow: SOLAR_KEY };
+    for (const id of ['red', 'blue', 'green', 'yellow'] as FactionId[]) {
+      expect(powerPlantAsset(id), `power ${id}`).toBeDefined();
+      expect(hqAsset(id), `hq ${id}`).toBeDefined();
+      // not cached yet → fallback
+      expect(activeBuildingAsset('spire', id)).toBeNull();
+      __setBuildingGlbForTest(keys[id], fakeScene());
+      expect(activeBuildingAsset('spire', id), `spire ${id}`).not.toBeNull();
+    }
+    // nexus → HQ asset once its GLB is cached
+    expect(activeBuildingAsset('nexus', 'red')).toBeNull();
+    __setBuildingGlbForTest(CRIMSON_HQ, fakeScene());
+    expect(activeBuildingAsset('nexus', 'red')?.role).toBe('hq');
   });
 
   it('4. defense towers are NOT auto-activated (cannon/lance keep procedural)', () => {
@@ -57,9 +63,10 @@ describe('building GLB loader — mapping + fallback (powerplants only this phas
     }
   });
 
-  it('5. non-power buildings never get a GLB (nexus/refinery/foundry…)', () => {
+  it('5. non-active buildings never get a GLB (refinery/barracks/foundry/wall)', () => {
     __setBuildingGlbForTest(CRIMSON_KEY, fakeScene());
-    for (const bid of ['nexus', 'refinery', 'barracks', 'foundry', 'wall']) {
+    __setBuildingGlbForTest(CRIMSON_HQ, fakeScene());
+    for (const bid of ['refinery', 'barracks', 'foundry', 'wall']) {
       expect(activeBuildingAsset(bid, 'red'), bid).toBeNull();
     }
   });

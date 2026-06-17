@@ -11,11 +11,12 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { TILE } from '../map/map';
-import { BUILDING_ASSETS, powerPlantAsset, type BuildingAssetDefinition } from '../data/buildingAssets';
+import { BUILDING_ASSETS, powerPlantAsset, hqAsset, type BuildingAssetDefinition } from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
 
-/** Roles whose GLBs are rendered this phase. Powerplants only. */
-export const ACTIVE_ASSET_ROLES = new Set<string>(['power']);
+/** Roles whose GLBs are rendered this phase. Static buildings only (HQ +
+ *  powerplants) — defense towers stay procedural so turret-aim isn't disturbed. */
+export const ACTIVE_ASSET_ROLES = new Set<string>(['power', 'hq']);
 
 const cache = new Map<string, THREE.Group>(); // assetKey -> loaded template scene
 /** Which path each building visual actually used this session (debug). */
@@ -52,10 +53,10 @@ export function __setBuildingGlbForTest(assetKey: string, scene: THREE.Group | n
  * a faction asset exists AND is already loaded into the cache.
  */
 export function activeBuildingAsset(buildingId: string, factionId: FactionId): BuildingAssetDefinition | null {
-  if (buildingId === 'spire') {
-    const a = powerPlantAsset(factionId);
-    if (a && ACTIVE_ASSET_ROLES.has(a.role) && cache.has(a.assetKey)) return a;
-  }
+  const a = buildingId === 'spire' ? powerPlantAsset(factionId)
+    : buildingId === 'nexus' ? hqAsset(factionId)
+    : undefined;
+  if (a && ACTIVE_ASSET_ROLES.has(a.role) && cache.has(a.assetKey)) return a;
   return null;
 }
 
