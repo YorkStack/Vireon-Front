@@ -16,6 +16,15 @@ export interface CrystalNode {
   tz: number;
   amount: number;
   max: number;
+
+  // World Phase 1b — PREPARED resource metadata. All optional with safe defaults
+  // so existing nodes and saved maps stay compatible and balance is unchanged.
+  // Today every spawned node is an implicit 'default' (×1) node; these fields are
+  // not yet read by the live harvest/visual loop. See sim/resources.ts.
+  resourceType?: import('../data/crystalAssets').CrystalResourceType;
+  yieldMultiplier?: number;
+  visualSize?: import('../data/crystalAssets').CrystalVisualSize;
+  visualStage?: import('../sim/resources').CrystalVisualStage;
 }
 
 export interface StartZone {
