@@ -7,6 +7,7 @@ import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
 import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
 import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedRepairRate, type FactionId } from '../data/factionModifiers';
+import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../render/buildingGlb';
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 
@@ -106,13 +107,18 @@ export class Building {
   darkOverlay?: THREE.Mesh;     // low-power shroud (consumers only)
   powerIcon?: THREE.Sprite;     // pulsing low-power lightning indicator
 
-  constructor(team: TeamId, def: BuildingDef, tx: number, tz: number, level: number, accent: string, complete: boolean) {
+  constructor(team: TeamId, def: BuildingDef, tx: number, tz: number, level: number, accent: string, complete: boolean, factionId?: string) {
     this.team = team; this.def = def; this.tx = tx; this.tz = tz;
     this.w = def.footprint[0]; this.h = def.footprint[1];
     this.level = level;
     this.complete = complete;
     this.hp = complete ? def.hp : Math.max(1, Math.round(def.hp * 0.1));
-    this.group = makeEntityGroup('building', def.id, accent);
+    // Prefer a building GLB (powerplants only this phase); fall back to the
+    // procedural renderer for everything else / missing / load-failed GLBs.
+    const asset = factionId ? activeBuildingAsset(def.id, factionId as FactionId) : null;
+    const glb = asset ? makeGlbBuildingGroup(asset, accent, Math.max(this.w, this.h)) : null;
+    this.group = glb ?? makeEntityGroup('building', def.id, accent);
+    if (!glb) BUILDING_SOURCE[`${factionId ?? '?'}:${def.id}`] = 'procedural';
     // Foundation pad + contact-shadow decal + beacon tie the building into the scene.
     // Walls are tiny 1x1 segments - skip the pad there, it would just be noise.
     if (!def.wall) {
@@ -243,7 +249,7 @@ export class World {
     if (this.teams[team].credits < def.cost) return null;
     this.teams[team].credits -= def.cost;
     const lvl = this.map.level[this.map.idx(tx, tz)];
-    const b = new Building(team, def, tx, tz, lvl, this.teams[team].faction.emissive, instant);
+    const b = new Building(team, def, tx, tz, lvl, this.teams[team].faction.emissive, instant, this.teams[team].faction.id);
     for (let dz = 0; dz < b.h; dz++)
       for (let dx = 0; dx < b.w; dx++)
         this.map.flags[this.map.idx(tx + dx, tz + dz)] |= F_BUILDING;

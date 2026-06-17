@@ -4,9 +4,10 @@ import { showStartScreen, showBriefing } from './ui/screens';
 import { Game } from './core/game';
 import { FACTION_DEFS } from './core/defs';
 import { preloadVehicleGlbs } from './render/vehicleGlb';
+import { preloadBuildingGlbs } from './render/buildingGlb';
 
-// Warm the runtime-GLB cache (component-factory vehicles) before any match starts.
-const glbReady = preloadVehicleGlbs();
+// Warm the runtime-GLB cache (vehicles + buildings) before any match starts.
+const glbReady = Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs()]);
 
 // Dev-only F8 admin/balancing panel (live faction-modifier tuning). Not shown in
 // normal player UI — hidden until F8. Self-installs its own hotkeys.

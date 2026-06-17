@@ -32,6 +32,13 @@ export interface BuildingAssetDefinition {
   /** Original filename as delivered (for traceability). */
   sourceFileName?: string;
   notes?: string;
+  /** Optional fine-tuning of the GLB placement (applied on top of auto-fit). */
+  visualTransform?: {
+    scale?: number;        // multiplier on the auto-fit scale
+    rotationY?: number;    // radians
+    yOffset?: number;      // world units added after grounding
+    positionOffset?: [number, number, number];
+  };
 }
 
 const DEF = '/assets/buildings/defense';

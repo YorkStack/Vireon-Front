@@ -30,7 +30,18 @@
 
 ---
 
-## ⏱️ Aktueller Stand (2026-06-16, **Asset/Foundation Phase 1 — Building Roles/Tags + GLB-Inventar + Asset-Registry**)
+## ⏱️ Aktueller Stand (2026-06-17, **Asset/Foundation Phase 2 — Building-GLB-Loader mit Fallback**)
+- **Building-GLB-Loader** [buildingGlb.ts](src/render/buildingGlb.ts) nach dem Vehicle-Muster: Preload aller AKTIVEN Building-GLBs ([main.ts](src/main.ts) `Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs()])`), dann synchroner `makeGlbBuildingGroup` aus dem Cache (userData.topY/inner/anim) — sonst `null` → **prozeduraler Fallback**. **Fehlendes/kaputtes GLB bricht das Spiel nie** (jeder Pfad → `null`).
+- **Aktiviert: nur Powerplants** (`spire`, statisch). **Option B konservativ:** Defense-Tower-GLBs bleiben inventarisiert, aber **nicht** auf cannon/lance verdrahtet (deren Turm-Aim-Visual bleibt unangetastet; `ACTIVE_ASSET_ROLES = {'power'}`).
+- **Wiring:** [world.ts](src/sim/world.ts) `Building`-Konstruktor nimmt optional `factionId`; `placeBuilding` reicht `faction.id` durch; `this.group = glb ?? makeEntityGroup(...)`. Selektionsring/HP-Balken/Bau-%/Pad/Beacon/Low-Power-Overlays unverändert (footprint-/topY-basiert).
+- **Scale/Pivot:** Auto-Fit — Modell auf `footprint×TILE×0.92` skaliert, geerdet (Basis y≈0). Optionales `visualTransform` (scale/rotationY/yOffset/positionOffset) pro Asset für Feintuning (aktuell nicht nötig).
+- **GLB jetzt genutzt:** Crimson-Powerplant (`crimson.power.plant`), Azure-Powerplant (`azure.power.core`) — je beim Bau eines `spire`. **Fallback (prozedural):** alle anderen Gebäude; Verdant-/Solar-`spire` (kein GLB); Defense-Tower (cannon/lance, bewusst deaktiviert).
+- **Fehlende Assets:** Verdant- + Solar-Powerplant (→ Fallback).
+- **Verify:** **171 Tests grün** (+7 buildingGlb), `tsc` + `vite build` + `validate:balance` sauber. Browser-Smoke: Player=red → Spire rendert als **GLB** (auf Pad, korrekte Skalierung/Erdung, Screenshot), Gegner=green → Gebäude prozedural (`BUILDING_SOURCE: {crimson.power.plant:'glb', green:nexus:'procedural'}`), F8 öffnet, **keine Konsolenfehler**.
+- **Bewusst NICHT:** Defense-Tower-GLB-Aktivierung, TurretDurability, Solar Aura, Azure Shields, Verdant Upkeep, Balancing-Pass.
+- **➡️ Nächster Schritt:** fehlende Powerplant-GLBs (Verdant/Solar) erzeugen · Defense-Tower-Mapping verfeinern (cannon/lance vs. 4 Fraktions-Tower, Turm-Pivots prüfen) · ggf. Scale/Pivot-Feintuning · **danach** erster F8-Balancing-Pass.
+
+## ⏱️ Vorheriger Stand (2026-06-16, **Asset/Foundation Phase 1 — Building Roles/Tags + GLB-Inventar + Asset-Registry**)
 - **Reine Vorbereitung, KEINE neue Gameplay-Mechanik, kein GLB-Loader.** Building bleiben prozedural ([models.ts](src/render/models.ts) `buildingParts`).
 - **GLB-Inventar** (lokal `/Users/yorkvonloew/Downloads/Vireon-Front-Assets`, 6 GLBs): 4 Defense-Tower (crimson_vulcan_autocannon, azure_pulse_precision_laser, verdant_spitter_acid_projectile, beam_monolith=Solar) + 2 Powerplants (crimson_power_plant, azure_resonance_core). **Fehlen: Verdant- und Solar-Powerplant.** Commando-Central leer.
 - **Kopiert** nach `public/assets/buildings/{defense,power}/{crimson,azure,verdant,solar}/` (normalisiert: `beam_monolith_tower.glb` → `solar_beam_monolith_tower.glb`).
