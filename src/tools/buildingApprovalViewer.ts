@@ -93,15 +93,26 @@ function renderFactions() {
 }
 function renderAssets() {
   assetBox.innerHTML = '';
-  for (const a of approvalAssetsForFaction(selFaction)) {
-    const b = document.createElement('button');
-    b.className = 'asset';
-    const file = a.modelPath.split('/').pop();
-    const badge = a.activeInGameplay ? '<span class="badge active">active</span>' : '<span class="badge inactive">inactive</span>';
-    b.innerHTML = `<strong>${a.role}</strong> ${badge}<small>${file}</small>`;
-    b.addEventListener('click', () => { selAsset = a; renderAssets(); void selectAsset(a); });
-    if (selAsset?.assetKey === a.assetKey) b.classList.add('on');
-    assetBox.appendChild(b);
+  const groups: { batch: 'generated' | 'active'; title: string }[] = [
+    { batch: 'generated', title: 'Generated (review batch · 28)' },
+    { batch: 'active', title: 'Active gameplay registry (12)' },
+  ];
+  for (const g of groups) {
+    const list = approvalAssetsForFaction(selFaction, g.batch);
+    if (!list.length) continue;
+    const h = document.createElement('h2'); h.textContent = g.title; assetBox.appendChild(h);
+    for (const a of list) {
+      const b = document.createElement('button');
+      b.className = 'asset';
+      const file = a.modelPath.split('/').pop();
+      const badge = a.activeInGameplay
+        ? '<span class="badge active">in-game</span>'
+        : '<span class="badge inactive">review-only</span>';
+      b.innerHTML = `<strong>${a.role}</strong> ${badge}<small>${file}</small>`;
+      b.addEventListener('click', () => { selAsset = a; renderAssets(); void selectAsset(a); });
+      if (selAsset?.assetKey === a.assetKey) b.classList.add('on');
+      assetBox.appendChild(b);
+    }
   }
 }
 
@@ -144,6 +155,7 @@ function renderPanel(a: ApprovalAsset, r: GlbReport, bytes: number, dims: string
   const glassUnclear = r.glass.found && !(r.glass.assignedToMesh && r.glass.transparent);
   const rows: [string, string][] = [
     ['Faction', `${a.factionName} (${a.factionId})`],
+    ['Batch', a.batch === 'generated' ? '<span class="warn">generated (review-only)</span>' : 'active gameplay registry'],
     ['Building id / role', `${a.buildingId ?? '—'} / ${a.role}`],
     ['Active in gameplay', a.activeInGameplay ? '<span class="ok">yes</span>' : '<span class="warn">no (review-only)</span>'],
     ['File', a.modelPath],

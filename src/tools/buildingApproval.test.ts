@@ -1,25 +1,41 @@
+/// <reference types="node" />
 import { describe, it, expect } from 'vitest';
+import { existsSync } from 'node:fs';
 import {
-  APPROVAL_ASSETS, APPROVAL_FACTIONS, approvalAssetsForFaction,
+  APPROVAL_ASSETS, GENERATED_APPROVAL_ASSETS, ACTIVE_APPROVAL_ASSETS,
+  APPROVAL_FACTIONS, approvalAssetsForFaction,
   defaultApprovalRecord, APPROVAL_CHECKLIST_ITEMS,
 } from './buildingApprovalRegistry';
+import { GENERATED_BUILDING_ASSETS } from './generatedBuildingAssets';
 import { analyzeGltf, GLASS_HINT, type GltfJson } from './glbInspect';
 import { BUILDING_ASSETS } from '../data/buildingAssets';
 import { ACTIVE_ASSET_ROLES } from '../render/buildingGlb';
 import buildings from '../data/buildings.json';
 
 describe('approval registry — coverage + safe defaults', () => {
-  it('lists every registered building GLB (all factions)', () => {
-    expect(APPROVAL_ASSETS.length).toBe(BUILDING_ASSETS.length);
+  it('has all 28 generated review assets (7 per faction)', () => {
+    expect(GENERATED_APPROVAL_ASSETS.length).toBe(28);
+    expect(GENERATED_BUILDING_ASSETS.length).toBe(28);
+    for (const f of APPROVAL_FACTIONS) {
+      expect(approvalAssetsForFaction(f.id, 'generated').length).toBe(7);
+    }
+  });
+
+  it('keeps the 12 active gameplay assets reviewable too', () => {
+    expect(ACTIVE_APPROVAL_ASSETS.length).toBe(BUILDING_ASSETS.length);
+    expect(APPROVAL_ASSETS.length).toBe(28 + BUILDING_ASSETS.length);
     const keys = new Set(APPROVAL_ASSETS.map(a => a.assetKey));
     for (const a of BUILDING_ASSETS) expect(keys.has(a.assetKey)).toBe(true);
   });
 
-  it('each faction has its hq + power + defense assets', () => {
-    for (const f of APPROVAL_FACTIONS) {
-      const roles = approvalAssetsForFaction(f.id).map(a => a.role).sort();
-      expect(roles).toEqual(['defense', 'hq', 'power']);
+  it('every generated asset points to an imported file on disk', () => {
+    for (const a of GENERATED_BUILDING_ASSETS) {
+      expect(existsSync(`public${a.modelPath}`), a.modelPath).toBe(true);
     }
+  });
+
+  it('no generated asset is active in gameplay (review-only)', () => {
+    expect(GENERATED_APPROVAL_ASSETS.every(a => a.activeInGameplay === false)).toBe(true);
   });
 
   it('every asset defaults to PENDING with an all-unchecked checklist', () => {
@@ -88,6 +104,18 @@ describe('glbInspect — material / glass / hierarchy analysis', () => {
   it('reports null pivot when there is no turret pivot node', () => {
     expect(analyzeGltf({ nodes: [{ name: 'Body', mesh: 0 }] }).turretPivotHasChildren).toBeNull();
   });
+
+  it('detects glass by BEHAVIOUR (transparent material with a non-glass code name)', () => {
+    // The generated batch names a transparent panel "AB" — not a glass keyword.
+    const beh = analyzeGltf({
+      meshes: [{ primitives: [{ material: 0 }] }],
+      materials: [{ name: 'AB', alphaMode: 'BLEND', pbrMetallicRoughness: { baseColorFactor: [0, 0.8, 1, 0.85] } }],
+    });
+    expect(GLASS_HINT.test('AB')).toBe(false);   // name alone misses it
+    expect(beh.glass.found).toBe(true);          // behaviour catches it
+    expect(beh.glass.transparent).toBe(true);
+    expect(beh.glass.assignedToMesh).toBe(true);
+  });
 });
 
 describe('runtime safety — nothing was activated', () => {
@@ -104,5 +132,12 @@ describe('runtime safety — nothing was activated', () => {
     expect(b.spire.power).toBe(50);
     expect(b.cannon.cost).toBe(500);
     expect(b.lance.power).toBe(-20);
+  });
+});
+
+describe('reconciliation artifacts exist', () => {
+  it('QA + reconciliation reports are present', () => {
+    expect(existsSync('BUILDING_ASSET_APPROVAL_QA.md')).toBe(true);
+    expect(existsSync('BUILDING_ASSET_RECONCILIATION.md')).toBe(true);
   });
 });

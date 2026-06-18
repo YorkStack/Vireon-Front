@@ -136,7 +136,10 @@ export function analyzeGltf(gltf: GltfJson): GlbReport {
   const images = gltf.images ?? [];
   const externalImageUris = images.filter((im) => !!im.uri).map((im) => im.uri as string);
 
-  const glassMats = materialInfos.filter((m) => m.glassLike);
+  // Glass-like = by NAME (GLASS_HINT) OR by BEHAVIOUR (actually transparent /
+  // alpha-enabled). The asset pipeline sometimes uses opaque code names (e.g. "AB")
+  // for a transparent panel, so we must not rely on names alone.
+  const glassMats = materialInfos.filter((m) => m.glassLike || m.transparent);
   const glass = {
     found: glassMats.length > 0,
     assignedToMesh: glassMats.some((m) => m.assignedToMesh),
