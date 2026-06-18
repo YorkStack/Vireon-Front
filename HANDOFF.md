@@ -516,3 +516,23 @@ Fabricator → Command Nexus → Refinery → Spire → Foundry/Barracks → Har
 - Asset-Generierung: **erst Flash-Entwurf zeigen, dann auf Go warten**, dann Pro. Kosten nennen.
 - Visuals verifiziert der User auf **5199** (Preview-Screenshot-Tool unzuverlässig).
 - Nach Code-Änderungen: `npx tsc --noEmit`, dann im Spiel testen (`window.__game.step()` für Sim-Checks).
+
+---
+
+## Vegetation GLB Asset Generation (2026-06-18)
+
+**Status: ABGESCHLOSSEN — Assets erzeugt, noch nicht integriert**
+
+- **Script:** `tools/blender/vegetation/generate_vegetation_assets.py` (Blender 4.0.2 headless)
+- **Erzeugte Assets (6 Stück):** `Vegetation/output/`
+  - `alien_mushroom_tree.glb` (26 KB) — Referenz-Asset, großer Landmark-Baum
+  - `alien_mushroom_cluster.glb` (40 KB) — 5er-Pilzgruppe
+  - `alien_spore_bush.glb` (26 KB) — niedriger Scatter-Busch
+  - `alien_crystal_fern.glb` (18 KB) — kristalline Farn-Blätter
+  - `alien_biolume_reed.glb` (20 KB) — hohe Biolumineszenz-Schilfe
+  - `alien_pod_shrub.glb` (82 KB) — organischer Pod-Strauch
+- **QA-Report:** `VEGETATION_ASSET_QA.md` — alle 6 Assets OK, Emissive vorhanden, Approval PENDING
+- **Docs:** `docs/vegetation-assets.md`
+- **Keine `src/`-Änderung.** Kein Gameplay-/Terrain-/Runtime-Change.
+- **Approval steht aus** — York muss Assets freigeben, bevor Placement-Integration beginnt.
+- **Nächster Schritt:** Vegetation Placement Integration Phase (separates Feature, nach Approval).
