@@ -9,7 +9,7 @@
 //   • active (12) — the GLBs already in buildingAssets.ts (hq + power render in
 //     gameplay today; defense towers are registered-but-disabled).
 
-import { BUILDING_ASSETS, CANONICAL_FACTION } from '../data/buildingAssets';
+import { BUILDING_ASSETS, CANONICAL_FACTION, ACTIVE_GENERATED_BUILDING_IDS } from '../data/buildingAssets';
 import { GENERATED_BUILDING_ASSETS } from './generatedBuildingAssets';
 import type { FactionId } from '../data/factionModifiers';
 import type { BuildingRole } from '../data/buildingRoles';
@@ -43,11 +43,9 @@ export interface ApprovalAsset {
   activeInGameplay: boolean;
 }
 
-/** Roles that render as GLB in gameplay TODAY. A read-only mirror of
- *  buildingGlb.ACTIVE_ASSET_ROLES — the viewer must never mutate the real one. */
-const GAMEPLAY_ACTIVE_ROLES = new Set<BuildingRole>(['power', 'hq']);
-
-/** The 28 freshly-generated buildings (review-only — none are active in gameplay). */
+/** The 28 generated buildings. The static ones (nexus/spire/refinery/barracks/
+ *  foundry/wall) are now ACTIVE in gameplay (review-approved); the turret
+ *  candidate (cannon|lance) stays procedural. */
 export const GENERATED_APPROVAL_ASSETS: ApprovalAsset[] = GENERATED_BUILDING_ASSETS.map((a) => ({
   assetKey: a.assetKey,
   batch: 'generated',
@@ -56,10 +54,11 @@ export const GENERATED_APPROVAL_ASSETS: ApprovalAsset[] = GENERATED_BUILDING_ASS
   buildingId: a.inferredBuildingId,
   role: a.inferredRole,
   modelPath: a.modelPath,
-  activeInGameplay: false, // generated batch is not wired to gameplay
+  activeInGameplay: ACTIVE_GENERATED_BUILDING_IDS.has(a.inferredBuildingId),
 }));
 
-/** The 12 GLBs already in the gameplay asset registry. */
+/** The 12 GLBs of the earlier batch. Superseded by the generated batch for the
+ *  static buildings — kept on disk + reviewable, but no longer the active GLBs. */
 export const ACTIVE_APPROVAL_ASSETS: ApprovalAsset[] = BUILDING_ASSETS.map((a) => ({
   assetKey: a.assetKey,
   batch: 'active',
@@ -68,7 +67,7 @@ export const ACTIVE_APPROVAL_ASSETS: ApprovalAsset[] = BUILDING_ASSETS.map((a) =
   buildingId: a.buildingId,
   role: a.role,
   modelPath: a.modelPath,
-  activeInGameplay: GAMEPLAY_ACTIVE_ROLES.has(a.role),
+  activeInGameplay: false, // superseded by the generated batch
 }));
 
 /** Everything reviewable: 28 generated + 12 active. */

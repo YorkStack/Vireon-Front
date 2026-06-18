@@ -9,7 +9,7 @@ import {
 import { GENERATED_BUILDING_ASSETS } from './generatedBuildingAssets';
 import { analyzeGltf, GLASS_HINT, type GltfJson } from './glbInspect';
 import { BUILDING_ASSETS } from '../data/buildingAssets';
-import { ACTIVE_ASSET_ROLES } from '../render/buildingGlb';
+import { ACTIVE_BUILDING_IDS } from '../render/buildingGlb';
 import buildings from '../data/buildings.json';
 
 describe('approval registry — coverage + safe defaults', () => {
@@ -34,8 +34,10 @@ describe('approval registry — coverage + safe defaults', () => {
     }
   });
 
-  it('no generated asset is active in gameplay (review-only)', () => {
-    expect(GENERATED_APPROVAL_ASSETS.every(a => a.activeInGameplay === false)).toBe(true);
+  it('static generated buildings are active; the turret candidate is not', () => {
+    const active = GENERATED_APPROVAL_ASSETS.filter(a => a.activeInGameplay);
+    expect(active.length).toBe(24); // 6 static × 4 factions (cannon|lance excluded)
+    expect(GENERATED_APPROVAL_ASSETS.some(a => a.buildingId === 'cannon|lance' && a.activeInGameplay)).toBe(false);
   });
 
   it('every asset defaults to PENDING with an all-unchecked checklist', () => {
@@ -118,12 +120,11 @@ describe('glbInspect — material / glass / hierarchy analysis', () => {
   });
 });
 
-describe('runtime safety — nothing was activated', () => {
-  it('ACTIVE_ASSET_ROLES is still exactly {power, hq}', () => {
-    expect([...ACTIVE_ASSET_ROLES].sort()).toEqual(['hq', 'power']);
-    expect(ACTIVE_ASSET_ROLES.has('defense')).toBe(false);
-    expect(ACTIVE_ASSET_ROLES.has('resource')).toBe(false);
-    expect(ACTIVE_ASSET_ROLES.has('production')).toBe(false);
+describe('runtime safety — only static buildings activated, no balance change', () => {
+  it('ACTIVE_BUILDING_IDS = the 6 static buildings; cannon/lance excluded', () => {
+    expect([...ACTIVE_BUILDING_IDS].sort()).toEqual(['barracks', 'foundry', 'nexus', 'refinery', 'spire', 'wall']);
+    expect(ACTIVE_BUILDING_IDS.has('cannon')).toBe(false);
+    expect(ACTIVE_BUILDING_IDS.has('lance')).toBe(false);
   });
 
   it('gameplay config (buildings.json) is unchanged — spot stats intact', () => {

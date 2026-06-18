@@ -2,16 +2,20 @@ import { describe, it, expect, afterEach } from 'vitest';
 import * as THREE from 'three';
 import {
   activeBuildingAsset, makeGlbBuildingGroup, __setBuildingGlbForTest, hasBuildingGlb,
-  ACTIVE_ASSET_ROLES,
+  ACTIVE_BUILDING_IDS,
 } from './buildingGlb';
-import { powerPlantAsset, hqAsset } from '../data/buildingAssets';
+import { generatedGameplayAsset } from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
 
-const CRIMSON_KEY = 'crimson.power.plant';
-const AZURE_KEY = 'azure.power.core';
-const VERDANT_KEY = 'verdant.power.reactor';
-const SOLAR_KEY = 'solar.power.nexus';
-const CRIMSON_HQ = 'crimson.hq.fortress';
+// Activated generated asset keys (review-approved static buildings).
+const SPIRE_RED = 'crimson.gen.spire';
+const SPIRE_BLUE = 'azure.gen.spire';
+const SPIRE_GREEN = 'verdant.gen.spire';
+const SPIRE_YELLOW = 'solar.gen.spire';
+const NEXUS_RED = 'crimson.gen.nexus';
+const REFINERY_RED = 'crimson.gen.refinery';
+const ALL_KEYS = [SPIRE_RED, SPIRE_BLUE, SPIRE_GREEN, SPIRE_YELLOW, NEXUS_RED, REFINERY_RED,
+  'crimson.gen.barracks', 'crimson.gen.foundry', 'crimson.gen.wall'];
 
 function fakeScene(): THREE.Group {
   const g = new THREE.Group();
@@ -38,58 +42,55 @@ function fakeGlowScene(): { scene: THREE.Group; concrete: THREE.MeshStandardMate
   return { scene: g, concrete, glow };
 }
 
-afterEach(() => {
-  for (const k of [CRIMSON_KEY, AZURE_KEY, VERDANT_KEY, SOLAR_KEY, CRIMSON_HQ]) __setBuildingGlbForTest(k, null);
-});
+afterEach(() => { for (const k of ALL_KEYS) __setBuildingGlbForTest(k, null); });
 
-describe('building GLB loader — mapping + fallback (powerplants only this phase)', () => {
-  it('1. resolves the registry asset for spire when its GLB is cached', () => {
-    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene());
-    expect(activeBuildingAsset('spire', 'red')?.assetKey).toBe(CRIMSON_KEY);
-    __setBuildingGlbForTest(AZURE_KEY, fakeScene());
-    expect(activeBuildingAsset('spire', 'blue')?.assetKey).toBe(AZURE_KEY);
+describe('building GLB loader — generated static buildings (towers stay procedural)', () => {
+  it('1. resolves the generated asset for spire when its GLB is cached', () => {
+    __setBuildingGlbForTest(SPIRE_RED, fakeScene());
+    expect(activeBuildingAsset('spire', 'red')?.assetKey).toBe(SPIRE_RED);
+    __setBuildingGlbForTest(SPIRE_BLUE, fakeScene());
+    expect(activeBuildingAsset('spire', 'blue')?.assetKey).toBe(SPIRE_BLUE);
   });
 
   it('2. missing GLB → null (fallback), never a throw', () => {
-    // not cached yet
-    expect(hasBuildingGlb(CRIMSON_KEY)).toBe(false);
+    expect(hasBuildingGlb(SPIRE_RED)).toBe(false);
     expect(activeBuildingAsset('spire', 'red')).toBeNull();
   });
 
-  it('3. powerplant + HQ mapping: spire→powerplant, nexus→HQ for all four factions when cached', () => {
-    const keys: Record<FactionId, string> = { red: CRIMSON_KEY, blue: AZURE_KEY, green: VERDANT_KEY, yellow: SOLAR_KEY };
+  it('3. spire→power, nexus→hq for all four factions when cached', () => {
+    const spireKeys: Record<FactionId, string> = { red: SPIRE_RED, blue: SPIRE_BLUE, green: SPIRE_GREEN, yellow: SPIRE_YELLOW };
     for (const id of ['red', 'blue', 'green', 'yellow'] as FactionId[]) {
-      expect(powerPlantAsset(id), `power ${id}`).toBeDefined();
-      expect(hqAsset(id), `hq ${id}`).toBeDefined();
-      // not cached yet → fallback
-      expect(activeBuildingAsset('spire', id)).toBeNull();
-      __setBuildingGlbForTest(keys[id], fakeScene());
-      expect(activeBuildingAsset('spire', id), `spire ${id}`).not.toBeNull();
+      expect(generatedGameplayAsset(id, 'spire'), `gen spire ${id}`).toBeDefined();
+      expect(activeBuildingAsset('spire', id)).toBeNull(); // not cached yet
+      __setBuildingGlbForTest(spireKeys[id], fakeScene());
+      expect(activeBuildingAsset('spire', id)?.role, `spire ${id}`).toBe('power');
     }
-    // nexus → HQ asset once its GLB is cached
     expect(activeBuildingAsset('nexus', 'red')).toBeNull();
-    __setBuildingGlbForTest(CRIMSON_HQ, fakeScene());
+    __setBuildingGlbForTest(NEXUS_RED, fakeScene());
     expect(activeBuildingAsset('nexus', 'red')?.role).toBe('hq');
   });
 
-  it('4. defense towers are NOT auto-activated (cannon/lance keep procedural)', () => {
-    expect(ACTIVE_ASSET_ROLES.has('defense')).toBe(false);
+  it('4. cannon/lance are NOT activated (turrets keep procedural)', () => {
+    expect(ACTIVE_BUILDING_IDS.has('cannon')).toBe(false);
+    expect(ACTIVE_BUILDING_IDS.has('lance')).toBe(false);
     for (const id of ['red', 'blue', 'green', 'yellow'] as FactionId[]) {
       expect(activeBuildingAsset('cannon', id), `cannon ${id}`).toBeNull();
       expect(activeBuildingAsset('lance', id), `lance ${id}`).toBeNull();
     }
   });
 
-  it('5. non-active buildings never get a GLB (refinery/barracks/foundry/wall)', () => {
-    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene());
-    __setBuildingGlbForTest(CRIMSON_HQ, fakeScene());
+  it('5. refinery/barracks/foundry/wall ARE activated when cached', () => {
     for (const bid of ['refinery', 'barracks', 'foundry', 'wall']) {
-      expect(activeBuildingAsset(bid, 'red'), bid).toBeNull();
+      expect(ACTIVE_BUILDING_IDS.has(bid), bid).toBe(true);
+      const key = `crimson.gen.${bid}`;
+      expect(activeBuildingAsset(bid, 'red'), `${bid} uncached`).toBeNull();
+      __setBuildingGlbForTest(key, fakeScene());
+      expect(activeBuildingAsset(bid, 'red')?.assetKey, bid).toBe(key);
     }
   });
 
   it('6. makeGlbBuildingGroup returns a procedural-shaped, grounded group', () => {
-    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene());
+    __setBuildingGlbForTest(SPIRE_RED, fakeScene());
     const asset = activeBuildingAsset('spire', 'red')!;
     const g = makeGlbBuildingGroup(asset, '#ff5c4d', 2)!;
     expect(g).not.toBeNull();
@@ -97,14 +98,12 @@ describe('building GLB loader — mapping + fallback (powerplants only this phas
     expect(typeof g.userData.topY).toBe('number');
     expect(g.userData.topY).toBeGreaterThan(0);
     expect(g.userData.inner).toBeDefined();
-    // grounded: the inner group lifts the model so its base sits at/above y≈0
     const box = new THREE.Box3().setFromObject(g);
-    expect(box.min.y).toBeGreaterThanOrEqual(-1e-6);
+    expect(box.min.y).toBeGreaterThanOrEqual(-1e-6); // grounded
   });
 
   it('7. makeGlbBuildingGroup returns null when the asset is not cached (fallback)', () => {
-    // craft an asset object whose key is not in the cache
-    const ghost = { ...powerPlantAsset('red')!, assetKey: 'ghost.key' };
+    const ghost = { ...generatedGameplayAsset('red', 'spire')!, assetKey: 'ghost.key' };
     expect(makeGlbBuildingGroup(ghost, '#fff', 2)).toBeNull();
   });
 });
@@ -121,38 +120,38 @@ describe('building GLB material fidelity (Visual/Fidelity Phase 1)', () => {
 
   it('preserves non-emissive materials exactly (no replacement)', () => {
     const { scene, concrete } = fakeGlowScene();
-    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    __setBuildingGlbForTest(SPIRE_RED, scene);
     const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     const c = findMat(g, 'Concrete')!;
-    expect(c.color.getHex()).toBe(concrete.color.getHex()); // untouched colour
-    expect(c.emissiveIntensity).toBe(1);                    // not boosted
+    expect(c.color.getHex()).toBe(concrete.color.getHex());
+    expect(c.emissiveIntensity).toBe(1);
   });
 
   it('preserves baked emissive look and registers it for the idle pulse', () => {
     const { scene } = fakeGlowScene();
-    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    __setBuildingGlbForTest(SPIRE_RED, scene);
     const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     const glow = findMat(g, 'Status_Glow')!;
-    expect(glow.emissiveIntensity).toBe(1);                     // baked strength preserved
-    expect(glow.emissive.getHex()).toBe(new THREE.Color(1, 0.42, 0).getHex()); // colour preserved
+    expect(glow.emissiveIntensity).toBe(1);
+    expect(glow.emissive.getHex()).toBe(new THREE.Color(1, 0.42, 0).getHex());
     const pulse = (g.userData.anim as { pulseMats?: { base: number }[] }).pulseMats!;
     expect(pulse.length).toBe(1);
-    expect(pulse[0].base).toBe(1);                              // pulse centres on baked value
+    expect(pulse[0].base).toBe(1);
   });
 
   it('clones emissive materials per instance — no leak between buildings or to the template', () => {
     const { scene, glow: templateGlow } = fakeGlowScene();
-    __setBuildingGlbForTest(CRIMSON_KEY, scene);
+    __setBuildingGlbForTest(SPIRE_RED, scene);
     const a = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     const b = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     const ga = findMat(a, 'Status_Glow')!, gb = findMat(b, 'Status_Glow')!;
-    expect(ga).not.toBe(gb);              // separate instances
-    expect(ga).not.toBe(templateGlow);    // not the cached template material
-    expect(templateGlow.emissiveIntensity).toBe(1); // template never mutated
+    expect(ga).not.toBe(gb);
+    expect(ga).not.toBe(templateGlow);
+    expect(templateGlow.emissiveIntensity).toBe(1);
   });
 
   it('a non-emissive-only scene yields no pulse and an empty anim (no crash)', () => {
-    __setBuildingGlbForTest(CRIMSON_KEY, fakeScene()); // default material, no emissive
+    __setBuildingGlbForTest(SPIRE_RED, fakeScene());
     const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     expect(g.userData.anim).toEqual({});
   });

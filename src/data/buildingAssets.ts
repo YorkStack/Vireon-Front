@@ -128,6 +128,60 @@ export const BUILDING_ASSETS: BuildingAssetDefinition[] = [
  */
 export const UNMAPPED_BUILDING_ASSETS: { assetKey: string; factionId: FactionId; role: BuildingRole; tags: BuildingTag[]; reason: string }[] = [];
 
+// ── Approved generated building assets (review-approved by York) ──────────────
+// The generated batch under public/assets/buildings/generated/. Maps the static,
+// non-turret buildings (nexus/spire/refinery/barracks/foundry/wall) to faction-
+// specific GLBs. Turret candidates (cannon/lance) are deliberately EXCLUDED — they
+// are single-node without ATTACH locators and would break turret aim, so they stay
+// procedural. PURE VISUAL: no stat / footprint / balance change.
+const GEN = '/assets/buildings/generated';
+const GEN_ROLE: Record<string, BuildingRole> = {
+  nexus: 'hq', spire: 'power', refinery: 'resource', barracks: 'production', foundry: 'production', wall: 'defense',
+};
+const GEN_FILES: Record<FactionId, Record<string, string>> = {
+  red: {
+    nexus: 'crimson_fortress_hq', spire: 'crimson_turbine_station', refinery: 'crimson_ore_melt',
+    barracks: 'crimson_bunker_garrison', foundry: 'crimson_vehicle_assembly', wall: 'crimson_wall_segment',
+  },
+  blue: {
+    nexus: 'azure_operations_hub', spire: 'azure_resonance_core', refinery: 'azure_purification_plant',
+    barracks: 'azure_portal_spire', foundry: 'azure_matrix_warp', wall: 'azure_hardlight_gate',
+  },
+  green: {
+    nexus: 'verdant_apex_hatchery', spire: 'verdant_spore_spire', refinery: 'verdant_bio_digestor',
+    barracks: 'verdant_spawning_nest', foundry: 'verdant_strain_chrysalis', wall: 'verdant_spike_wall',
+  },
+  yellow: {
+    nexus: 'solar_singularity_nexus', spire: 'solar_sun_pillar', refinery: 'solar_extraction_depot',
+    barracks: 'solar_manifestation_gateway', foundry: 'solar_astral_forge', wall: 'solar_monolith_wall',
+  },
+};
+
+/** Building ids whose generated GLB is activated in gameplay (NOT cannon/lance). */
+export const ACTIVE_GENERATED_BUILDING_IDS: ReadonlySet<string> = new Set(Object.keys(GEN_ROLE));
+
+/** The activated generated gameplay assets (24 = 6 buildings × 4 factions). */
+export const GENERATED_GAMEPLAY_ASSETS: BuildingAssetDefinition[] = (
+  Object.entries(GEN_FILES) as [FactionId, Record<string, string>][]
+).flatMap(([factionId, files]) =>
+  Object.entries(files).map(([buildingId, stem]) => ({
+    assetKey: `${CANONICAL_FACTION[factionId]}.gen.${buildingId}`,
+    factionId,
+    buildingId,
+    role: GEN_ROLE[buildingId],
+    tags: [] as BuildingTag[],
+    modelPath: `${GEN}/${CANONICAL_FACTION[factionId]}/${stem}.glb`,
+    fallbackShape: buildingId,
+    sourceFileName: `${stem}.glb`,
+  })),
+);
+
+/** The activated generated asset for a faction + buildings.json id, or undefined. */
+export function generatedGameplayAsset(factionId: FactionId, buildingId: string): BuildingAssetDefinition | undefined {
+  if (!ACTIVE_GENERATED_BUILDING_IDS.has(buildingId)) return undefined;
+  return GENERATED_GAMEPLAY_ASSETS.find((a) => a.factionId === factionId && a.buildingId === buildingId);
+}
+
 // ── Lookups (data only — no loading) ─────────────────────────────────────────
 export function getBuildingAsset(assetKey: string): BuildingAssetDefinition | undefined {
   return BUILDING_ASSETS.find((a) => a.assetKey === assetKey);

@@ -11,12 +11,16 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { TILE } from '../map/map';
-import { BUILDING_ASSETS, powerPlantAsset, hqAsset, type BuildingAssetDefinition } from '../data/buildingAssets';
+import {
+  GENERATED_GAMEPLAY_ASSETS, ACTIVE_GENERATED_BUILDING_IDS, generatedGameplayAsset,
+  type BuildingAssetDefinition,
+} from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
 
-/** Roles whose GLBs are rendered this phase. Static buildings only (HQ +
- *  powerplants) — defense towers stay procedural so turret-aim isn't disturbed. */
-export const ACTIVE_ASSET_ROLES = new Set<string>(['power', 'hq']);
+/** Building ids whose generated GLB renders in gameplay. Static buildings only
+ *  (nexus/spire/refinery/barracks/foundry/wall) — cannon/lance stay procedural so
+ *  turret-aim isn't disturbed (the generated turrets have no ATTACH pivot). */
+export const ACTIVE_BUILDING_IDS = ACTIVE_GENERATED_BUILDING_IDS;
 
 /** A baked emissive material registered for the gentle idle glow-pulse. */
 export interface BuildingPulseMat { mat: THREE.MeshStandardMaterial; base: number; }
@@ -55,12 +59,71 @@ function fidelityRemap(m: THREE.Material, accentHex: string, pulse: BuildingPuls
   return m; // preserve all other PBR materials exactly (unmutated → safe to share)
 }
 
+// ── Surface-detail pass ──────────────────────────────────────────────────────
+// The generated building GLBs are textureless (flat PBR colours), so big faces
+// read monotone. We inject — at the SHADER level, once per cached template (no
+// per-instance recompile) — a subtle world-space grain + a normal-based fake AO
+// (tops brighter, undersides darker) so flat surfaces gain micro-variation and
+// form. Plus a modest emissive boost so the faction glow accents pop. Purely
+// visual; no geometry/scale/gameplay change. Meshes carry NORMAL (+UVs).
+const DETAIL_GLSL = `
+  float bHash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+  float bNoise(vec3 q){
+    vec3 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f);
+    float z0 = i.z * 7.0, z1 = (i.z + 1.0) * 7.0;
+    float a = mix(mix(bHash(i.xy + z0), bHash(i.xy + vec2(1.0,0.0) + z0), f.x),
+                  mix(bHash(i.xy + vec2(0.0,1.0) + z0), bHash(i.xy + vec2(1.0,1.0) + z0), f.x), f.y);
+    float b = mix(mix(bHash(i.xy + z1), bHash(i.xy + vec2(1.0,0.0) + z1), f.x),
+                  mix(bHash(i.xy + vec2(0.0,1.0) + z1), bHash(i.xy + vec2(1.0,1.0) + z1), f.x), f.y);
+    return mix(a, b, f.z);
+  }
+`;
+const EMISSIVE_BOOST = 1.7;
+
+/** Inject the surface-detail shader into a MeshStandardMaterial (idempotent-ish). */
+function addSurfaceDetail(m: THREE.MeshStandardMaterial) {
+  m.onBeforeCompile = (shader) => {
+    shader.vertexShader = 'varying vec3 vBWPos;\nvarying vec3 vBNrm;\n' + shader.vertexShader
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n  vBNrm = normalize(mat3(modelMatrix) * objectNormal);')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vBWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = 'varying vec3 vBWPos;\nvarying vec3 vBNrm;\n' + DETAIL_GLSL + shader.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        // Adaptive: full grain+AO on DARK materials (Crimson concrete), almost
+        // none on BRIGHT ones (Azure ceramic) so clean whites stay clean.
+        float bLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+        float bDark = 1.0 - smoothstep(0.35, 0.80, bLum);              // 1 dark → 0 bright
+        float bGrain = bNoise(vBWPos * 1.8) + 0.5 * bNoise(vBWPos * 5.0); // ~0..1.5
+        diffuseColor.rgb *= 0.975 + 0.04 * bGrain;                     // subtle mottle for ALL (avg ~1.0)
+        float bUp = clamp(vBNrm.y * 0.5 + 0.5, 0.0, 1.0);
+        diffuseColor.rgb *= mix(1.0, mix(0.86, 1.05, bUp), bDark);     // fake AO only where dark
+      `);
+  };
+  m.needsUpdate = true;
+}
+
+/** Enhance a cached template's materials once: surface detail + emissive boost. */
+function enhanceTemplate(scene: THREE.Object3D) {
+  const seen = new Set<THREE.Material>();
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      if (!mat || seen.has(mat)) continue;
+      seen.add(mat);
+      const std = mat as THREE.MeshStandardMaterial;
+      if (std.isMaterial && 'metalness' in std) addSurfaceDetail(std);
+      if (isEmissiveStd(std)) std.emissiveIntensity = (std.emissiveIntensity ?? 1) * EMISSIVE_BOOST;
+    }
+  });
+}
+
 const cache = new Map<string, THREE.Group>(); // assetKey -> loaded template scene
 /** Which path each building visual actually used this session (debug). */
 export const BUILDING_SOURCE: Record<string, 'glb' | 'procedural'> = {};
 
 function activeAssets(): BuildingAssetDefinition[] {
-  return BUILDING_ASSETS.filter((a) => ACTIVE_ASSET_ROLES.has(a.role));
+  return GENERATED_GAMEPLAY_ASSETS;
 }
 
 export const hasBuildingGlb = (assetKey: string) => cache.has(assetKey);
@@ -72,6 +135,7 @@ export async function preloadBuildingGlbs(): Promise<void> {
     if (cache.has(a.assetKey)) continue;
     try {
       const gltf = await loader.loadAsync(a.modelPath);
+      enhanceTemplate(gltf.scene); // surface detail + emissive boost (once per template)
       cache.set(a.assetKey, gltf.scene);
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`[bld] GLB-Load fehlgeschlagen ${a.assetKey} (${a.modelPath}) → prozedural`, e);
@@ -90,11 +154,9 @@ export function __setBuildingGlbForTest(assetKey: string, scene: THREE.Group | n
  * a faction asset exists AND is already loaded into the cache.
  */
 export function activeBuildingAsset(buildingId: string, factionId: FactionId): BuildingAssetDefinition | null {
-  const a = buildingId === 'spire' ? powerPlantAsset(factionId)
-    : buildingId === 'nexus' ? hqAsset(factionId)
-    : undefined;
-  if (a && ACTIVE_ASSET_ROLES.has(a.role) && cache.has(a.assetKey)) return a;
-  return null;
+  if (!ACTIVE_BUILDING_IDS.has(buildingId)) return null; // cannon/lance → procedural
+  const a = generatedGameplayAsset(factionId, buildingId);
+  return a && cache.has(a.assetKey) ? a : null;
 }
 
 /**
