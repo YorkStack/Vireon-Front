@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vireon — Building Asset Approval Viewer</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 13px/1.45 system-ui, sans-serif; background: #15161c; color: #e7e8ee; }
+    #wrap { display: grid; grid-template-columns: 240px 1fr 360px; height: 100vh; }
+    #side { background: #1d1f29; border-right: 1px solid #2c2f3d; overflow-y: auto; padding: 12px; }
+    #stage { position: relative; }
+    #stage canvas { display: block; width: 100%; height: 100%; }
+    #panel { background: #1d1f29; border-left: 1px solid #2c2f3d; overflow-y: auto; padding: 14px; }
+    h1 { font-size: 14px; margin: 0 0 4px; letter-spacing: 1px; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8b8fa3; margin: 16px 0 6px; }
+    .fac { display: block; width: 100%; text-align: left; margin: 3px 0; padding: 7px 9px; border-radius: 6px;
+      border: 1px solid #2c2f3d; background: #23252f; color: #e7e8ee; cursor: pointer; }
+    .fac.on { border-color: var(--fc, #5b8cff); background: #2a2d3a; }
+    .asset { display: block; width: 100%; text-align: left; margin: 2px 0; padding: 6px 8px; border-radius: 6px;
+      border: 1px solid transparent; background: transparent; color: #cfd2de; cursor: pointer; font-size: 12px; }
+    .asset:hover { background: #23252f; }
+    .asset.on { background: #2a2d3a; border-color: #5b8cff; }
+    .asset small { display: block; color: #7e8294; font-size: 10px; }
+    .badge { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 4px; vertical-align: middle; }
+    .badge.active { background: #1c3a2a; color: #6fe39a; }
+    .badge.inactive { background: #3a2a1c; color: #e3b06f; }
+    table { width: 100%; border-collapse: collapse; }
+    td { padding: 3px 4px; border-bottom: 1px solid #262936; vertical-align: top; }
+    td.k { color: #8b8fa3; white-space: nowrap; width: 42%; }
+    .ok { color: #6fe39a; } .warn { color: #e3b06f; } .bad { color: #ff7a7a; } .dim { color: #7e8294; }
+    .chk label { display: block; padding: 3px 0; cursor: pointer; }
+    .chk input { margin-right: 7px; }
+    .status { margin-top: 10px; padding: 8px; border-radius: 6px; background: #23252f; border: 1px solid #2c2f3d; }
+    .status .row { display: flex; gap: 6px; margin-top: 6px; }
+    .status button { flex: 1; padding: 7px; border-radius: 6px; border: 1px solid #2c2f3d; background: #23252f;
+      color: #cfd2de; cursor: pointer; }
+    .status button.sel-PENDING { background: #3a3a1c; color: #e3e06f; border-color: #5a5a2a; }
+    .status button.sel-YES { background: #1c3a2a; color: #6fe39a; border-color: #2a5a3a; }
+    .status button.sel-NO { background: #3a1c1c; color: #ff7a7a; border-color: #5a2a2a; }
+    #hint { position: absolute; bottom: 10px; left: 12px; color: #7e8294; font-size: 11px; }
+    #note { color: #e3b06f; font-size: 11px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div id="side">
+      <h1>⬢ Building Approval</h1>
+      <div class="dim" style="font-size:11px;">Dev-only review tool. No gameplay change.</div>
+      <h2>Faction</h2>
+      <div id="factions"></div>
+      <h2>Assets</h2>
+      <div id="assets"></div>
+      <div id="note">Approvals are local-only (your browser). They are NOT written to gameplay config.</div>
+    </div>
+    <div id="stage">
+      <div id="hint">drag = orbit · scroll = zoom · right-drag = pan</div>
+    </div>
+    <div id="panel"><div class="dim">Select an asset…</div></div>
+  </div>
+  <script type="module" src="/src/tools/buildingApprovalViewer.ts"></script>
+</body>
+</html>
