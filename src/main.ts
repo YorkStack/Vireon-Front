@@ -6,10 +6,15 @@ import { FACTION_DEFS } from './core/defs';
 import { preloadVehicleGlbs } from './render/vehicleGlb';
 import { preloadBuildingGlbs } from './render/buildingGlb';
 import { preloadShotVfx } from './render/shotVfx';
+import { preloadVegetationGlbs, vegModeFromQuery } from './render/vegetationGlb';
 
 // Warm the runtime-GLB cache (vehicles + buildings) + shot-VFX textures before
 // any match starts. Shot-VFX failures are swallowed → procedural fallback.
-const glbReady = Promise.all([preloadVehicleGlbs(), preloadBuildingGlbs(), preloadShotVfx()]);
+// The approved v3.1 GLB vegetation is ONLY preloaded for the gated `?veg=glb`
+// test path — the default sprite world loads nothing extra.
+const warmups = [preloadVehicleGlbs(), preloadBuildingGlbs(), preloadShotVfx()];
+if (vegModeFromQuery().mode === 'glb') warmups.push(preloadVegetationGlbs());
+const glbReady = Promise.all(warmups);
 
 // Dev-only F8 admin/balancing panel (live faction-modifier tuning). Not shown in
 // normal player UI — hidden until F8. Self-installs its own hotkeys.

@@ -6,6 +6,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GameMap, TILE } from '../map/map';
 import { hash2, warpXZ } from './terrainNoise';
+// Re-export the gated GLB-vegetation builder so callers can pull both vegetation
+// paths from props.ts. The heavy loader/instancer lives in vegetationGlb.ts.
+export { buildVegetationGlbInstances as buildVegetationGlb, preloadVegetationGlbs } from './vegetationGlb';
 
 // ---------------------------------------------------------------------------
 // Pure helpers (unit-tested)
@@ -113,7 +116,7 @@ interface VegMesh { mesh: THREE.InstancedMesh; items: VegPlacement[]; }
  * quads, Y-locked toward the camera each frame) plus one shared blob-shadow
  * InstancedMesh for all plants (single draw call, matrices set once).
  */
-export function buildVegetation(map: GameMap): VegetationBuild {
+export function buildVegetation(map: GameMap, countOverride?: number): VegetationBuild {
   const group = new THREE.Group();
   group.name = 'vegetation';
 
@@ -121,8 +124,12 @@ export function buildVegetation(map: GameMap): VegetationBuild {
   const quad = new THREE.PlaneGeometry(1, 1);
   quad.translate(0, 0.5, 0);
 
-  const trees = scatterVegInstances(map, { count: 95, salt: 11, valleyBias: false, hMin: 2.1, hMax: 3.6, wRatio: 0.82, yOff: -0.05, texCount: TREE_TEX.length });
-  const bushes = scatterVegInstances(map, { count: 190, salt: 37, valleyBias: true, hMin: 0.7, hMax: 1.25, wRatio: 1.1, yOff: -0.05, texCount: BUSH_TEX.length });
+  // Default counts (95 trees + 190 bushes ≈ 1:2). A `countOverride` (the gated
+  // ?vegCount test param) splits the total in the same ratio — default unchanged.
+  const treeN = countOverride == null ? 95 : Math.round(countOverride / 3);
+  const bushN = countOverride == null ? 190 : countOverride - treeN;
+  const trees = scatterVegInstances(map, { count: treeN, salt: 11, valleyBias: false, hMin: 2.1, hMax: 3.6, wRatio: 0.82, yOff: -0.05, texCount: TREE_TEX.length });
+  const bushes = scatterVegInstances(map, { count: bushN, salt: 37, valleyBias: true, hMin: 0.7, hMax: 1.25, wRatio: 1.1, yOff: -0.05, texCount: BUSH_TEX.length });
 
   const vegMeshes: VegMesh[] = [];
   const build = (names: string[], placements: VegPlacement[]) => {

@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
 import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
+import { buildVegetationGlbInstances, vegModeFromQuery } from './vegetationGlb';
 import { crystalStageImagePath } from '../data/crystalAssets';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
@@ -572,11 +573,23 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   // clumped at the climbs, dense high) lives in props.ts; rides the same warp.
   props.add(buildRocks(map).group);
 
-  // Vegetation: Y-locked (cylindrical) instanced billboards + a shared blob-shadow
-  // mesh. Trees taller and sparse across all levels; bushes lower and denser in
-  // the valleys. Placement rides the same warp; see props.ts.
-  const vegetation: VegetationBuild = buildVegetation(map);
-  props.add(vegetation.group);
+  // Vegetation — GATED, visual-only. Default (no `?veg=` query) is UNCHANGED:
+  // the Y-locked sprite billboards. `?veg=glb` swaps in the approved v3.1 GLB
+  // vegetation (instanced, static), `?veg=sprite` forces sprites, `?veg=none`
+  // disables vegetation. `?vegCount=N` overrides the object count. This affects
+  // only the visual prop layer — no gameplay/balance/pathfinding/terrain change.
+  const { mode: vegMode, count: vegCount } = vegModeFromQuery();
+  let vegetation: VegetationBuild | null = null;
+  if (vegMode === 'glb') {
+    // GLB templates preload async (main.ts) → fill the group when ready, like
+    // buildRocks. Empty until then; never blocks terrain build.
+    const glbGroup = buildVegetationGlbInstances(map, vegCount ?? 285);
+    props.add(glbGroup);
+  } else if (vegMode !== 'none') {
+    // 'default' and 'sprite' → the shipping billboard vegetation.
+    vegetation = buildVegetation(map, vegCount ?? undefined);
+    props.add(vegetation.group);
+  }
 
   // Spore lamps: small glowing teal bulbs on dark stalks (two meshes).
   const stalkGeo = new THREE.CylinderGeometry(0.025, 0.045, 0.55, 4);
@@ -660,5 +673,7 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     crystalGroups.set(node.id, grp);
   }
 
-  return { terrain, rocks, props, crystalGroups, updateProps: (cam) => vegetation.update(cam) };
+  // Only the sprite vegetation needs a per-frame camera re-orient; GLB/none are
+  // static → no-op update (keeps the render loop allocation-free).
+  return { terrain, rocks, props, crystalGroups, updateProps: (cam) => vegetation?.update(cam) };
 }
