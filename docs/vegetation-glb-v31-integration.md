@@ -10,7 +10,7 @@
 |---|---|---:|---:|---|---|
 | Forest Canopy Tree | `forest_canopy_tree` | 242 | 38.4 | none | common (3) |
 | Highland Canopy Tree | `highland_canopy_tree` | 234 | 34.7 | cyan 0.65 | common (3) |
-| Forest Hiveshroom | `forest_hiveshroom` | 334 | 33.1 | none | common (3) |
+| Forest Hiveshroom | `forest_hiveshroom` | 334 | 33.1 | none | occasional (2) |
 | Oasis Glow-Shroom | `oasis_glowshroom` | 352 | 42.9 | cyan 0.70 | occasional (2) |
 | Coastal Coral Tree | `coastal_coral_tree` | 368 | 42.3 | cyan 0.60 | occasional (2) |
 | Desert Crystal Cactus | `desert_crystal_cactus` | 392 | 44.8 | amber 0.60 | rare (1) |
@@ -59,9 +59,9 @@ Resolved by `vegModeFromQuery()` (SSR/test-safe), consumed in `terrain.ts`
 
 | Param | Effect |
 |---|---|
-| *(none)* | **default — unchanged** (sprite billboards) |
-| `?veg=sprite` | force sprite billboards |
-| `?veg=glb` | approved v3.1 GLB vegetation (instanced) |
+| *(none)* | **default — approved v3.1 GLB vegetation (instanced)** |
+| `?veg=glb` | explicit alias for the default (v3.1 GLB) |
+| `?veg=sprite` | legacy fallback — force sprite billboards |
 | `?veg=none` | no vegetation |
 | `?vegCount=30\|75\|150\|300\|600` | object-count override (sprite split 1:2 trees:bushes; GLB total) |
 
@@ -108,12 +108,13 @@ full match): HUD 120 FPS, smooth pan/zoom, no console errors.
 - Multi-material assets → 2–3 instanced meshes each (vs 1 if authored single-
   material). Fine at this scale.
 
-## 10. Ready to become default?
+## 10. Default status
 
-**Not yet — keep gated for review.** The path is correct, performant and visually
-strong, but the default switch + biome-aware placement + weight tuning should be a
-separate, explicitly-approved step. Recommendation: approve the gated test, then
-do the default switch as its own change.
+**GLB v3.1 is now the DEFAULT vegetation** (no query parameter). `?veg=sprite`
+forces the legacy billboards, `?veg=none` disables vegetation, `?veg=glb` is the
+explicit alias for the default. Hiveshroom was reduced common→occasional so its
+amber cap no longer dominates at high density. Biome-aware placement remains a
+future step.
 
 ## 11. Sprite fallback
 

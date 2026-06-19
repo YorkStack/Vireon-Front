@@ -10,10 +10,12 @@ import { preloadVegetationGlbs, vegModeFromQuery } from './render/vegetationGlb'
 
 // Warm the runtime-GLB cache (vehicles + buildings) + shot-VFX textures before
 // any match starts. Shot-VFX failures are swallowed → procedural fallback.
-// The approved v3.1 GLB vegetation is ONLY preloaded for the gated `?veg=glb`
-// test path — the default sprite world loads nothing extra.
+// The approved v3.1 GLB vegetation is the default — preload it unless the user
+// explicitly forces the legacy sprites (`?veg=sprite`) or disables vegetation
+// (`?veg=none`), in which case nothing extra is loaded.
 const warmups = [preloadVehicleGlbs(), preloadBuildingGlbs(), preloadShotVfx()];
-if (vegModeFromQuery().mode === 'glb') warmups.push(preloadVegetationGlbs());
+const vegMode = vegModeFromQuery().mode;
+if (vegMode !== 'sprite' && vegMode !== 'none') warmups.push(preloadVegetationGlbs());
 const glbReady = Promise.all(warmups);
 
 // Dev-only F8 admin/balancing panel (live faction-modifier tuning). Not shown in

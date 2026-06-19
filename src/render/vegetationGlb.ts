@@ -27,11 +27,12 @@ interface VegAssetDef { id: string; file: string; target: number; weight: number
 // Assets are served under per-biome subfolders mirroring the approved source set.
 const VEG_DIR = '/assets/vegetation/glb_v31';
 export const VEG_V31_ASSETS: VegAssetDef[] = [
-  // common (weight 3)
+  // common (weight 3) — the two canopy trees carry the forest read.
   { id: 'forest_canopy_tree', file: 'forest/forest_canopy_tree_v31.glb', target: 3.6, weight: 3 },
   { id: 'highland_canopy_tree', file: 'highland/highland_canopy_tree_v31.glb', target: 3.8, weight: 3 },
-  { id: 'forest_hiveshroom', file: 'forest/forest_hiveshroom_v31.glb', target: 2.2, weight: 3 },
-  // occasional (weight 2)
+  // occasional (weight 2) — hiveshroom reduced from common so its amber cap no
+  // longer dominates the scene at high density.
+  { id: 'forest_hiveshroom', file: 'forest/forest_hiveshroom_v31.glb', target: 2.2, weight: 2 },
   { id: 'oasis_glowshroom', file: 'oasis/oasis_glowshroom_v31.glb', target: 2.4, weight: 2 },
   { id: 'coastal_coral_tree', file: 'coastal/coastal_coral_tree_v31.glb', target: 2.8, weight: 2 },
   // rare (weight 1) — cactus is the most distinctive + near-highest tris; the

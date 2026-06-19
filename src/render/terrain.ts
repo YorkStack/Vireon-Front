@@ -573,22 +573,22 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   // clumped at the climbs, dense high) lives in props.ts; rides the same warp.
   props.add(buildRocks(map).group);
 
-  // Vegetation — GATED, visual-only. Default (no `?veg=` query) is UNCHANGED:
-  // the Y-locked sprite billboards. `?veg=glb` swaps in the approved v3.1 GLB
-  // vegetation (instanced, static), `?veg=sprite` forces sprites, `?veg=none`
-  // disables vegetation. `?vegCount=N` overrides the object count. This affects
+  // Vegetation — visual-only. DEFAULT (no `?veg=` query) is the approved v3.1
+  // GLB vegetation (instanced, static). `?veg=sprite` forces the legacy Y-locked
+  // sprite billboards, `?veg=none` disables vegetation, `?veg=glb` is the explicit
+  // alias for the default. `?vegCount=N` overrides the object count. This affects
   // only the visual prop layer — no gameplay/balance/pathfinding/terrain change.
   const { mode: vegMode, count: vegCount } = vegModeFromQuery();
   let vegetation: VegetationBuild | null = null;
-  if (vegMode === 'glb') {
-    // GLB templates preload async (main.ts) → fill the group when ready, like
-    // buildRocks. Empty until then; never blocks terrain build.
-    const glbGroup = buildVegetationGlbInstances(map, vegCount ?? 285);
-    props.add(glbGroup);
-  } else if (vegMode !== 'none') {
-    // 'default' and 'sprite' → the shipping billboard vegetation.
+  if (vegMode === 'sprite') {
+    // Explicit legacy fallback → the shipping billboard vegetation.
     vegetation = buildVegetation(map, vegCount ?? undefined);
     props.add(vegetation.group);
+  } else if (vegMode !== 'none') {
+    // 'default' and 'glb' → approved v3.1 GLB vegetation (preloaded in main.ts).
+    // Templates preload async → group fills when ready (never blocks build).
+    const glbGroup = buildVegetationGlbInstances(map, vegCount ?? 285);
+    props.add(glbGroup);
   }
 
   // Spore lamps: small glowing teal bulbs on dark stalks (two meshes).
