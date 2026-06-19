@@ -1,6 +1,7 @@
 // Entry point: start screen -> briefing -> game -> (restart | back to menu).
 /// <reference types="vite/client" />
 import { showStartScreen, showBriefing } from './ui/screens';
+import { ensureCommanderProfile } from './ui/commanderProfile';
 import { Game } from './core/game';
 import { FACTION_DEFS } from './core/defs';
 import { preloadVehicleGlbs } from './render/vehicleGlb';
@@ -35,6 +36,9 @@ if (import.meta.env.DEV) {
 }
 
 async function main() {
+  // First launch: ask for a local Commander name (offline-only, no login). On
+  // later launches a profile already exists → resolves immediately.
+  await ensureCommanderProfile();
   for (;;) {
     const choice = await showStartScreen();
     await showBriefing(choice.mission, FACTION_DEFS[choice.factionId]);

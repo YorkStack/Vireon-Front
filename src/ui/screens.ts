@@ -6,6 +6,7 @@ import { loadCampaignList, loadMission } from '../campaign/campaign';
 import { showUnitCodex } from './unitCodex';
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 import { doctrinesFor, defaultDoctrineFor } from '../data/doctrines';
+import { buildCommanderBanner } from './commanderProfile';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -34,6 +35,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
     const screen = el(`
       <div class="screen cinematic deploy-layout">
         <div class="screen-scroll">
+          <div id="cmdr-banner-host"></div>
           <div class="subtitle">A real-time strategy game</div>
           <h1>Vireon Front</h1>
           <h2>HOSTILE WORLD &middot; CRYSTAL WAR</h2>
@@ -65,6 +67,12 @@ export async function showStartScreen(): Promise<MissionChoice> {
         </div>
       </div>
     `);
+
+    // "Continue as <Commander>" banner (local profile · rename/delete). Re-mounts
+    // itself after a rename so the displayed name refreshes.
+    const bannerHost = screen.querySelector('#cmdr-banner-host') as HTMLElement;
+    const mountBanner = () => { bannerHost.innerHTML = ''; bannerHost.appendChild(buildCommanderBanner(mountBanner)); };
+    mountBanner();
 
     screen.querySelector('#btn-codex')!.addEventListener('click', async () => {
       screen.style.display = 'none';

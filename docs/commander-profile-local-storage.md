@@ -55,14 +55,29 @@ no-op statt zu werfen.
 > Settings) wäre eine **UI-seitige Komposition** dieser vier Resets — die Datenschicht
 > hält sie bewusst getrennt.
 
-## 7. Noch NICHT implementiert (bewusst)
-- UI (Erststart-Screen, Profil-/Settings-Panel, Local-Scores-Screen)
-- Gameplay-Verdrahtung (Profil-Init in `main.ts`, „Continue as Commander")
-- Score-Berechnungs-Verdrahtung (`MatchSummary` aus `game.ts checkEnd()` → `calculateMatchScore` → `addScore`)
+## 7. First-Launch-UI (MVP 1, Step 2 — implementiert)
+[src/ui/commanderProfile.ts](../src/ui/commanderProfile.ts) (Logik-Helfer +
+DOM, nutzt **nur** den `CommanderProfileStore` — kein direkter localStorage-Zugriff):
+- **Erststart** (kein Profil): `ensureCommanderProfile()` zeigt den „Welcome
+  Commander / Enter Commander Name"-Screen (Eingabe, trim, Max 24, Enter/Start);
+  leerer Name → Inline-Fehler, kein Profil. Bei Erfolg `createProfile` → Spielfluss
+  geht zum bestehenden Start-Screen. Verdrahtet vor der Menü-Schleife in
+  [main.ts](../src/main.ts).
+- **„Continue as Commander"**: `buildCommanderBanner()` rendert oben im Start-Screen
+  ([screens.ts](../src/ui/screens.ts)) „WEITER ALS COMMANDER → `<Name>`" + **Umbenennen**
+  (inline, Store-Rename, Fortschritt/Scores bleiben) + **Profil löschen** (confirm →
+  `deleteProfile` → `location.reload()` → Erststart; Query-Params bleiben erhalten).
+- Wortwahl bewusst „Commander Profile", **nicht** Login/Account. Kein Passwort, keine
+  E-Mail, kein Netzwerk.
+
+## 8. Noch NICHT implementiert (bewusst)
+- Score-Berechnungs-Verdrahtung (`MatchSummary` aus `game.ts checkEnd()` → `calculateMatchScore` → `addScore` + Profil-Aggregate)
+- Kampagnenfortschritt-Verdrahtung (Unlock/Complete aus dem Spiel → `CampaignProgressStore`)
+- Settings-/Local-Scores-Screens (Stores existieren, UI fehlt)
 - Export/Import Savegame (JSON)
 - Online-Leaderboard / echtes Auth (erst MVP 3/4)
 
-## 8. Nächster Schritt
-**First-Launch „Enter Commander Name"-Screen** + „Continue as <Commander>" im
-Hauptmenü, der `CommanderProfileStore` nutzt. Danach die Score-Verdrahtung am
-Match-Ende (`game.ts checkEnd()` → `LocalLeaderboardStore.addScore` + Profil-Aggregate).
+## 9. Nächster Schritt
+**Score-Verdrahtung am Match-Ende** (`game.ts checkEnd()` → `MatchSummary` →
+`calculateMatchScore` → `LocalLeaderboardStore.addScore` + Profil-Aggregate
+`totalMatches/wins/losses/bestScore`).
