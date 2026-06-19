@@ -7,11 +7,12 @@
 // are all untouched — only the rendered silhouette/identity changes.
 
 /**
- * Infantry def ids that currently have faction-specific procedural variants.
- * Today only the basic rifle trooper (`lancer`) is covered; other infantry
- * (breacher, arcweaver, …) fall back to the shared per-defId template.
+ * Infantry def ids that currently have faction-specific procedural variants:
+ * the rifle trooper (`lancer`), the heavy breach trooper (`breacher`) and the
+ * energy caster (`arcweaver`). Any other infantry falls back to the shared
+ * per-defId template.
  */
-export const FACTION_INFANTRY_VARIANT_DEFS = new Set<string>(['lancer']);
+export const FACTION_INFANTRY_VARIANT_DEFS = new Set<string>(['lancer', 'breacher', 'arcweaver']);
 
 /** Factions that ship a procedural variant for the covered infantry defs. */
 export const FACTIONS_WITH_INFANTRY_VARIANT = new Set<string>(['red', 'blue', 'green', 'yellow']);

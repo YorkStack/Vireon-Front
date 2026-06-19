@@ -189,3 +189,43 @@ Konsolenfehler.
 **Nicht geändert:** Stats/Cost/HP/Damage/Range/Speed, Unit-IDs, Produktion,
 Start-Unit-Anzahl, Score-Counter, Kampagnenfortschritt, KI/Combat/Pathfinding,
 Buildings/Vegetation, Assets/GLBs.
+
+## 9. Umgesetzt — Schritt 2 (`breacher` + `arcweaver`, lokal, nicht committet)
+
+Die faction-spezifische Optik wurde von `lancer` auf **`breacher`** (schwere
+Breach-Infanterie, role `rocket`) und **`arcweaver`** (Energie-Infanterie, role
+`energy`) ausgeweitet — gleiches Muster, **kein** Stat-/Balance-/Counter-/Asset-Change.
+
+**Resolver** [infantryVisual.ts](../src/render/infantryVisual.ts): `FACTION_INFANTRY_VARIANT_DEFS`
+= `{lancer, breacher, arcweaver}`. `infantryVisualFor` liefert weiterhin `<defId>@<faction>`
+oder `null` (unverändertes Fallback). **Template-Map** [models.ts](../src/render/models.ts)
+verallgemeinert zu `INFANTRY_FACTION_BUILDERS[defId][faction]` (Lancer-Geometrie
+unverändert, nur Lookup-Tabelle umstrukturiert); `getInfantryTemplate` cached weiter
+unter `unit:<defId>@<faction>`.
+
+**Breacher-Silhouetten:** Crimson = *Breach Trooper* (bulkiger Mensch, Brustplatte +
+Arm-Schild + Breach-Gun); Azure = *Tidal Breaker* (dicke Keramik-Exo-Shell + Sonic-
+Hammer-Ram, 4 dicke Beine); Verdant = *Carapace Crusher* (größerer, niedriger
+Insektoid, Crusher-Vorderbeine, dickere Chitinplatten); Solar = *Flare Burrower*
+(dichter Pod + Front-Plasma-Maw/Wedge, schwerer als Plasma Seed).
+
+**Arcweaver-Silhouetten:** Crimson = *Arc Specialist* (Mensch-Tech, Kondensator-
+Backpack + Coil-Antennen + Emitter-Ring); Azure = *Resonance Weaver* (schwebende
+Shell + 2 rotierende Resonanz-Ringe); Verdant = *Spore Weaver* (Insektoid mit
+biolumineszenten Spore-Säcken + Antennen + Spore-Emitter); Solar = *Radiant Synapse*
+(Kolonie-Node + 2 umlaufende Plasma-Nodes + Orbit-Ring). Energie-Caster nutzen den
+`spin`-Anim-Channel für rotierende Emitter/Nodes.
+
+**Fallback unverändert:** fehlt `factionId`, eine Fraktion oder ist das `defId` keine
+abgedeckte Infanterie → `null` → geteiltes `infantryBase`-/per-`defId`-Template.
+Safety-Guard in `getInfantryTemplate` (kein Builder trotz Key → Default).
+
+**GLB-/Asset-Ersatz** bleibt spätere Option (Schritt 3) über den Fahrzeug-artigen
+Resolver mit Approval + Alpha-Check.
+
+**Browser-Smoke:** tsc/vitest(337)/build/validate:balance grün. Im echten Bundle
+erzeugen **alle 12** Varianten (3 Infanterie × 4 Fraktionen) per `makeEntityGroup`
+fehlerfrei **12/12 strukturell unique** Fingerprints (Crimson ≈ default human,
+Verdant niedrig/insektoid topY 0.72–0.97, Azure/Solar mehr Verts durch Shells/Ringe/
+Pods). Solar-Match: `breacher`+`arcweaver` gespawnt → kein Throw, 120 FPS, Konsole
+sauber, **2 Start-Lancer + Builder = 3 Start-Einheiten unverändert**.

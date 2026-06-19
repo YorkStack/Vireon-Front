@@ -682,11 +682,129 @@ function solarLancerParts(p: Part[]) {
   }
 }
 
-const LANCER_FACTION_BUILDERS: Record<string, (p: Part[]) => void> = {
-  red: crimsonLancerParts,
-  blue: azureLancerParts,
-  green: verdantLancerParts,
-  yellow: solarLancerParts,
+// --- breacher: heavier close-assault / breach infantry (role 'rocket') ---
+
+/** Crimson Pact — "Breach Trooper": bulkier armoured human with shield + breach gun. */
+function crimsonBreacherParts(p: Part[]) {
+  infantryBase(p);
+  p.push(
+    P(box(0.5, 0.34, 0.18), 'dark', 0, 0.62, -0.02),           // bulky chest plate
+    P(box(0.22, 0.4, 0.1), 'accent', -0.28, 0.55, 0.18),       // arm shield
+    P(box(0.12, 0.16, 0.5), 'dark', 0.22, 0.55, 0.3),          // short breach gun
+    P(box(0.14, 0.14, 0.14), 'accent', 0.22, 0.55, 0.6),       // muzzle glow
+    P(box(0.34, 0.38, 0.2), 'dark', 0, 0.52, -0.26),           // heavy backpack
+  );
+}
+
+/** Azure Concorde — "Tidal Breaker": heavy ceramic exo-shell + sonic hammer ram. */
+function azureBreacherParts(p: Part[]) {
+  p.push(
+    P(box(0.44, 0.08, 0.44), 'dark', 0, 0.4),                  // heavy exo base
+    P(sph(0.3, 12), 'smooth', 0, 0.62),                        // thick ceramic shell
+    P(sph(0.18, 12), 'accent', 0, 0.64),                       // water core
+    P(box(0.12, 0.12, 0.55), 'dark', 0.28, 0.62, 0.3),         // pressure ram shaft
+    P(box(0.22, 0.22, 0.18), 'accent', 0.28, 0.62, 0.62),      // sonic hammer head
+  );
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const)
+    p.push(P(box(0.08, 0.32, 0.08), 'dark', sx * 0.24, 0.16, sz * 0.22)); // 4 thick legs
+}
+
+/** Verdant Swarm — "Carapace Crusher": bigger, low insectoid with crusher forelimbs. */
+function verdantBreacherParts(p: Part[]) {
+  p.push(
+    P(box(0.46, 0.24, 0.6), 'body', 0, 0.36),                  // thick chitin thorax
+    P(sph(0.24, 10), 'accent', 0, 0.4, -0.4),                  // large acid sac
+    P(box(0.28, 0.2, 0.24), 'dark', 0, 0.4, 0.4),              // armoured head
+    P(box(0.06, 0.06, 0.28), 'dark', -0.13, 0.36, 0.6, 0, 0, -0.3), // crusher forelimb L
+    P(box(0.06, 0.06, 0.28), 'dark', 0.13, 0.36, 0.6, 0, 0, 0.3),   // crusher forelimb R
+    P(box(0.06, 0.06, 0.06), 'accent', 0, 0.48, 0.5),          // eye glow
+  );
+  for (const sx of [-1, 1] as const)
+    for (const zi of [-0.34, 0, 0.34])
+      p.push(P(box(0.07, 0.3, 0.07), 'dark', sx * 0.3, 0.15, zi, 0, 0, sx * 0.5)); // 6 thick legs
+}
+
+/** Solar Dominion — "Flare Burrower": denser plasma pod with a front plasma maw. */
+function solarBreacherParts(p: Part[]) {
+  p.push(
+    P(sph(0.32, 14), 'smooth', 0, 0.48),                       // dense pod shell
+    P(sph(0.2, 12), 'accent', 0, 0.48),                        // heavy plasma core
+    P(cone(0.22, 0.34, 8), 'accent', 0, 0.48, 0.36, Math.PI / 2), // front plasma maw/wedge
+    P(octa(0.12), 'accent', 0, 0.84),                          // top crystal
+  );
+  for (let a = 0; a < 6; a++) {
+    const ang = (a / 6) * Math.PI * 2;
+    p.push(P(box(0.06, 0.2, 0.06), 'dark', Math.cos(ang) * 0.24, 0.12, Math.sin(ang) * 0.24)); // 6 nubs
+  }
+}
+
+// --- arcweaver: special / energy infantry (role 'energy') ---
+
+/** Crimson Pact — "Arc Specialist": human tech with capacitor pack + coil projector. */
+function crimsonArcweaverParts(p: Part[]) {
+  infantryBase(p, 'light');
+  p.push(
+    P(box(0.32, 0.4, 0.2), 'dark', 0, 0.54, -0.26),            // big capacitor backpack
+    P(box(0.05, 0.3, 0.05), 'accent', -0.12, 0.82, -0.3),      // coil antenna L
+    P(box(0.05, 0.3, 0.05), 'accent', 0.12, 0.82, -0.3),       // coil antenna R
+    P(cyl(0.05, 0.07, 0.6, 8), 'dark', 0.2, 0.6, 0.28),        // slim energy rifle
+    A('spin', P(torus(0.1, 0.025), 'accent', 0.2, 0.6, 0.6, Math.PI / 2)), // emitter ring
+  );
+}
+
+/** Azure Concorde — "Resonance Weaver": floating exo with spinning resonance rings. */
+function azureArcweaverParts(p: Part[]) {
+  p.push(
+    P(sph(0.22, 12), 'smooth', 0, 0.66),                       // sleek shell
+    P(sph(0.14, 12), 'accent', 0, 0.68),                       // resonance core
+    A('spin', P(torus(0.22, 0.03), 'accent', 0, 0.68, 0, Math.PI / 2)), // resonance ring (horizontal)
+    A('spin', P(torus(0.16, 0.025), 'light', 0, 0.68, 0)),     // inner ring (vertical)
+    P(box(0.05, 0.2, 0.05), 'light', 0, 0.96),                 // antenna emitter
+  );
+  for (const [sx, sz] of [[-1, -1], [1, 1]] as const)
+    p.push(P(box(0.05, 0.4, 0.05), 'dark', sx * 0.18, 0.2, sz * 0.16)); // 2 elegant legs
+}
+
+/** Verdant Swarm — "Spore Weaver": insectoid caster with bioluminescent sacs + antennae. */
+function verdantArcweaverParts(p: Part[]) {
+  p.push(
+    P(box(0.3, 0.2, 0.46), 'body', 0, 0.36),                   // thorax
+    P(sph(0.18, 10), 'accent', 0, 0.5, -0.28),                 // glowing spore sac (raised)
+    P(sph(0.12, 10), 'accent', 0, 0.62, -0.1),                 // second sac
+    P(box(0.16, 0.14, 0.18), 'dark', 0, 0.4, 0.32),            // head
+    P(cyl(0.02, 0.02, 0.34, 6), 'accent', -0.08, 0.6, 0.4, 0.5), // antenna L
+    P(cyl(0.02, 0.02, 0.34, 6), 'accent', 0.08, 0.6, 0.4, 0.5),  // antenna R
+    A('spin', P(octa(0.1), 'accent', 0, 0.36, 0.5)),           // spore emitter
+  );
+  for (const sx of [-1, 1] as const)
+    for (const zi of [-0.26, 0.02, 0.3])
+      p.push(P(box(0.045, 0.26, 0.045), 'dark', sx * 0.24, 0.13, zi, 0, 0, sx * 0.5)); // 6 legs
+}
+
+/** Solar Dominion — "Radiant Synapse": colony node with orbiting plasma nodes. */
+function solarArcweaverParts(p: Part[]) {
+  p.push(
+    P(sph(0.24, 14), 'smooth', 0, 0.56),                       // colony node shell
+    P(sph(0.15, 12), 'accent', 0, 0.56),                       // light core
+    A('spin', P(octa(0.08), 'accent', 0.28, 0.56, 0)),         // orbiting plasma node 1
+    A('spin', P(octa(0.08), 'accent', -0.28, 0.56, 0)),        // orbiting plasma node 2
+    A('spin', P(torus(0.26, 0.02), 'light', 0, 0.56, 0, Math.PI / 2)), // orbit ring
+  );
+  for (let a = 0; a < 4; a++) {
+    const ang = (a / 4) * Math.PI * 2;
+    p.push(P(box(0.05, 0.2, 0.05), 'dark', Math.cos(ang) * 0.18, 0.12, Math.sin(ang) * 0.18)); // nubs
+  }
+}
+
+/**
+ * Faction builders per infantry def id. Each inner map covers the four factions;
+ * a missing (defId, faction) pair simply falls back to the shared per-defId
+ * template via `getInfantryTemplate`. Keys mirror `infantryVisual.ts`.
+ */
+const INFANTRY_FACTION_BUILDERS: Record<string, Record<string, (p: Part[]) => void>> = {
+  lancer: { red: crimsonLancerParts, blue: azureLancerParts, green: verdantLancerParts, yellow: solarLancerParts },
+  breacher: { red: crimsonBreacherParts, blue: azureBreacherParts, green: verdantBreacherParts, yellow: solarBreacherParts },
+  arcweaver: { red: crimsonArcweaverParts, blue: azureArcweaverParts, green: verdantArcweaverParts, yellow: solarArcweaverParts },
 };
 
 /**
@@ -694,9 +812,9 @@ const LANCER_FACTION_BUILDERS: Record<string, (p: Part[]) => void> = {
  * shared per-defId template. Cached per `unit:<defId>@<faction>` like vehicles.
  */
 function getInfantryTemplate(defId: string, factionId?: string): Template | null {
-  const key = infantryVisualFor(defId, factionId);            // e.g. 'lancer@blue'
+  const key = infantryVisualFor(defId, factionId);            // e.g. 'breacher@blue'
   if (!key) return null;
-  const builder = LANCER_FACTION_BUILDERS[factionId!];
+  const builder = INFANTRY_FACTION_BUILDERS[defId]?.[factionId!];
   if (!builder) return null;                                  // safety: resolver/builders out of sync → fallback
   const cacheKey = `unit:${key}`;
   const cached = templateCache.get(cacheKey);
