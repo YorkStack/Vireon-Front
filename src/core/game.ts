@@ -16,13 +16,22 @@ import type { MissionDef, TeamId } from './types';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 import { randomDoctrineFor } from '../data/doctrines';
 import { recordMatchResult } from '../game/scoring/recordMatchEnd';
+import { recordCampaignMissionResult } from '../game/campaignProgress/recordCampaignProgress';
+import { LocalStorageCommanderProfileStore } from '../platform/profile/CommanderProfileStore';
 import type { MatchResultView } from '../ui/scoreFormat';
 
 export type GameResult = 'restart' | 'menu';
 
+/** Optional campaign context so a won mission can advance local progress. */
+export interface CampaignContext {
+  campaignId: string;
+  missionOrder: string[]; // ordered mission ids (CampaignDef.missions order)
+}
+
 export class Game {
   private mission: MissionDef;
   private difficultyId: DifficultyId;
+  private campaign?: CampaignContext;
   private map: GameMap;
   private rig: SceneRig;
   private world: World;
@@ -39,9 +48,10 @@ export class Game {
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
 
-  constructor(mission: MissionDef, playerFactionId: string, difficultyId: DifficultyId = DEFAULT_DIFFICULTY) {
+  constructor(mission: MissionDef, playerFactionId: string, difficultyId: DifficultyId = DEFAULT_DIFFICULTY, campaign?: CampaignContext) {
     this.mission = mission;
     this.difficultyId = difficultyId;
+    this.campaign = campaign;
     const difficulty = DIFFICULTIES[difficultyId] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
     const playerFaction = FACTION_DEFS[playerFactionId];
     let enemyId = mission.enemyFaction;
@@ -197,6 +207,7 @@ export class Game {
     // Local, offline score recording (no backend). Wrapped so a storage hiccup
     // can never block the win/lose flow. No-op if no Commander Profile exists.
     let resultView: MatchResultView | undefined;
+    let matchScore = 0; // this match's final score (for per-mission best score)
     try {
       const t0 = this.world.teams[0];
       const result = recordMatchResult({
@@ -211,6 +222,7 @@ export class Game {
         stats: t0.stats,
       });
       // Reuse the already-computed score for display — no recalculation, no re-save.
+      matchScore = result.score ?? 0;
       if (result.saved && result.breakdown && result.playerName != null) {
         resultView = {
           victory, commanderName: result.playerName, score: result.score ?? 0,
@@ -220,6 +232,31 @@ export class Game {
       if (import.meta.env.DEV) console.info('[score] match end', { victory, ...result });
     } catch (e) {
       if (import.meta.env.DEV) console.warn('[score] recording failed (ignored)', e);
+    }
+
+    // Local, offline campaign progress (no backend). Only on victory of a campaign
+    // mission with a known commander. Defensive: a storage hiccup must never block
+    // the win/lose flow, and missing campaign data is simply skipped. Score saving
+    // above is unaffected by this block.
+    if (victory && this.campaign) {
+      try {
+        const profile = new LocalStorageCommanderProfileStore().getProfile();
+        if (profile) {
+          const r = recordCampaignMissionResult({
+            playerId: profile.id,
+            campaignId: this.campaign.campaignId,
+            missionId: this.mission.id,
+            victory,
+            score: matchScore, // this match's final score (per-mission best handled in the helper)
+            difficulty: this.difficultyId,
+            completedAt: new Date().toISOString(),
+            missionOrder: this.campaign.missionOrder,
+          });
+          if (import.meta.env.DEV) console.info('[campaign] progress', r);
+        }
+      } catch (e) {
+        if (import.meta.env.DEV) console.warn('[campaign] progress update failed (ignored)', e);
+      }
     }
 
     const mins = Math.floor(this.world.time / 60), secs = Math.floor(this.world.time % 60);

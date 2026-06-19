@@ -44,8 +44,10 @@ async function main() {
     await showBriefing(choice.mission, FACTION_DEFS[choice.factionId]);
     let result: 'restart' | 'menu';
     await glbReady; // ensure baked vehicle GLBs are cached before units spawn
+    // Campaign context lets a won mission advance local progress (offline-only).
+    const campaign = { campaignId: choice.campaign.id, missionOrder: choice.campaign.missions.map((m) => m.id) };
     do {
-      const game = new Game(choice.mission, choice.factionId, choice.difficulty);
+      const game = new Game(choice.mission, choice.factionId, choice.difficulty, campaign);
       result = await game.run();
     } while (result === 'restart');
   }

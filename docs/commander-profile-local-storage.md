@@ -72,8 +72,9 @@ DOM, nutzt **nur** den `CommanderProfileStore` — kein direkter localStorage-Zu
 
 ## 8. Noch NICHT implementiert (bewusst)
 - ~~Score-Berechnungs-Verdrahtung~~ → umgesetzt (Scoring-Foundation + Match-End-Integration + Local-Score-UI).
-- Kampagnenfortschritt-Verdrahtung (Unlock/Complete aus dem Spiel → `CampaignProgressStore`)
+- ~~Kampagnenfortschritt-Verdrahtung~~ → **umgesetzt** in MVP 1, Step 5: bei Sieg schreibt `game.ts checkEnd()` über `recordCampaignMissionResult` in den `CampaignProgressStore` (completed/unlocked/best-score/best-difficulty), siehe [campaign-progress-local.md](campaign-progress-local.md).
 - Settings-Screen (Store existiert, UI fehlt)
+- Kampagnen-Unlock-UI (Fortschritt wird geschrieben, aber noch nicht im Startscreen angezeigt)
 - ~~Export/Import Savegame (JSON)~~ → **umgesetzt** in MVP 1, Step 4, siehe [local-savegame-export-import.md](local-savegame-export-import.md) (Export/Import-Buttons im Commander-Banner + First-Launch-Screen).
 - Online-Leaderboard / echtes Auth (erst MVP 3/4)
 
