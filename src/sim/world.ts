@@ -63,12 +63,12 @@ export class Unit {
   hb: HealthBar;
   cargoBar: HealthBar | null = null; // crystal load bar (harvesters only)
 
-  constructor(team: TeamId, def: UnitDef, x: number, z: number, accent: string) {
+  constructor(team: TeamId, def: UnitDef, x: number, z: number, accent: string, factionId?: string) {
     this.team = team; this.def = def; this.x = x; this.z = z;
     this.hp = def.hp;
     this.anchorX = x; this.anchorZ = z;
     this.stance = def.defaultStance ?? (def.weapon ? 'aggressive' : 'holdFire');
-    this.group = makeEntityGroup('unit', def.id, accent, def.class === 'vehicle', def.visual);
+    this.group = makeEntityGroup('unit', def.id, accent, def.class === 'vehicle', def.visual, factionId);
     this.ring = makeSelectionRing(def.radius + 0.25, accent);
     this.ring.visible = false;
     this.ring.position.y = 0.06;
@@ -212,7 +212,7 @@ export class World {
 
   spawnUnit(team: TeamId, defId: string, x: number, z: number): Unit {
     const def = unitStats(defId, this.teams[team].faction);
-    const u = new Unit(team, def, x, z, this.teams[team].faction.emissive);
+    const u = new Unit(team, def, x, z, this.teams[team].faction.emissive, this.teams[team].faction.id);
     u.group.position.set(x, this.map.groundHeight(x, z), z);
     this.scene.add(u.group);
     this.units.push(u);

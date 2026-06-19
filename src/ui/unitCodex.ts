@@ -77,7 +77,7 @@ export function showUnitCodex(): Promise<void> {
       if (model) { scene.remove(model); model = null; }
       const f = FACTION_DEFS[factionId];
       const def = resolveUnit(classId, f);
-      model = makeEntityGroup('unit', def.id, f.emissive, def.class === 'vehicle', def.visual);
+      model = makeEntityGroup('unit', def.id, f.emissive, def.class === 'vehicle', def.visual, factionId);
       scene.add(model);
       const pv = def.visual?.previewCamera;
       dist = pv?.distance ?? 8;

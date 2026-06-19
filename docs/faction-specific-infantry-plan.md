@@ -137,3 +137,55 @@ Faction-Infanterie-Resolver für `lancer`:
 
 Danach optional Schritt 2: GLB-Variante je Fraktion über den Fahrzeug-artigen
 Resolver (mit Approval + Alpha-Check), wenn höhere Detailtiefe gewünscht ist.
+
+## 8. Umgesetzt — Schritt 1 (prozedurale Faction-Lancer, lokal, nicht committet)
+
+**Was implementiert wurde:**
+- **DOM-freier Resolver** [infantryVisual.ts](../src/render/infantryVisual.ts):
+  `infantryVisualFor(defId, factionId)` → `lancer@<faction>` oder `null` (Fallback).
+  Pure String-/Daten-Logik → unit-testbar ohne three.js/`document`.
+- **Vier prozedurale Lancer-Varianten** in [models.ts](../src/render/models.ts)
+  (`crimsonLancerParts`/`azureLancerParts`/`verdantLancerParts`/`solarLancerParts`)
+  + `getInfantryTemplate(defId, factionId)` (gecacht wie Fahrzeug-Varianten unter
+  `unit:lancer@<faction>`).
+- **`factionId` additiv durchgereicht:** `makeEntityGroup(..., factionId?)`
+  ([models.ts](../src/render/models.ts)) ← `Unit`-Konstruktor + `spawnUnit`
+  ([world.ts](../src/sim/world.ts)) ← `this.teams[team].faction.id`; zusätzlich im
+  Unit-Codex-Preview ([unitCodex.ts](../src/ui/unitCodex.ts)). Default-Verhalten
+  unverändert, wenn `factionId` fehlt.
+
+**Faction-Silhouetten (prozedural):**
+- **Crimson (`red`) — Iron Guard:** identisch zum bisherigen menschlichen Trooper
+  (Torso/Helm/Visier + Gewehr). Bleibt human/militärisch.
+- **Azure (`blue`) — Shellwalker:** Perl-/Keramik-Exo-Shell (Kugel) + glühender
+  Wasser-/Glas-Kern + 4 mechanische Beine + Druck-Lanze. **Nicht** menschlich.
+- **Verdant (`green`) — Brood Skirmisher:** niedriger Insektoid-Crawler, flacher
+  Chitin-Thorax + Bio-Sack-Abdomen + Kopf mit Mandibeln + 6 gespreizte Beine.
+- **Solar (`yellow`) — Plasma Seed:** translucenter Kolonie-Pod (Shell) + pulsierender
+  Plasma-Kern + Top-Kristall + Krabbel-Nubs. Kein humanoider Umriss.
+
+**Was prozedural bleibt:** alles — kein GLB/keine Textur in diesem Schritt; nur
+Primitiv-Geometrie. Akzent-**Farbe** weiterhin faction-getintet über den geteilten
+Material-Pfad.
+
+**Fallback-Verhalten:** `infantryVisualFor` liefert `null` (→ heutiges
+`infantryBase`-Template) wenn `factionId` fehlt, die Fraktion keine Variante hat,
+oder die Einheit kein abgedecktes Infanterie-`defId` ist (heute nur `lancer`;
+`breacher`/`arcweaver` → Default). Sicherheits-Guard in `getInfantryTemplate`:
+fehlt ein Builder trotz Resolver-Key, wird ebenfalls auf Default zurückgefallen.
+
+**GLB-/Asset-Option später (Schritt 2):** per-Fraktion-GLBs über den
+Fahrzeug-artigen Resolver (Generierung + Approval + Alpha-Check) für höhere
+Detailtiefe — derselbe Fallback-Mechanismus greift, wenn ein Asset fehlt.
+
+**Browser-Smoke:** tsc/vitest(+4)/build/validate:balance grün (336 Tests). Im echten
+Spiel: vier Fraktionen erzeugen **strukturell distinkte** Lancer (Vertex-/Mesh-/topY-
+Fingerprint: red=default human topY 1.382; blue 1584 Verts/4 Meshes; green topY 0.717
+flacher Insektoid; yellow 1776 Verts Pod), Resolver-Keys korrekt, `breacher`→null.
+Verdant-Match visuell bestätigt (zwei niedrige Insektoid-Crawler statt Soldaten,
+Screenshot), **2 Start-Lancer + Fabricator = 3 Start-Einheiten unverändert**, keine
+Konsolenfehler.
+
+**Nicht geändert:** Stats/Cost/HP/Damage/Range/Speed, Unit-IDs, Produktion,
+Start-Unit-Anzahl, Score-Counter, Kampagnenfortschritt, KI/Combat/Pathfinding,
+Buildings/Vegetation, Assets/GLBs.

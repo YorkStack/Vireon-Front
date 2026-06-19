@@ -16,6 +16,7 @@ import { importedSpecFor } from '../vehicles/importedSpecs';
 import { hasVehicleGlb, expectedVehicleGlb, makeGlbEntityGroup, VEH_SOURCE } from './vehicleGlb';
 import { buildVehicleParts } from './vehicleModels';
 import { buildPartsFromSpec } from './specInterpreter';
+import { infantryVisualFor } from './infantryVisual';
 
 // 'smooth' = curved hero surfaces (domes) that look bad with a tiling texture;
 // they get a plain shaded material instead.
@@ -623,6 +624,88 @@ export function getTemplate(kind: 'unit' | 'building', defId: string): Template 
   return makeTemplate(`${kind}:${defId}`, kind === 'unit' ? unitParts(defId) : buildingParts(defId));
 }
 
+// ---------------- faction-specific procedural infantry ----------------
+// Visual-only: same `lancer` gameplay class for every faction, but alien factions
+// get a non-human silhouette instead of the shared soldier. Geometry stays
+// lightweight + RTS-readable with a comparable footprint/height. Accent parts glow
+// in the owner faction colour (handled by the shared material path).
+
+/** Crimson Pact — human "Iron Guard": the existing armoured rifle trooper. */
+function crimsonLancerParts(p: Part[]) {
+  infantryBase(p);
+  p.push(
+    P(box(0.07, 0.08, 0.62), 'dark', 0.17, 0.62, 0.24),        // rifle
+    P(box(0.05, 0.05, 0.12), 'accent', 0.17, 0.62, 0.56),      // muzzle glow
+  );
+}
+
+/** Azure Concorde — "Shellwalker": aquatic being in a pearl/ceramic exo-frame. */
+function azureLancerParts(p: Part[]) {
+  p.push(
+    P(box(0.34, 0.06, 0.34), 'dark', 0, 0.42),                 // exo underframe
+    P(sph(0.25, 12), 'smooth', 0, 0.62),                       // pearl ceramic shell
+    P(sph(0.15, 12), 'accent', 0, 0.66),                       // glowing water/glass core
+    P(box(0.05, 0.18, 0.05), 'light', 0, 0.92),                // sensor fin
+    P(box(0.05, 0.05, 0.7), 'dark', 0.24, 0.64, 0.3),          // pressure lance
+    P(box(0.08, 0.08, 0.12), 'accent', 0.24, 0.64, 0.64),      // sonic emitter tip
+  );
+  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+    p.push(P(box(0.06, 0.34, 0.06), 'dark', sx * 0.2, 0.18, sz * 0.18)); // 4 mechanical legs
+  }
+}
+
+/** Verdant Swarm — "Brood Skirmisher": low insectoid crawler, 6 legs. */
+function verdantLancerParts(p: Part[]) {
+  p.push(
+    P(box(0.34, 0.18, 0.5), 'body', 0, 0.34),                  // chitin thorax (low)
+    P(sph(0.2, 10), 'accent', 0, 0.36, -0.34),                 // glowing bio-sac abdomen
+    P(box(0.2, 0.14, 0.2), 'dark', 0, 0.36, 0.34),             // head
+    P(box(0.04, 0.04, 0.16), 'dark', -0.07, 0.32, 0.5),        // mandible L
+    P(box(0.04, 0.04, 0.16), 'dark', 0.07, 0.32, 0.5),         // mandible R
+    P(box(0.05, 0.05, 0.05), 'accent', 0, 0.42, 0.42),         // eye glow
+  );
+  for (const sx of [-1, 1] as const)
+    for (const zi of [-0.28, 0, 0.28])
+      p.push(P(box(0.05, 0.26, 0.05), 'dark', sx * 0.26, 0.13, zi, 0, 0, sx * 0.5)); // 6 splayed legs
+}
+
+/** Solar Dominion — "Plasma Seed": crawling colony pod with a plasma core. */
+function solarLancerParts(p: Part[]) {
+  p.push(
+    P(sph(0.28, 14), 'smooth', 0, 0.5),                        // translucent colony pod shell
+    P(sph(0.17, 12), 'accent', 0, 0.5),                        // pulsing plasma core
+    P(octa(0.1), 'accent', 0, 0.82),                           // top plasma crystal
+  );
+  for (let a = 0; a < 5; a++) {
+    const ang = (a / 5) * Math.PI * 2;
+    p.push(P(box(0.05, 0.18, 0.05), 'dark', Math.cos(ang) * 0.2, 0.12, Math.sin(ang) * 0.2)); // crawl nubs
+  }
+}
+
+const LANCER_FACTION_BUILDERS: Record<string, (p: Part[]) => void> = {
+  red: crimsonLancerParts,
+  blue: azureLancerParts,
+  green: verdantLancerParts,
+  yellow: solarLancerParts,
+};
+
+/**
+ * Faction-specific procedural infantry template, or null to fall back to the
+ * shared per-defId template. Cached per `unit:<defId>@<faction>` like vehicles.
+ */
+function getInfantryTemplate(defId: string, factionId?: string): Template | null {
+  const key = infantryVisualFor(defId, factionId);            // e.g. 'lancer@blue'
+  if (!key) return null;
+  const builder = LANCER_FACTION_BUILDERS[factionId!];
+  if (!builder) return null;                                  // safety: resolver/builders out of sync → fallback
+  const cacheKey = `unit:${key}`;
+  const cached = templateCache.get(cacheKey);
+  if (cached) return cached;
+  const parts: Part[] = [];
+  builder(parts);
+  return makeTemplate(cacheKey, parts);
+}
+
 /**
  * Template for a faction vehicle variant (factoryId = '<faction>:<classId>').
  * Builds chassis + role kit from the variant file and registers its turret
@@ -699,7 +782,7 @@ function meshesFor(
  */
 export function makeEntityGroup(
   kind: 'unit' | 'building', defId: string, accentHex: string,
-  vehicle = false, visual?: UnitVisual,
+  vehicle = false, visual?: UnitVisual, factionId?: string,
 ): THREE.Group {
   // Runtime-GLB path (component factory): prefer a baked GLB when present.
   if (kind === 'unit' && vehicle && visual) {
@@ -726,11 +809,15 @@ export function makeEntityGroup(
     }
     VEH_SOURCE[`${fId}:${cId}`] = 'procedural';
   }
-  // Faction vehicle variants resolve to their own template; everything else
-  // (infantry, buildings, legacy ids) uses the classic per-defId templates.
+  // Faction vehicle variants resolve to their own template; faction-specific
+  // procedural infantry (e.g. alien lancers) resolve to their own template too;
+  // everything else (other infantry, buildings, legacy ids) uses the classic
+  // per-defId templates.
   const variantT = kind === 'unit' && vehicle && visual ? getVariantTemplate(visual.factoryId) : null;
-  const t = variantT ?? getTemplate(kind, defId);
-  const pivotKey = variantT ? `unit:${visual!.factoryId}` : `${kind}:${defId}`;
+  const infantryKey = !variantT && kind === 'unit' && !vehicle ? infantryVisualFor(defId, factionId) : null;
+  const infantryT = infantryKey ? getInfantryTemplate(defId, factionId) : null;
+  const t = variantT ?? infantryT ?? getTemplate(kind, defId);
+  const pivotKey = variantT ? `unit:${visual!.factoryId}` : (infantryT && infantryKey) ? `unit:${infantryKey}` : `${kind}:${defId}`;
   const vehMat = vehicle ? vehicleHullMat(visual?.factoryId?.split(':')[1] ?? defId, visual) : undefined;
   // Studio-designed per-component textures (group → url) if this imported spec has any.
   let groupTex: Record<string, string> | undefined;
