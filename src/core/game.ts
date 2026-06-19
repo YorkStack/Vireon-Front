@@ -15,11 +15,13 @@ import { FACTION_DEFS } from './defs';
 import type { MissionDef, TeamId } from './types';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 import { randomDoctrineFor } from '../data/doctrines';
+import { recordMatchResult } from '../game/scoring/recordMatchEnd';
 
 export type GameResult = 'restart' | 'menu';
 
 export class Game {
   private mission: MissionDef;
+  private difficultyId: DifficultyId;
   private map: GameMap;
   private rig: SceneRig;
   private world: World;
@@ -38,6 +40,7 @@ export class Game {
 
   constructor(mission: MissionDef, playerFactionId: string, difficultyId: DifficultyId = DEFAULT_DIFFICULTY) {
     this.mission = mission;
+    this.difficultyId = difficultyId;
     const difficulty = DIFFICULTIES[difficultyId] ?? DIFFICULTIES[DEFAULT_DIFFICULTY];
     const playerFaction = FACTION_DEFS[playerFactionId];
     let enemyId = mission.enemyFaction;
@@ -187,8 +190,29 @@ export class Game {
     const playerAlive = sideAlive(0);
     const enemyAlive = sideAlive(1);
     if (playerAlive && enemyAlive) return;
-    this.over = true;
+    this.over = true; // runs exactly once → score is recorded once
     const victory = playerAlive;
+
+    // Local, offline score recording (no backend). Wrapped so a storage hiccup
+    // can never block the win/lose flow. No-op if no Commander Profile exists.
+    try {
+      const t0 = this.world.teams[0];
+      const result = recordMatchResult({
+        victory,
+        commandCenterDestroyed: victory, // win condition = enemy command nexus destroyed
+        difficulty: this.difficultyId,
+        playerFactionId: t0.faction.id,
+        opponentFactionId: this.world.teams[1].faction.id,
+        missionId: this.mission.id,
+        mapId: `${this.mission.map.seed}_${this.mission.map.size}`,
+        durationSeconds: this.world.time,
+        stats: t0.stats,
+      });
+      if (import.meta.env.DEV) console.info('[score] match end', { victory, ...result });
+    } catch (e) {
+      if (import.meta.env.DEV) console.warn('[score] recording failed (ignored)', e);
+    }
+
     const mins = Math.floor(this.world.time / 60), secs = Math.floor(this.world.time % 60);
     const stats = `Mission time ${mins}:${String(secs).padStart(2, '0')} — ${this.mission.name}`;
     setTimeout(async () => {

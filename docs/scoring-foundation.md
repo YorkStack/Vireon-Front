@@ -81,10 +81,9 @@ ist nie negativ. `rawScore` = Summe der Teile (im Test verifiziert).
 - Keine UI (Ergebnis-/Leaderboard-Anzeige).
 
 ## 9. Nächster Schritt
-**Match-Counter + `MatchSummary`-Builder am Match-Ende:** `TeamState` (Spieler,
-team 0) um Counter erweitern (rein additiv), in `game.ts checkEnd()` eine
-`MatchSummary` zusammenstellen → `calculateMatchScore` → über den
-`LocalLeaderboardStore` speichern + Commander-Profil-Aggregate aktualisieren.
+**Match-Counter + `MatchSummary`-Builder am Match-Ende** → **umgesetzt in Step 3b**,
+siehe [scoring-match-end-integration.md](scoring-match-end-integration.md)
+(`MatchStats`-Counter in `world.ts`, `recordMatchResult` in `game.ts checkEnd()`).
 
 ## Dateien
 - [src/game/scoring/types.ts](../src/game/scoring/types.ts) · [calculateMatchScore.ts](../src/game/scoring/calculateMatchScore.ts) · [calculateMatchScore.test.ts](../src/game/scoring/calculateMatchScore.test.ts)

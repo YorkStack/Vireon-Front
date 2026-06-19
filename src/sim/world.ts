@@ -11,6 +11,7 @@ import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../r
 import { Effects } from '../render/effects';
 import { MOVEMENT_PROFILES, type MovementType } from '../data/movementProfiles';
 import { getCrystalVisualStage, CRYSTAL_STAGE_SCALE, type CrystalVisualStage } from './resources';
+import { createMatchStats, type MatchStats } from './matchStats';
 
 /** Per-crystal-group render metadata stashed in THREE.Group.userData by terrain.ts. */
 interface CrystalGroupUD {
@@ -178,6 +179,7 @@ export interface TeamState {
   lowPower: boolean;
   powerRatio: number; // availablePower / requiredPower (1 = fine, <1 = deficit)
   incomeMul: number; // ore-yield multiplier (AI difficulty handicap; player = 1)
+  stats: MatchStats; // observational counters for scoring — no gameplay effect
 }
 
 export class World {
@@ -201,8 +203,8 @@ export class World {
     this.map = map; this.scene = scene; this.effects = effects;
     this.crystalGroups = crystalGroups;
     this.teams = [
-      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1 },
-      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1 },
+      { faction: playerFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1, stats: createMatchStats() },
+      { faction: enemyFaction, credits: 0, powerProduced: 0, powerUsed: 0, lowPower: false, powerRatio: 1, incomeMul: 1, stats: createMatchStats() },
     ];
   }
 
@@ -256,6 +258,8 @@ export class World {
     const def = buildingStats(defId, this.teams[team].faction);
     if (this.teams[team].credits < def.cost) return null;
     this.teams[team].credits -= def.cost;
+    this.teams[team].stats.resourcesSpent += def.cost;        // observational
+    this.teams[team].stats.buildingsBuilt += 1;               // player builds a structure (no pre-placed bases; walls count per segment)
     const lvl = this.map.level[this.map.idx(tx, tz)];
     const b = new Building(team, def, tx, tz, lvl, this.teams[team].faction.emissive, instant, this.teams[team].faction.id);
     for (let dz = 0; dz < b.h; dz++)
@@ -274,6 +278,7 @@ export class World {
     const def = unitStats(defId, this.teams[b.team].faction);
     if (this.teams[b.team].credits < def.cost) return false;
     this.teams[b.team].credits -= def.cost;
+    this.teams[b.team].stats.resourcesSpent += def.cost;       // observational
     b.queue.push({ defId, remaining: def.buildTime, total: def.buildTime });
     return true;
   }
@@ -283,6 +288,7 @@ export class World {
     if (!item) return;
     const def = unitStats(item.defId, this.teams[b.team].faction);
     this.teams[b.team].credits += def.cost;
+    this.teams[b.team].stats.resourcesSpent = Math.max(0, this.teams[b.team].stats.resourcesSpent - def.cost); // refund → net spend
     b.queue.splice(index, 1);
   }
 
@@ -482,7 +488,15 @@ export class World {
         (target.def.autoAcquireRange ?? target.def.vision) * TILE);
       if (attacker) target.engage = attacker;
     }
-    if (target.hp <= 0) this.kill(target);
+    if (target.hp <= 0) {
+      const victimTeam = target.team;
+      this.kill(target); // records the victim's own-loss
+      // Enemy-destroyed attribution for the attacker (combat kill, known killer).
+      if (attackerTeam !== victimTeam) {
+        const as = this.teams[attackerTeam].stats;
+        if (target instanceof Building) as.enemyBuildingsDestroyed += 1; else as.enemyUnitsDestroyed += 1;
+      }
+    }
   }
 
   /** Support vehicles slowly repair nearby damaged friendly vehicles. */
@@ -503,6 +517,10 @@ export class World {
   kill(e: Unit | Building) {
     if (!e.alive) return;
     e.alive = false;
+    // Own-loss attribution for the victim's team (every death; combat is the only
+    // death path today, but recording here also covers any future non-combat kill).
+    const vs = this.teams[e.team].stats;
+    if (e instanceof Building) vs.ownBuildingsLost += 1; else vs.ownUnitsLost += 1;
     const pos = e instanceof Building
       ? new THREE.Vector3(e.cx, e.level * LEVEL_H + 1, e.cz)
       : new THREE.Vector3(e.x, this.map.groundHeight(e.x, e.z) + 0.7, e.z);
@@ -762,7 +780,9 @@ export class World {
       if (this.nearBuilding(u, drop)) {
         // Faction gather-rate (Verdant hauls a touch more, Azure/Solar a touch less).
         const gatherMul = getEconomyModifiers(this.teams[u.team].faction.id as FactionId).resourceGatherRate;
-        this.teams[u.team].credits += u.cargo * this.teams[u.team].incomeMul * gatherMul;
+        const gained = u.cargo * this.teams[u.team].incomeMul * gatherMul;
+        this.teams[u.team].credits += gained;
+        this.teams[u.team].stats.resourcesCollected += gained; // observational
         u.cargo = 0;
         u.sub = 'toNode';
         if (!o.node || o.node.amount <= 0) o.node = this.nearestCrystal(u.x, u.z);
@@ -887,6 +907,7 @@ export class World {
         if (t) {
           const [wx, wz] = this.map.tileToWorld(t[0], t[1]);
           const u = this.spawnUnit(b.team, item.defId, wx, wz);
+          this.teams[b.team].stats.unitsProduced += 1; // produced via the queue (initial units use spawnUnit directly → not counted)
           // Step away from the factory so the exit stays clear.
           const ang = Math.atan2(wx - b.cx, wz - b.cz);
           this.orderMove(u, wx + Math.sin(ang) * TILE * 2.5, wz + Math.cos(ang) * TILE * 2.5);
