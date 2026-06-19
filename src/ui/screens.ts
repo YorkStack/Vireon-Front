@@ -7,8 +7,15 @@ import { showUnitCodex } from './unitCodex';
 import { DIFFICULTIES, DIFFICULTY_ORDER, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 import { doctrinesFor, defaultDoctrineFor } from '../data/doctrines';
 import { buildCommanderBanner } from './commanderProfile';
+import { showLocalScores } from './localScores';
+import { formatScore, formatDuration, formatSigned, difficultyLabel, breakdownRows, type MatchResultView } from './scoreFormat';
 
 const root = () => document.getElementById('ui-root')!;
+
+/** Escape user-provided text (commander name) before HTML interpolation. */
+function escapeText(s: string): string {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
 
 function el(html: string): HTMLElement {
   const t = document.createElement('template');
@@ -64,6 +71,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
         <div class="screen-cta">
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
           <button id="btn-codex" style="padding:12px 30px;letter-spacing:2px;">⬡ UNIT CODEX</button>
+          <button id="btn-scores" style="padding:12px 30px;letter-spacing:2px;">★ LOCAL SCORES</button>
         </div>
       </div>
     `);
@@ -77,6 +85,12 @@ export async function showStartScreen(): Promise<MissionChoice> {
     screen.querySelector('#btn-codex')!.addEventListener('click', async () => {
       screen.style.display = 'none';
       await showUnitCodex();
+      screen.style.display = '';
+    });
+
+    screen.querySelector('#btn-scores')!.addEventListener('click', async () => {
+      screen.style.display = 'none';
+      await showLocalScores();
       screen.style.display = '';
     });
 
@@ -234,12 +248,25 @@ export function showPauseMenu(): Promise<PauseResult> {
   });
 }
 
-export function showEndScreen(victory: boolean, stats: string): Promise<'restart' | 'menu'> {
+export function showEndScreen(victory: boolean, stats: string, result?: MatchResultView): Promise<'restart' | 'menu'> {
   return new Promise((resolve) => {
+    // Local score block (only when a Commander Profile exists → result provided).
+    // Reuses the already-computed/stored score — no recalculation, no re-save.
+    const scoreBlock = result ? `
+      <div class="menu-box panel" style="max-width:420px;margin:0 auto 10px;text-align:left;">
+        <div style="text-align:center;margin-bottom:6px;">
+          <div style="font-size:12px;color:var(--text-dim);letter-spacing:1px;">COMMANDER ${escapeText(result.commanderName).toUpperCase()}</div>
+          <div style="font-size:30px;font-weight:800;">${formatScore(result.score)}</div>
+          <div style="font-size:12px;color:var(--text-dim);">${difficultyLabel(result.difficulty)} · ${formatDuration(result.durationSeconds)}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin:8px 0 4px;">Breakdown</div>
+        ${breakdownRows(result.breakdown).map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;padding:1px 0;"><span>${r.label}</span><span style="font-variant-numeric:tabular-nums;">${formatSigned(r.value)}</span></div>`).join('')}
+      </div>` : '';
     const screen = el(`
       <div class="screen endscreen">
         <h1 class="${victory ? 'victory' : 'defeat'}">${victory ? 'VICTORY' : 'DEFEAT'}</h1>
         <div class="stats">${stats}</div>
+        ${scoreBlock}
         <div class="menu-box panel">
           <button class="primary" data-a="restart">${victory ? 'Play Again' : 'Retry Mission'}</button>
           <button data-a="menu">Back to Menu</button>

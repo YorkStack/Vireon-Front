@@ -3,7 +3,7 @@
 // Commander Profile aggregates. Offline-only; no backend, no network. Stores +
 // id/clock are injectable so it is fully deterministic in tests.
 import { calculateMatchScore } from './calculateMatchScore';
-import type { MatchSummary, ScoreDifficulty } from './types';
+import type { MatchSummary, ScoreBreakdown, ScoreDifficulty } from './types';
 import type { MatchStats } from '../../sim/matchStats';
 import { LocalStorageCommanderProfileStore, type CommanderProfileStore } from '../../platform/profile/CommanderProfileStore';
 import { LocalStorageLeaderboardStore, type LocalLeaderboardStore } from '../../platform/leaderboard/LocalLeaderboardStore';
@@ -32,6 +32,8 @@ export interface MatchEndDeps {
 export interface MatchEndResult {
   saved: boolean;
   score: number | null;
+  breakdown: ScoreBreakdown | null; // same calculation as the stored score (no recompute)
+  playerName: string | null;
   reason?: 'no-profile';
 }
 
@@ -46,7 +48,7 @@ export function recordMatchResult(input: MatchEndInput, deps: MatchEndDeps = {})
   const now = deps.now ?? nowIso;
 
   const profile = profileStore.getProfile();
-  if (!profile) return { saved: false, score: null, reason: 'no-profile' };
+  if (!profile) return { saved: false, score: null, breakdown: null, playerName: null, reason: 'no-profile' };
 
   const summary: MatchSummary = {
     playerId: profile.id,
@@ -70,7 +72,7 @@ export function recordMatchResult(input: MatchEndInput, deps: MatchEndDeps = {})
     resourcesSpent: input.stats.resourcesSpent,
   };
 
-  const { score } = calculateMatchScore(summary);
+  const { score, breakdown } = calculateMatchScore(summary);
   const createdAt = now();
 
   leaderboardStore.addScore({
@@ -96,5 +98,5 @@ export function recordMatchResult(input: MatchEndInput, deps: MatchEndDeps = {})
     lastPlayedAt: createdAt,
   });
 
-  return { saved: true, score };
+  return { saved: true, score, breakdown, playerName: profile.displayName };
 }

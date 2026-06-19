@@ -16,6 +16,7 @@ import type { MissionDef, TeamId } from './types';
 import { DIFFICULTIES, DEFAULT_DIFFICULTY, type DifficultyId } from '../data/difficulty';
 import { randomDoctrineFor } from '../data/doctrines';
 import { recordMatchResult } from '../game/scoring/recordMatchEnd';
+import type { MatchResultView } from '../ui/scoreFormat';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -195,6 +196,7 @@ export class Game {
 
     // Local, offline score recording (no backend). Wrapped so a storage hiccup
     // can never block the win/lose flow. No-op if no Commander Profile exists.
+    let resultView: MatchResultView | undefined;
     try {
       const t0 = this.world.teams[0];
       const result = recordMatchResult({
@@ -208,6 +210,13 @@ export class Game {
         durationSeconds: this.world.time,
         stats: t0.stats,
       });
+      // Reuse the already-computed score for display — no recalculation, no re-save.
+      if (result.saved && result.breakdown && result.playerName != null) {
+        resultView = {
+          victory, commanderName: result.playerName, score: result.score ?? 0,
+          difficulty: this.difficultyId, durationSeconds: this.world.time, breakdown: result.breakdown,
+        };
+      }
       if (import.meta.env.DEV) console.info('[score] match end', { victory, ...result });
     } catch (e) {
       if (import.meta.env.DEV) console.warn('[score] recording failed (ignored)', e);
@@ -216,7 +225,7 @@ export class Game {
     const mins = Math.floor(this.world.time / 60), secs = Math.floor(this.world.time % 60);
     const stats = `Mission time ${mins}:${String(secs).padStart(2, '0')} — ${this.mission.name}`;
     setTimeout(async () => {
-      const r = await showEndScreen(victory, stats);
+      const r = await showEndScreen(victory, stats, resultView);
       this.dispose();
       this.resolveRun(r);
     }, 1400); // let the final explosion play out

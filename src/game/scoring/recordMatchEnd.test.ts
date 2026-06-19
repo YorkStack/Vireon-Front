@@ -47,6 +47,16 @@ describe('recordMatchResult', () => {
     });
   });
 
+  it('returns the breakdown + commander name for display (no recompute needed)', () => {
+    const { deps, profileStore } = setup();
+    profileStore.createProfile('York');
+    const r = recordMatchResult(input(), deps);
+    expect(r.playerName).toBe('York');
+    expect(r.breakdown).not.toBeNull();
+    expect(r.breakdown!.finalScore).toBe(r.score);
+    expect(r.breakdown!.commandCenterBonus).toBe(2500);
+  });
+
   it('updates profile aggregates after a victory', () => {
     const { deps, profileStore } = setup();
     profileStore.createProfile('York');

@@ -66,10 +66,9 @@ Win/Lose-Anzeige nie. Fehlt ein Commander-Profil, ist `recordMatchResult` ein No
   Code-Review der `+=`-Stellen + Browser-Smoke.
 
 ## 8. Noch NICHT implementiert (bewusst)
-- Ergebnis-/Result-Screen (Endscreen unverändert)
-- Local-Scores-Menü
+- ~~Ergebnis-/Result-Screen~~ + ~~Local-Scores-Menü~~ → **umgesetzt in Step 3c**, siehe [local-score-ui.md](local-score-ui.md).
 - Kampagnenfortschritt-Unlocks
-- Online-Leaderboard
+- Online-Leaderboard · Export/Import-Savegame
 
 ## 9. Tests
 - [matchStats.test.ts](../src/sim/matchStats.test.ts) — Default-Init + Unabhängigkeit.
