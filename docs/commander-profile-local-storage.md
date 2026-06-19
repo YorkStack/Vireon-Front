@@ -71,10 +71,10 @@ DOM, nutzt **nur** den `CommanderProfileStore` — kein direkter localStorage-Zu
   E-Mail, kein Netzwerk.
 
 ## 8. Noch NICHT implementiert (bewusst)
-- Score-Berechnungs-Verdrahtung (`MatchSummary` aus `game.ts checkEnd()` → `calculateMatchScore` → `addScore` + Profil-Aggregate)
+- ~~Score-Berechnungs-Verdrahtung~~ → umgesetzt (Scoring-Foundation + Match-End-Integration + Local-Score-UI).
 - Kampagnenfortschritt-Verdrahtung (Unlock/Complete aus dem Spiel → `CampaignProgressStore`)
-- Settings-/Local-Scores-Screens (Stores existieren, UI fehlt)
-- Export/Import Savegame (JSON)
+- Settings-Screen (Store existiert, UI fehlt)
+- ~~Export/Import Savegame (JSON)~~ → **umgesetzt** in MVP 1, Step 4, siehe [local-savegame-export-import.md](local-savegame-export-import.md) (Export/Import-Buttons im Commander-Banner + First-Launch-Screen).
 - Online-Leaderboard / echtes Auth (erst MVP 3/4)
 
 ## 9. Nächster Schritt

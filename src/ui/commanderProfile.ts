@@ -6,6 +6,7 @@
 // smoke-verified instead).
 import { LocalStorageCommanderProfileStore, type CommanderProfileStore } from '../platform/profile/CommanderProfileStore';
 import type { CommanderProfile } from '../platform/profile/types';
+import { downloadCurrentSavegame, pickAndImportSavegame } from './savegameUi';
 
 /** Default store used by the game (browser localStorage). Tests inject their own. */
 export const profileStore: CommanderProfileStore = new LocalStorageCommanderProfileStore();
@@ -78,13 +79,28 @@ export function showFirstLaunchScreen(store: CommanderProfileStore = profileStor
         </div>
         <div class="screen-cta" style="margin-top:16px;">
           <button class="primary" id="cmdr-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ START GAME</button>
+          <button id="cmdr-import-first" style="padding:12px 24px;letter-spacing:1px;">Savegame importieren</button>
         </div>
+        <div id="cmdr-first-msg" style="font-size:12px;min-height:16px;margin-top:8px;text-align:center;color:#ff7a7a;"></div>
       </div>
     `);
     root().appendChild(screen);
 
     const input = screen.querySelector('#cmdr-name') as HTMLInputElement;
     const err = screen.querySelector('#cmdr-err') as HTMLElement;
+    // Restore-without-profile path: import a previously exported savegame, then
+    // reload so the restored commander flows straight into the start screen.
+    screen.querySelector('#cmdr-import-first')!.addEventListener('click', () => {
+      pickAndImportSavegame((r) => {
+        const msg = screen.querySelector('#cmdr-first-msg') as HTMLElement;
+        if (r.ok) {
+          msg.style.color = '#7ad19a'; msg.textContent = 'Savegame importiert — lädt neu …';
+          if (typeof location !== 'undefined') location.reload();
+        } else {
+          msg.style.color = '#ff7a7a'; msg.textContent = `Import fehlgeschlagen: ${r.error}`;
+        }
+      });
+    });
     const submit = () => {
       const v = validateCommanderName(input.value);
       if (!v.ok) { err.textContent = v.error ?? 'Ungültiger Name.'; input.focus(); return; }
@@ -122,8 +138,34 @@ export function buildCommanderBanner(onAfterChange: () => void, store: Commander
         <button id="cmdr-rename" style="padding:6px 12px;">Umbenennen</button>
         <button id="cmdr-delete" style="padding:6px 12px;">Profil löschen</button>
       </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:8px;">
+        <button id="cmdr-export" style="padding:6px 12px;">Export Savegame</button>
+        <button id="cmdr-import" style="padding:6px 12px;">Import Savegame</button>
+      </div>
+      <div id="cmdr-savegame-msg" style="font-size:12px;min-height:16px;margin-top:6px;text-align:center;color:#9aa0b0;"></div>
     </div>
   `);
+
+  const setSaveMsg = (text: string, isError: boolean) => {
+    const m = box.querySelector('#cmdr-savegame-msg') as HTMLElement | null;
+    if (m) { m.textContent = text; m.style.color = isError ? '#ff7a7a' : '#7ad19a'; }
+  };
+
+  box.querySelector('#cmdr-export')!.addEventListener('click', () => {
+    try { downloadCurrentSavegame(); setSaveMsg('Savegame exportiert — Download gestartet.', false); }
+    catch { setSaveMsg('Export fehlgeschlagen.', true); }
+  });
+
+  box.querySelector('#cmdr-import')!.addEventListener('click', () => {
+    pickAndImportSavegame((r) => {
+      if (r.ok) {
+        setSaveMsg('Savegame importiert — lädt neu …', false);
+        if (typeof location !== 'undefined') location.reload();
+      } else {
+        setSaveMsg(`Import fehlgeschlagen: ${r.error}`, true);
+      }
+    });
+  });
 
   box.querySelector('#cmdr-rename')!.addEventListener('click', () => {
     const row = box.querySelector('#cmdr-banner-name')!.parentElement!;
