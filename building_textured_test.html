@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vireon — Textured Building Test (dev-only)</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b0a14; font: 12px/1.4 system-ui, sans-serif; color: #e7e8ee; }
+    #c { display: block; width: 100vw; height: 100vh; }
+    #hud { position: fixed; top: 8px; left: 8px; padding: 8px 10px; background: rgba(10,10,20,0.78);
+      border: 1px solid #2c2f3d; border-radius: 6px; max-width: 520px; }
+    code { color: #8fd0ff; }
+    .note { position: fixed; bottom: 8px; left: 8px; color: #7e8294; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="hud">loading…</div>
+  <div class="note">Dev-only. ?buildings=textured&amp;fac=red|blue|green|yellow · no gameplay change.</div>
+  <script type="module" src="/src/tools/buildingTexturedTestViewer.ts"></script>
+</body>
+</html>

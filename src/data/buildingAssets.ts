@@ -182,6 +182,38 @@ export function generatedGameplayAsset(factionId: FactionId, buildingId: string)
   return GENERATED_GAMEPLAY_ASSETS.find((a) => a.factionId === factionId && a.buildingId === buildingId);
 }
 
+// ── Final TEXTURED building assets (QA-approved re-exports) ───────────────────
+// Same 6 static buildings per faction as the generated set, but re-exported WITH
+// baked textures/materials (3–4 textures each vs 0 in the generated set). Served
+// from public/assets/buildings/textured_final/. REVIEW-ONLY, gated behind the
+// `?buildings=textured` query — NOT default. The 7th GLB per faction is a
+// tower/defense candidate (crimson_coil_tower, azure_pulse_obelisk,
+// verdant_acid_pool, solar_beam_monolith); it is deliberately NOT mapped here so
+// cannon/lance stay procedural (no ATTACH pivots verified). Reuses the same stems
+// as GEN_FILES, so the static role mapping is identical — only the folder differs.
+const TEX_FINAL = '/assets/buildings/textured_final';
+export const TEXTURED_FINAL_BUILDING_ASSETS: BuildingAssetDefinition[] = (
+  Object.entries(GEN_FILES) as [FactionId, Record<string, string>][]
+).flatMap(([factionId, files]) =>
+  Object.entries(files).map(([buildingId, stem]) => ({
+    assetKey: `${CANONICAL_FACTION[factionId]}.tex.${buildingId}`,
+    factionId,
+    buildingId,
+    role: GEN_ROLE[buildingId],
+    tags: [] as BuildingTag[],
+    modelPath: `${TEX_FINAL}/${CANONICAL_FACTION[factionId]}/${stem}.glb`,
+    fallbackShape: buildingId,
+    sourceFileName: `${stem}.glb`,
+  })),
+);
+
+/** The final-textured asset for a faction + buildings.json id, or undefined.
+ *  Same safe static roles as the generated set (cannon/lance/tower excluded). */
+export function texturedFinalAsset(factionId: FactionId, buildingId: string): BuildingAssetDefinition | undefined {
+  if (!ACTIVE_GENERATED_BUILDING_IDS.has(buildingId)) return undefined;
+  return TEXTURED_FINAL_BUILDING_ASSETS.find((a) => a.factionId === factionId && a.buildingId === buildingId);
+}
+
 // ── Lookups (data only — no loading) ─────────────────────────────────────────
 export function getBuildingAsset(assetKey: string): BuildingAssetDefinition | undefined {
   return BUILDING_ASSETS.find((a) => a.assetKey === assetKey);

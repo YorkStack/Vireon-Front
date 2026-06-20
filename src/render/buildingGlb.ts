@@ -13,9 +13,24 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { TILE } from '../map/map';
 import {
   GENERATED_GAMEPLAY_ASSETS, ACTIVE_GENERATED_BUILDING_IDS, generatedGameplayAsset,
+  TEXTURED_FINAL_BUILDING_ASSETS, texturedFinalAsset,
   type BuildingAssetDefinition,
 } from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
+
+/** Gated building visual mode (query `?buildings=current|textured`). Default
+ *  `current` keeps today's generated GLBs. `textured` swaps in the QA-approved
+ *  final textured re-exports for the safe static roles (visual-only). SSR/test-
+ *  safe (no `window` → `current`). */
+export type BuildingVisualMode = 'current' | 'textured';
+export function buildingModeFromQuery(): BuildingVisualMode {
+  if (typeof window === 'undefined') return 'current';
+  return new URLSearchParams(window.location.search).get('buildings') === 'textured' ? 'textured' : 'current';
+}
+const BUILDING_MODE: BuildingVisualMode = buildingModeFromQuery();
+/** Textured-final assetKeys carry `.tex.` — used to bypass the flat-material
+ *  detail pass + the Crimson texture pilot (they have their own baked textures). */
+const isTexturedAsset = (assetKey: string) => assetKey.includes('.tex.');
 
 /** Building ids whose generated GLB renders in gameplay. Static buildings only
  *  (nexus/spire/refinery/barracks/foundry/wall) — cannon/lance stay procedural so
@@ -123,7 +138,11 @@ const cache = new Map<string, THREE.Group>(); // assetKey -> loaded template sce
 export const BUILDING_SOURCE: Record<string, 'glb' | 'procedural'> = {};
 
 function activeAssets(): BuildingAssetDefinition[] {
-  return GENERATED_GAMEPLAY_ASSETS;
+  // Always preload the current generated set (the default + the textured-mode
+  // fallback). In textured mode ALSO preload the final textured re-exports.
+  return BUILDING_MODE === 'textured'
+    ? [...GENERATED_GAMEPLAY_ASSETS, ...TEXTURED_FINAL_BUILDING_ASSETS]
+    : GENERATED_GAMEPLAY_ASSETS;
 }
 
 export const hasBuildingGlb = (assetKey: string) => cache.has(assetKey);
@@ -135,7 +154,10 @@ export async function preloadBuildingGlbs(): Promise<void> {
     if (cache.has(a.assetKey)) continue;
     try {
       const gltf = await loader.loadAsync(a.modelPath);
-      enhanceTemplate(gltf.scene); // surface detail + emissive boost (once per template)
+      // Final textured GLBs carry their own baked textures/materials → BYPASS the
+      // flat-material surface-detail + emissive-boost pass (it is for textureless
+      // generated assets and would muddy/over-brighten the baked textures).
+      if (!isTexturedAsset(a.assetKey)) enhanceTemplate(gltf.scene);
       cache.set(a.assetKey, gltf.scene);
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`[bld] GLB-Load fehlgeschlagen ${a.assetKey} (${a.modelPath}) → prozedural`, e);
@@ -155,6 +177,12 @@ export function __setBuildingGlbForTest(assetKey: string, scene: THREE.Group | n
  */
 export function activeBuildingAsset(buildingId: string, factionId: FactionId): BuildingAssetDefinition | null {
   if (!ACTIVE_BUILDING_IDS.has(buildingId)) return null; // cannon/lance → procedural
+  // Textured mode: prefer the final textured asset when it loaded; otherwise fall
+  // back to the current generated asset (which falls back to procedural below).
+  if (BUILDING_MODE === 'textured') {
+    const tx = texturedFinalAsset(factionId, buildingId);
+    if (tx && cache.has(tx.assetKey)) return tx;
+  }
   const a = generatedGameplayAsset(factionId, buildingId);
   return a && cache.has(a.assetKey) ? a : null;
 }
