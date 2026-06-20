@@ -2,6 +2,7 @@
 import { BUILDING_DEFS, UNIT_DEFS, unitStats, buildingStats } from '../core/defs';
 import type { World, Unit, Building } from '../sim/world';
 import { toast } from './screens';
+import { powerHudText, powerHudTitle } from './powerHud';
 
 export interface HudCallbacks {
   startPlacement: (defId: string) => void;
@@ -38,7 +39,7 @@ export class Hud {
     this.topbar.className = 'panel';
     this.topbar.innerHTML = `
       <div class="res"><div class="ico"></div><span id="hud-credits">0</span></div>
-      <div class="power" id="hud-power">⚡ 0/0</div>
+      <div class="power" id="hud-power" title="Power surplus: +0 | Used: 0 | Produced: 0">⚡ +0</div>
       <div class="fps" id="hud-fps"></div>
       <button id="hud-menu">Menu</button>
     `;
@@ -66,8 +67,11 @@ export class Hud {
     const diff = t.credits - this.shownCredits;
     this.shownCredits += Math.abs(diff) < 1 ? diff : diff * Math.min(1, dt * 8);
     this.creditsEl.textContent = `${Math.round(this.shownCredits)}`;
-    this.powerEl.textContent = `⚡ ${t.powerUsed}/${t.powerProduced}`;
-    this.powerEl.classList.toggle('low', t.lowPower);
+    // Show SURPLUS (produced − used) so players don't misread "used/produced" as
+    // available energy; full breakdown stays in the hover title. Presentation only.
+    this.powerEl.textContent = powerHudText(t.powerUsed, t.powerProduced);
+    this.powerEl.title = powerHudTitle(t.powerUsed, t.powerProduced);
+    this.powerEl.classList.toggle('low', t.lowPower); // deficit (surplus < 0) keeps the warning style
 
     this.refreshTimer -= dt;
     if (this.refreshTimer <= 0) {
