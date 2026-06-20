@@ -56,11 +56,28 @@ FPS sat at the panel refresh (120 on this display) in prior smokes; frame budget
 comfortable. Draw calls (~105–142) and texture count (45–66) are modest; the cost is
 **duty cycle × shadow map**, not scene complexity. No console errors.
 
+## 5a. FPS cap + performance modes — IMPLEMENTED (2026-06-20)
+The biggest thermal lever from §6 is now live (visual/loop-only, no gameplay change):
+- **Pure resolver** [performanceSettings.ts](../src/core/performanceSettings.ts):
+  `battery=30`, `balanced=60` (**default**), `quality=120`. Query overrides
+  `?perfMode=battery|balanced|quality` and `?fps=30|60|120` (`?fps` wins; invalid →
+  balanced). Unit-tested.
+- **Frame pacing** in the rAF loop ([game.ts](../src/core/game.ts)): still rAF-driven,
+  but skips work until ~one capped-frame interval elapsed (4 ms slack so a 60-cap is
+  not halved on a 60 Hz panel). `dt` is real wall-time between PROCESSED frames,
+  clamped to 0.05 s → **simulation stays real-time at any cap**; balance/AI/pathfinding
+  untouched.
+- **Hidden-tab safety:** a `visibilitychange` listener resets timestamps on return so
+  the first visible frame never sees a huge `dt` (no catch-up storm); the loop also
+  early-outs while `document.hidden`.
+- **Overlay** shows the active `mode · cap` + measured FPS.
+- **Not yet:** a player-facing settings menu (§7) — still a separate follow-up.
+
 ## 6. Optimization plan (prioritized)
 ### Quick wins (highest value / lowest risk)
-1. **FPS cap** in the rAF loop (accumulator skip): **Balanced = 60**, **Battery
-   Saver = 30**, **Quality = 120 / uncapped (opt-in)**. Biggest thermal lever — halves
-   GPU+CPU duty cycle on 120 Hz panels with no visible RTS downside.
+1. **FPS cap** ✅ **DONE** (§5a) — Balanced 60 default / Battery 30 / Quality 120,
+   query-overridable. The single biggest thermal lever: halves GPU+CPU duty cycle on
+   120 Hz panels with no visible RTS downside.
 2. **Explicit `visibilitychange` pause** (belt-and-suspenders over rAF's own throttle).
 3. **Throttle the minimap** redraw to ~15–20 Hz (it does not need 60–120 Hz).
 4. **Pool `THREE.Vector3`** in `fireWeapon`/`kill`; **pool A\* arrays** — removes GC

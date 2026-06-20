@@ -15,6 +15,8 @@ export function perfEnabled(): boolean {
 }
 
 export interface PerfStats {
+  mode: string;         // performance mode: battery | balanced | quality
+  fpsCap: number;       // target FPS cap (30 / 60 / 120)
   fps: number;
   frameMs: number;      // avg total frame time over the sample window
   simMs: number;        // avg time in world/ai/effects/input/hud update
@@ -36,8 +38,8 @@ const ms = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '0.0');
 /** Pure formatter — turns stats into display lines (testable without a DOM). */
 export function formatPerfLines(s: PerfStats): string[] {
   return [
-    `FPS ${n(s.fps)}   frame ${ms(s.frameMs)}ms`,
-    `sim ${ms(s.simMs)}ms   render ${ms(s.renderMs)}ms`,
+    `${s.mode} · cap ${n(s.fpsCap)}   FPS ${n(s.fps)}`,
+    `frame ${ms(s.frameMs)}ms   sim ${ms(s.simMs)}ms   render ${ms(s.renderMs)}ms`,
     `units ${n(s.units)}  bld ${n(s.buildings)}  vfx ${n(s.projectiles)}  cry ${n(s.crystals)}`,
     `draws ${n(s.drawCalls)}  tris ${n(s.triangles).toLocaleString('en-US')}`,
     `tex ${n(s.textures)}  geo ${n(s.geometries)}  prog ${n(s.programs)}`,

@@ -20,6 +20,7 @@ import { recordCampaignMissionResult } from '../game/campaignProgress/recordCamp
 import { LocalStorageCommanderProfileStore } from '../platform/profile/CommanderProfileStore';
 import type { MatchResultView } from '../ui/scoreFormat';
 import { perfEnabled, PerfOverlay } from '../ui/perfOverlay';
+import { currentPerformanceSettings, type PerformanceSettings } from './performanceSettings';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -48,6 +49,8 @@ export class Game {
   private fpsAcc = 0; private fpsN = 0; private fpsTimer = 0;
   private perf?: PerfOverlay;                 // dev-only ?perf=1 overlay (no gameplay effect)
   private simMsAcc = 0; private renderMsAcc = 0;
+  private perfSettings: PerformanceSettings = currentPerformanceSettings(); // FPS cap / mode
+  private onVisibility?: () => void;
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
 
@@ -160,10 +163,33 @@ export class Game {
     return new Promise<GameResult>((resolve) => {
       this.resolveRun = resolve;
       if (perfEnabled()) this.perf = new PerfOverlay(); // dev-only metrics, hidden unless ?perf=1
-      this.lastT = performance.now();
+      const startT = performance.now();
+      this.lastT = startT;
+      let lastFrameT = startT; // timestamp of the last PROCESSED (non-skipped) frame
       toast(`Objective: ${this.mission.objectives[this.mission.objectives.length - 1]}`);
+
+      // Hidden-tab safety: on return to visibility, reset timestamps so the first
+      // visible frame never sees a huge delta (no gameplay "catch-up" storm). rAF
+      // already throttles to ~0 Hz when hidden; this also caps the resume spike.
+      this.onVisibility = () => {
+        if (typeof document !== 'undefined' && !document.hidden) {
+          const n = performance.now();
+          this.lastT = n; lastFrameT = n;
+        }
+      };
+      if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVisibility);
+
+      // Frame pacing: still driven by rAF, but skip work until ~one capped-frame
+      // interval has elapsed. The slack keeps a 60-cap from being halved to 30 by
+      // timing jitter on a 60 Hz panel. dt is real wall-time between PROCESSED
+      // frames (clamped 0.05s) → simulation stays real-time at any cap.
+      const PACING_SLACK_MS = 4;
       const loop = (t: number) => {
         this.raf = requestAnimationFrame(loop);
+        if (typeof document !== 'undefined' && document.hidden) return; // hidden → no work
+        const gate = Math.max(0, this.perfSettings.minFrameMs - PACING_SLACK_MS);
+        if (t - lastFrameT < gate) return; // too soon for this FPS cap → skip
+        lastFrameT = t;
         const dt = Math.min(0.05, (t - this.lastT) / 1000);
         this.lastT = t;
         this.frame(dt);
@@ -199,6 +225,8 @@ export class Game {
       if (perf) {
         const info = this.rig.renderer.info;
         perf.update({
+          mode: this.perfSettings.mode,
+          fpsCap: this.perfSettings.fpsCap,
           fps: this.fpsN / this.fpsAcc,
           frameMs: (1000 * this.fpsAcc) / this.fpsN,
           simMs: this.simMsAcc / this.fpsN,
@@ -308,6 +336,7 @@ export class Game {
 
   private dispose() {
     cancelAnimationFrame(this.raf);
+    if (this.onVisibility && typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility);
     this.perf?.dispose();
     document.getElementById('ui-root')!.innerHTML = '';
     this.rig.renderer.dispose();
