@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: LocalGameSettings = {
   musicEnabled: true,
   graphicsQuality: 'medium',
   cameraSpeed: 1,
+  deploymentIntroEnabled: true,
 };
 
 export interface LocalGameSettingsStore {

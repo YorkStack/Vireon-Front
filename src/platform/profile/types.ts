@@ -35,4 +35,6 @@ export interface LocalGameSettings {
   cameraSpeed: number;
   /** Player-chosen performance/FPS-cap mode. Absent → default 'balanced' (60 FPS). */
   performanceMode?: 'battery' | 'balanced' | 'quality';
+  /** Play the short dropship/landing deployment intro at match start. Absent → default on. */
+  deploymentIntroEnabled?: boolean;
 }

@@ -21,6 +21,9 @@ import { LocalStorageCommanderProfileStore } from '../platform/profile/Commander
 import type { MatchResultView } from '../ui/scoreFormat';
 import { perfEnabled, PerfOverlay } from '../ui/perfOverlay';
 import { currentPerformanceSettings, type PerformanceSettings } from './performanceSettings';
+import { DeploymentIntroController, currentDeploymentIntroEnabled } from './deploymentIntro';
+import { DeploymentDropship } from '../render/deploymentDropship';
+import { showDeploymentIntroOverlay, type DeploymentIntroOverlayHandle } from '../ui/deploymentIntroOverlay';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -53,6 +56,14 @@ export class Game {
   private onVisibility?: () => void;
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
+  // Deployment intro (short dropship/landing opener). Visual-only; never changes
+  // unit counts/positions — starting units are just hidden then revealed.
+  private introActive = false;
+  private intro?: DeploymentIntroController;
+  private dropship?: DeploymentDropship;
+  private introOverlay?: DeploymentIntroOverlayHandle;
+  private introUnits: Unit[] = [];
+  private landing = { x: 0, z: 0, y: 0 };
 
   constructor(mission: MissionDef, playerFactionId: string, difficultyId: DifficultyId = DEFAULT_DIFFICULTY, campaign?: CampaignContext) {
     this.mission = mission;
@@ -143,6 +154,11 @@ export class Game {
     // Initialize the camera transform right away so picking works before the first frame.
     this.rig.update(0, (x, z) => this.map.groundHeight(x, z));
 
+    // Short deployment intro: a dropship lands on the player start, "unloads" the
+    // (already-spawned) starting units, and leaves. Toggle in Admin/Tools or via
+    // ?intro=0 / ?skipIntro=1. Setup only happens here; it runs in frame().
+    if (currentDeploymentIntroEnabled()) this.setupDeploymentIntro(px, pz, playerFaction.emissive);
+
     // Debug/profiling hook (also used by automated verification).
     (window as unknown as Record<string, unknown>).__game = {
       world: this.world, input: this.input, rig: this.rig, map: this.map, mission: this.mission,
@@ -157,6 +173,50 @@ export class Game {
         this.checkEnd();
       },
     };
+  }
+
+  /** Build the deployment-intro state (hide starting units, spawn dropship, lock input). */
+  private setupDeploymentIntro(px: number, pz: number, accentHex: string) {
+    this.introUnits = this.world.units.filter((u) => u.team === 0); // the just-spawned starting units
+    if (!this.introUnits.length) return; // nothing to deploy → no intro
+    for (const u of this.introUnits) u.group.visible = false; // hidden until the unload moment
+
+    this.landing = { x: px, z: pz, y: this.map.groundHeight(px, pz) };
+    this.dropship = new DeploymentDropship(accentHex);
+    this.rig.scene.add(this.dropship.group);
+
+    this.input.setEnabled(false); // no orders during the intro
+    this.setHudVisible(false);
+
+    this.intro = new DeploymentIntroController({
+      onReveal: () => {
+        for (const u of this.introUnits) u.group.visible = true; // same units, just shown
+      },
+      onComplete: () => this.finalizeIntro(),
+    });
+    this.introOverlay = showDeploymentIntroOverlay(() => this.intro?.skip());
+    this.introActive = true;
+  }
+
+  /** Tear down the intro and hand control back. Idempotent. */
+  private finalizeIntro() {
+    if (!this.introActive && !this.dropship) return;
+    this.introActive = false;
+    for (const u of this.introUnits) u.group.visible = true; // belt-and-suspenders: never leave a unit hidden
+    this.dropship?.dispose();
+    this.dropship = undefined;
+    this.introOverlay?.dispose();
+    this.introOverlay = undefined;
+    this.setHudVisible(true);
+    if (!this.paused && !this.over) this.input.setEnabled(true);
+  }
+
+  private setHudVisible(v: boolean) {
+    const d = v ? '' : 'none';
+    const top = document.getElementById('topbar');
+    const cmd = document.getElementById('cmdpanel');
+    if (top) top.style.display = d;
+    if (cmd) cmd.style.display = d;
   }
 
   run(): Promise<GameResult> {
@@ -199,6 +259,17 @@ export class Game {
   }
 
   private frame(dt: number) {
+    // Deployment intro: advance the timeline + dropship, render, but DON'T run the
+    // simulation/AI/HUD (so AI can't attack and the player can't issue orders). The
+    // FPS cap still applies via the rAF gate in run(). dt is clamped real wall-time.
+    if (this.introActive && this.intro) {
+      this.intro.update(dt); // may fire onComplete → finalizeIntro() (clears introActive + dropship)
+      this.dropship?.applyState(this.intro.elapsed, this.landing.x, this.landing.z, this.landing.y);
+      this.rig.update(dt, (x, z) => this.map.groundHeight(x, z));
+      this.updateProps(this.rig.camera);
+      return;
+    }
+
     const perf = this.perf; // when set (?perf=1) we time the sim vs render split; else zero overhead
     const t0 = perf ? performance.now() : 0;
     if (!this.paused && !this.over) {
@@ -336,6 +407,8 @@ export class Game {
 
   private dispose() {
     cancelAnimationFrame(this.raf);
+    this.introOverlay?.dispose(); // remove any lingering intro listeners/DOM
+    this.dropship?.dispose();
     if (this.onVisibility && typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility);
     this.perf?.dispose();
     document.getElementById('ui-root')!.innerHTML = '';

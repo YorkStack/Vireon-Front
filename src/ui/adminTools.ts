@@ -7,6 +7,7 @@ import {
   currentPerformanceSettings, savePerformanceMode, performanceModeOptions, hasPerfQueryOverride,
   type PerformanceMode,
 } from '../core/performanceSettings';
+import { saveDeploymentIntroEnabled, hasIntroQueryOverride } from '../core/deploymentIntro';
 import { LocalStorageSettingsStore } from '../platform/profile/LocalGameSettingsStore';
 
 const root = () => document.getElementById('ui-root')!;
@@ -45,6 +46,12 @@ export function showAdminTools(): void {
         <div class="tm-effective" id="tm-effective"></div>
         <div class="tm-note" id="tm-note" style="display:none;"></div>
         ${queryOverride ? `<div class="tm-warn">Query-Parameter (<code>?fps=</code>/<code>?perfMode=</code>) überschreiben aktuell die gespeicherte Einstellung.</div>` : ''}
+
+        <div class="tm-h">Gameplay</div>
+        <button class="tm-toggle" id="tm-intro" type="button" role="switch">
+          <span>Deployment-Intro abspielen</span>
+          <span class="tm-toggle-state" id="tm-intro-state"></span>
+        </button>
 
         <div class="tm-h">Diagnostics</div>
         <div class="tm-row">Performance-Overlay: hänge <code>?perf=1</code> an die URL.</div>
@@ -95,6 +102,30 @@ export function showAdminTools(): void {
   }
   renderSelected();
   renderEffective();
+
+  // --- Gameplay: deployment-intro toggle ---
+  const introBtn = overlay.querySelector('#tm-intro') as HTMLButtonElement;
+  const introState = overlay.querySelector('#tm-intro-state') as HTMLElement;
+  const introOverride = typeof window !== 'undefined' && hasIntroQueryOverride(window.location.search);
+  const renderIntro = () => {
+    const on = store.getSettings().deploymentIntroEnabled ?? true;
+    introBtn.classList.toggle('on', on);
+    introBtn.setAttribute('aria-checked', String(on));
+    introState.textContent = on ? 'An' : 'Aus';
+    introBtn.title = introOverride
+      ? 'Query-Parameter (?intro=/?skipIntro=) überschreibt diese Einstellung derzeit.'
+      : 'Kurze Anlandungs-Sequenz beim Matchstart (Leertaste/Klick überspringt sie).';
+  };
+  introBtn.addEventListener('click', () => {
+    const next = !(store.getSettings().deploymentIntroEnabled ?? true);
+    saveDeploymentIntroEnabled(next, store);
+    renderIntro();
+    note.style.display = '';
+    note.textContent = introOverride
+      ? 'Gespeichert. Hinweis: Aktiver Query-Parameter überschreibt das Gespeicherte bis zum Entfernen.'
+      : 'Gespeichert — gilt ab dem nächsten Match.';
+  });
+  renderIntro();
 
   // --- Diagnostics + developer reload links ---
   overlay.querySelector('#tm-perf')!.addEventListener('click', () => reloadWith({ perf: '1' }));

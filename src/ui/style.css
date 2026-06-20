@@ -324,6 +324,42 @@ button.primary:active {
   background: rgba(20,28,44,0.7); border: 1px solid #2c2f3d; color: #bfe3e0;
 }
 .tools-modal a.tm-link:hover, .tools-modal button.tm-link:hover { border-color: var(--accent); color: #eafffb; }
+.tools-modal .tm-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  padding: 8px 12px; border-radius: 6px; cursor: pointer; text-align: left; font-size: 13px;
+  background: rgba(20,28,44,0.6); border: 1px solid #2c2f3d; color: #cdeef0;
+}
+.tools-modal .tm-toggle:hover { border-color: var(--accent); }
+.tools-modal .tm-toggle.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, rgba(20,28,44,0.6)); }
+.tools-modal .tm-toggle-state {
+  font-size: 12px; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+  background: rgba(255,255,255,0.08); color: #9fb0d8;
+}
+.tools-modal .tm-toggle.on .tm-toggle-state { background: color-mix(in srgb, var(--accent) 28%, transparent); color: #eafffb; }
+
+/* ---------- Deployment intro skip prompt (in-game, bottom-centre, non-blocking) ---------- */
+.deploy-intro {
+  position: fixed; left: 50%; bottom: 5vh; transform: translateX(-50%); z-index: 40;
+  display: flex; align-items: center; gap: 12px; pointer-events: none;
+  padding: 8px 14px; border-radius: 10px;
+  background: rgba(8,12,22,0.66); border: 1px solid rgba(120,200,220,0.25);
+  color: #dff4f6; font-size: 13px; letter-spacing: 0.3px;
+  backdrop-filter: blur(3px);
+  animation: di-in 0.4s ease both;
+}
+.deploy-intro .di-label { opacity: 0.85; text-transform: uppercase; letter-spacing: 1.4px; font-size: 11px; }
+.deploy-intro .di-skip {
+  pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 12px; border-radius: 7px; font-size: 12.5px;
+  background: rgba(20,28,44,0.85); border: 1px solid var(--accent); color: #eafffb;
+}
+.deploy-intro .di-skip:hover { background: color-mix(in srgb, var(--accent) 22%, rgba(20,28,44,0.85)); }
+.deploy-intro .di-skip kbd {
+  font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+@keyframes di-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
 /* Advanced doctrine preview (hidden by default; no player gameplay effect yet) */
 .adv-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .adv-toggle { font-size: 11px; letter-spacing: 1px; padding: 5px 14px; border-radius: 7px;
