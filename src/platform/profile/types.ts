@@ -33,4 +33,6 @@ export interface LocalGameSettings {
   musicEnabled: boolean;
   graphicsQuality: 'low' | 'medium' | 'high';
   cameraSpeed: number;
+  /** Player-chosen performance/FPS-cap mode. Absent → default 'balanced' (60 FPS). */
+  performanceMode?: 'battery' | 'balanced' | 'quality';
 }

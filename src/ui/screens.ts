@@ -10,6 +10,7 @@ import { buildCommanderBanner } from './commanderProfile';
 import { showLocalScores } from './localScores';
 import { formatScore, formatDuration, formatSigned, difficultyLabel, breakdownRows, type MatchResultView } from './scoreFormat';
 import { factionCardView, factionDetailsView } from './factionCardView';
+import { showAdminTools } from './adminTools';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -112,6 +113,7 @@ export async function showStartScreen(): Promise<MissionChoice> {
           <button class="primary" id="btn-start" style="font-size:18px;padding:13px 52px;letter-spacing:3px;">⬢ DEPLOY</button>
           <button id="btn-codex" style="padding:12px 30px;letter-spacing:2px;">⬡ UNIT CODEX</button>
           <button id="btn-scores" style="padding:12px 30px;letter-spacing:2px;">★ LOCAL SCORES</button>
+          <button id="btn-tools" style="padding:12px 22px;letter-spacing:2px;font-size:13px;">⚙ TOOLS</button>
         </div>
       </div>
     `);
@@ -133,6 +135,10 @@ export async function showStartScreen(): Promise<MissionChoice> {
       await showLocalScores();
       screen.style.display = '';
     });
+
+    // Admin / Tools: one compact entry point for performance settings + dev links
+    // (keeps the start screen clean instead of scattering more buttons). Overlay.
+    screen.querySelector('#btn-tools')!.addEventListener('click', () => showAdminTools());
 
     const list = screen.querySelector('#campaign-list')!;
     let chosen = { campaign: campaigns[0], missionRef: campaigns[0].missions[0] };

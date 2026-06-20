@@ -71,7 +71,15 @@ The biggest thermal lever from §6 is now live (visual/loop-only, no gameplay ch
   the first visible frame never sees a huge `dt` (no catch-up storm); the loop also
   early-outs while `document.hidden`.
 - **Overlay** shows the active `mode · cap` + measured FPS.
-- **Not yet:** a player-facing settings menu (§7) — still a separate follow-up.
+- **Player-facing menu (DONE):** a compact **⚙ Admin / Tools** button on the start
+  screen ([adminTools.ts](../src/ui/adminTools.ts)) opens a fixed overlay with the
+  three performance modes (Battery Saver 30 / **Balanced 60 · recommended** / Quality
+  120), the current effective mode, and developer/diagnostic links (perf overlay,
+  textured/current building reload, F8 balance-panel hint). The chosen mode persists
+  via the existing `LocalGameSettingsStore` (`performanceMode` on `LocalGameSettings`,
+  no new storage key). **Resolution priority:** `?fps=` > `?perfMode=` > saved setting
+  > default `balanced`. It applies on the next match / reload (the `Game` reads the
+  setting at construction); the menu states this and never auto-reloads.
 
 ## 6. Optimization plan (prioritized)
 ### Quick wins (highest value / lowest risk)
