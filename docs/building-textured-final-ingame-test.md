@@ -1,8 +1,24 @@
 # Textured Final Buildings — Gated In-Game Test
 
 > **Visual-only, OPT-IN, NOT default.** No gameplay/balance/cost/HP/power/build-time/
-> AI/combat/pathfinding/build-menu/footprint/terrain change. Not committed. Date
-> 2026-06-19, base HEAD `53fe02b`.
+> AI/combat/pathfinding/build-menu/footprint/terrain change. Committed (gated) in
+> `485b3a8`.
+
+## 0. Active building-texture path (status 2026-06-20)
+- **The single approved base building texture path is the embedded textures inside
+  the final GLB assets** (`public/assets/buildings/textured_final/<faction>/`). Each
+  GLB carries its own baked textures (3+ per model); no runtime atlas is applied.
+- **Mode:** `?buildings=textured` swaps the 24 mapped static buildings (6 roles × 4
+  factions) to these final-textured GLBs. **Default (no query) stays `current`** —
+  today's flat-material generated GLBs. `?buildings=current` is the explicit fallback.
+- **Crimson Texture Atlas Pilot is DEPRECATED & REMOVED** — the runtime
+  `applyCrimsonTexturePilot` wiring, `src/render/crimsonTexturePilot.ts`, and the
+  `public/assets/buildings/textures/crimson/` atlas crops are gone (archived note:
+  [archive/building-texture-pilot.md](archive/building-texture-pilot.md)). There are
+  **no longer two competing ways to texture buildings.**
+- **Runtime texture mutation is reserved for FUTURE dynamic game-state effects only**
+  (damage, bullet holes, fire/smoke, repair state, low-power state, faction aura) —
+  **never** for base building textures.
 
 ## 1. External source asset paths
 `/Users/yorkvonloew/Downloads/Vireon-Front-Assets/Buildings/output/with texture/<faction>/`

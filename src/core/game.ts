@@ -19,6 +19,7 @@ import { recordMatchResult } from '../game/scoring/recordMatchEnd';
 import { recordCampaignMissionResult } from '../game/campaignProgress/recordCampaignProgress';
 import { LocalStorageCommanderProfileStore } from '../platform/profile/CommanderProfileStore';
 import type { MatchResultView } from '../ui/scoreFormat';
+import { perfEnabled, PerfOverlay } from '../ui/perfOverlay';
 
 export type GameResult = 'restart' | 'menu';
 
@@ -45,6 +46,8 @@ export class Game {
   private raf = 0;
   private lastT = 0;
   private fpsAcc = 0; private fpsN = 0; private fpsTimer = 0;
+  private perf?: PerfOverlay;                 // dev-only ?perf=1 overlay (no gameplay effect)
+  private simMsAcc = 0; private renderMsAcc = 0;
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
 
@@ -156,6 +159,7 @@ export class Game {
   run(): Promise<GameResult> {
     return new Promise<GameResult>((resolve) => {
       this.resolveRun = resolve;
+      if (perfEnabled()) this.perf = new PerfOverlay(); // dev-only metrics, hidden unless ?perf=1
       this.lastT = performance.now();
       toast(`Objective: ${this.mission.objectives[this.mission.objectives.length - 1]}`);
       const loop = (t: number) => {
@@ -169,6 +173,8 @@ export class Game {
   }
 
   private frame(dt: number) {
+    const perf = this.perf; // when set (?perf=1) we time the sim vs render split; else zero overhead
+    const t0 = perf ? performance.now() : 0;
     if (!this.paused && !this.over) {
       this.world.update(dt, this.rig.camera);
       this.ai.update(dt);
@@ -179,15 +185,36 @@ export class Game {
       this.hud.update(dt);
       this.checkEnd();
     }
-    this.rig.update(dt, (x, z) => this.map.groundHeight(x, z));
+    const t1 = perf ? performance.now() : 0;
+    this.rig.update(dt, (x, z) => this.map.groundHeight(x, z)); // updates camera + renders the scene
     this.updateProps(this.rig.camera); // Y-lock vegetation billboards to the camera
 
     // Minimap + fps.
     const viewW = 2 * this.rig.dist * Math.tan(THREE.MathUtils.degToRad(this.rig.camera.fov / 2)) * this.rig.camera.aspect;
     this.minimap.render(this.world, this.rig.target.x, this.rig.target.z, viewW, viewW * 0.75);
+    if (perf) { this.simMsAcc += t1 - t0; this.renderMsAcc += performance.now() - t1; }
     this.fpsAcc += dt; this.fpsN++; this.fpsTimer += dt;
     if (this.fpsTimer > 0.5) {
       this.hud.setFps(this.fpsN / this.fpsAcc);
+      if (perf) {
+        const info = this.rig.renderer.info;
+        perf.update({
+          fps: this.fpsN / this.fpsAcc,
+          frameMs: (1000 * this.fpsAcc) / this.fpsN,
+          simMs: this.simMsAcc / this.fpsN,
+          renderMs: this.renderMsAcc / this.fpsN,
+          units: this.world.units.length,
+          buildings: this.world.buildings.length,
+          projectiles: this.effects.active.length,
+          crystals: this.world.crystalGroups.size,
+          drawCalls: info.render.calls,
+          triangles: info.render.triangles,
+          textures: info.memory.textures,
+          geometries: info.memory.geometries,
+          programs: info.programs?.length ?? 0,
+        });
+        this.simMsAcc = 0; this.renderMsAcc = 0;
+      }
       this.fpsAcc = 0; this.fpsN = 0; this.fpsTimer = 0;
     }
   }
@@ -281,6 +308,7 @@ export class Game {
 
   private dispose() {
     cancelAnimationFrame(this.raf);
+    this.perf?.dispose();
     document.getElementById('ui-root')!.innerHTML = '';
     this.rig.renderer.dispose();
     this.rig.scene.clear();
