@@ -9,6 +9,7 @@ import { doctrinesFor, defaultDoctrineFor } from '../data/doctrines';
 import { buildCommanderBanner } from './commanderProfile';
 import { showLocalScores } from './localScores';
 import { formatScore, formatDuration, formatSigned, difficultyLabel, breakdownRows, type MatchResultView } from './scoreFormat';
+import { factionCardView, factionDetailsView } from './factionCardView';
 
 const root = () => document.getElementById('ui-root')!;
 
@@ -21,6 +22,45 @@ function el(html: string): HTMLElement {
   const t = document.createElement('template');
   t.innerHTML = html.trim();
   return t.content.firstElementChild as HTMLElement;
+}
+
+/**
+ * Faction details modal: the long strengths/weaknesses/profile that used to bloat
+ * the card. A fixed overlay → it never grows the start screen's height. Closable
+ * via the ✕ button, a backdrop click, or Escape. Read-only; no gameplay effect.
+ */
+function showFactionDetails(f: FactionDef): void {
+  const d = factionDetailsView(f);
+  const overlay = el(`
+    <div class="faction-details-overlay">
+      <div class="faction-modal tac-panel" style="--fc:${f.color}">
+        <div class="swatch"></div>
+        <div class="fm-head">
+          <h3>${escapeText(d.name)}</h3>
+          <button class="fm-close" type="button" aria-label="Schließen">✕</button>
+        </div>
+        <div class="fm-tag">${escapeText(d.tagline)}</div>
+        ${d.doctrineLabel ? `<div class="fm-doctrine"><b>${escapeText(d.doctrineLabel)}</b></div>` : ''}
+        ${d.profile ? `<div class="tac-grid">
+          <span>Bau</span><b>${escapeText(d.profile.build)}</b>
+          <span>Angriff</span><b>${escapeText(d.profile.attack)}</b>
+          <span>Verteidigung</span><b>${escapeText(d.profile.defense)}</b>
+          <span>Wirtschaft</span><b>${escapeText(d.profile.economy)}</b>
+        </div>` : ''}
+        <div class="fm-cols">
+          ${d.strengths.length ? `<div><div class="fm-h">Stärken</div><ul class="sw">${d.strengths.map(s => `<li class="pos">+ ${escapeText(s)}</li>`).join('')}</ul></div>` : ''}
+          ${d.weaknesses.length ? `<div><div class="fm-h">Schwächen</div><ul class="sw">${d.weaknesses.map(s => `<li class="neg">− ${escapeText(s)}</li>`).join('')}</ul></div>` : ''}
+        </div>
+        ${d.recommendation ? `<div class="reco">▸ ${escapeText(d.recommendation)}</div>` : ''}
+      </div>
+    </div>
+  `);
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  overlay.querySelector('.fm-close')!.addEventListener('click', close);
+  document.addEventListener('keydown', onKey);
+  root().appendChild(overlay);
 }
 
 export interface MissionChoice {
@@ -116,28 +156,19 @@ export async function showStartScreen(): Promise<MissionChoice> {
 
     const row = screen.querySelector('#faction-row')!;
     for (const f of Object.values(FACTION_DEFS)) {
-      const t = f.tactical;
-      const profile = t ? `
-        <div class="tac-grid">
-          <span>Bau</span><b>${t.build}</b>
-          <span>Angriff</span><b>${t.attack}</b>
-          <span>Verteid.</span><b>${t.defense}</b>
-          <span>Wirtschaft</span><b>${t.economy}</b>
-        </div>` : '';
-      const sw = (f.strengths || f.weaknesses) ? `
-        <ul class="sw">
-          ${(f.strengths || []).map(s => `<li class="pos">+ ${s}</li>`).join('')}
-          ${(f.weaknesses || []).map(s => `<li class="neg">− ${s}</li>`).join('')}
-        </ul>` : `<ul>${f.perks.map(p => `<li>${p}</li>`).join('')}</ul>`;
+      const cv = factionCardView(f);
+      // Compact card: identity + doctrine + up to 3 playstyle traits + ⓘ Details.
+      // No faction "difficulty/Anspruch" badge (factions are playstyle, not
+      // difficulty) and no long strengths/weaknesses lists (those live in the
+      // details modal) — keeps the screen inside the viewport.
       const card = el(`
         <div class="faction-card" style="--fc:${f.color}">
           <div class="swatch"></div>
-          <div class="fc-head"><h3>${f.name}</h3>${t ? `<span class="diff-badge" title="Anspruch dieser Fraktion — NICHT der Schwierigkeitsgrad">Anspruch: ${t.difficulty}</span>` : ''}</div>
-          <div class="tag">${f.tagline}</div>
-          ${t ? `<div class="tac-label">Tactical Profile: <b>${t.doctrineLabel}</b></div>` : ''}
-          ${profile}
-          ${sw}
-          ${t?.shortDescription ? `<div class="reco">▸ ${t.shortDescription}</div>` : ''}
+          <h3>${escapeText(cv.name)}</h3>
+          <div class="tag">${escapeText(cv.tagline)}</div>
+          ${cv.doctrineLabel ? `<div class="tac-label"><b>${escapeText(cv.doctrineLabel)}</b></div>` : ''}
+          ${cv.traits.length ? `<div class="fc-traits">${cv.traits.map(tr => `<span>${escapeText(tr)}</span>`).join('')}</div>` : ''}
+          <button class="fc-details-btn" type="button">ⓘ Details</button>
         </div>
       `);
       if (f.id === factionId) card.classList.add('selected');
@@ -147,6 +178,10 @@ export async function showStartScreen(): Promise<MissionChoice> {
         row.querySelectorAll('.faction-card').forEach(c => c.classList.remove('selected'));
         card.classList.add('selected');
         renderAdvDoctrine();
+      });
+      card.querySelector('.fc-details-btn')!.addEventListener('click', (e) => {
+        e.stopPropagation();        // open details without also toggling selection
+        showFactionDetails(f);
       });
       row.appendChild(card);
     }
