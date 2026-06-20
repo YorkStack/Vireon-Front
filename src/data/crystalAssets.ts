@@ -123,6 +123,24 @@ export function crystalStageImagePath(type: CrystalResourceType, stage: CrystalV
   return CRYSTAL_VISUAL_ASSETS.find(a => a.assetKey === key)?.imagePath ?? null;
 }
 
+/**
+ * Cluster size-class → asset key per resource type. Used to render a resource
+ * field as a multi-crystal cluster (small/medium/large). The `default` family has
+ * no `large` PNG, so its largest is `medium` and `medium` maps to the smaller
+ * `medium-small` variant — keeping three distinct size steps. Visual-only.
+ */
+const CLUSTER_ASSET_KEY: Record<CrystalResourceType, Record<CrystalVisualSize, string>> = {
+  default:        { small: 'default_small',  medium: 'default_medium_small', large: 'default_medium' },
+  blazeOfTheSun:  { small: 'blaze_small',    medium: 'blaze_medium',         large: 'blaze_large' },
+  plasmaFilament: { small: 'plasma_small',   medium: 'plasma_medium',        large: 'plasma_large' },
+};
+
+/** Image path for a cluster piece of the given resource type + intrinsic size. */
+export function crystalClusterImagePath(type: CrystalResourceType, size: CrystalVisualSize): string | null {
+  const key = CLUSTER_ASSET_KEY[type][size];
+  return CRYSTAL_VISUAL_ASSETS.find(a => a.assetKey === key)?.imagePath ?? null;
+}
+
 /** Lookup a sprite by type + size. Falls back to the largest available for that type. */
 export function crystalVisualAsset(type: CrystalResourceType, size: CrystalVisualSize): CrystalVisualAsset | null {
   const exact = CRYSTAL_VISUAL_ASSETS.find(a => a.resourceType === type && a.size === size);

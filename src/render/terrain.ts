@@ -7,7 +7,8 @@ import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../
 import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
 import { buildVegetationGlbInstances, vegModeFromQuery } from './vegetationGlb';
-import { crystalStageImagePath } from '../data/crystalAssets';
+import { crystalClusterImagePath } from '../data/crystalAssets';
+import { crystalClusterLayout } from './crystalCluster';
 
 // Palette is pre-brightened ~20% because the grain texture multiplies it down.
 const LEVEL_COLORS = [
@@ -636,7 +637,7 @@ export function buildTerrain(map: GameMap): TerrainBuild {
 
   // Sprite aspect ≈ 1.587 (768×484). Sized so the cluster reads as a node and
   // its base sits on the ground (pivot is centred → lift by ~0.4·height).
-  const SPRITE_W = 4.6, SPRITE_H = SPRITE_W / 1.587; // ≈ 2.9
+  const SPRITE_W = 4.6; // overall cluster footprint reference (sprite aspect 1.587)
 
   for (const node of map.crystals) {
     const grp = new THREE.Group();
@@ -649,25 +650,32 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     glow.renderOrder = 3;
     grp.add(glow);
 
-    // Pre-load the three stage textures for this node's resource type (default
-    // today). Nodes start full (amount === max), so the billboard begins at full.
+    // Render a multi-crystal CLUSTER (1 large + 2–3 medium + 3–5 small shards)
+    // instead of one billboard, so a field reads as a cluster. The layout is
+    // deterministic from the node id → stable across reloads. Each piece reuses a
+    // cached size-class sprite texture (no new assets).
     const rt = node.resourceType ?? 'default';
-    const texFull = crystalStageTex(crystalStageImagePath(rt, 'full')!);
-    const texReduced = crystalStageTex(crystalStageImagePath(rt, 'reduced')!);
-    const texSmall = crystalStageTex(crystalStageImagePath(rt, 'small')!);
+    const clusterRadius = SPRITE_W * 0.42;            // world-space spread of the cluster
+    const sizeBaseW: Record<'small' | 'medium' | 'large', number> = {
+      large: SPRITE_W * 0.78, medium: SPRITE_W * 0.5, small: SPRITE_W * 0.3,
+    };
+    for (const piece of crystalClusterLayout(node.id)) {
+      const path = crystalClusterImagePath(rt, piece.size);
+      if (!path) continue;
+      const pm = new THREE.SpriteMaterial({ map: crystalStageTex(path), transparent: true, depthWrite: false, fog: true });
+      const sp = new THREE.Sprite(pm);
+      const w = sizeBaseW[piece.size] * piece.scale;
+      const h = w / 1.587;                            // sprite aspect (768×484)
+      sp.scale.set(w, h, 1);
+      sp.material.rotation = piece.rot;               // slight per-piece tilt variance
+      sp.position.set(piece.dx * clusterRadius, h * 0.4 + piece.dy, piece.dz * clusterRadius);
+      grp.add(sp);
+    }
 
-    const mat = new THREE.SpriteMaterial({
-      map: texFull, transparent: true, depthWrite: false, fog: true,
-    });
-    const sp = new THREE.Sprite(mat);
-    // Slight per-node size variety so a field doesn't look stamped.
-    const sv = 0.9 + hash2(node.id, 3) * 0.25;
-    sp.scale.set(SPRITE_W * sv, SPRITE_H * sv, 1);
-    sp.position.set(0, SPRITE_H * sv * 0.4, 0);
-    grp.add(sp);
-
-    // Metadata read by world.ts updateCrystalVisual for the stage swap.
-    grp.userData = { stage: 'full', mat, tex: { full: texFull, reduced: texReduced, small: texSmall } };
+    // Depletion is shown by group scale (world.ts updateCrystalVisual). The cluster
+    // carries no single stage material, so the stage texture-swap there is skipped
+    // (guarded by `ud.mat && ud.tex`) and the whole field simply shrinks per stage.
+    grp.userData = { stage: 'full' };
 
     grp.position.set(wx, gy, wz);
     crystalGroups.set(node.id, grp);
