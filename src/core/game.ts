@@ -157,7 +157,7 @@ export class Game {
     // Short deployment intro: a dropship lands on the player start, "unloads" the
     // (already-spawned) starting units, and leaves. Toggle in Admin/Tools or via
     // ?intro=0 / ?skipIntro=1. Setup only happens here; it runs in frame().
-    if (currentDeploymentIntroEnabled()) this.setupDeploymentIntro(px, pz, playerFaction.emissive);
+    if (currentDeploymentIntroEnabled()) this.setupDeploymentIntro(px, pz, playerFaction.id, playerFaction.emissive);
 
     // Debug/profiling hook (also used by automated verification).
     (window as unknown as Record<string, unknown>).__game = {
@@ -176,13 +176,13 @@ export class Game {
   }
 
   /** Build the deployment-intro state (hide starting units, spawn dropship, lock input). */
-  private setupDeploymentIntro(px: number, pz: number, accentHex: string) {
+  private setupDeploymentIntro(px: number, pz: number, factionId: string, accentHex: string) {
     this.introUnits = this.world.units.filter((u) => u.team === 0); // the just-spawned starting units
     if (!this.introUnits.length) return; // nothing to deploy → no intro
     for (const u of this.introUnits) u.group.visible = false; // hidden until the unload moment
 
     this.landing = { x: px, z: pz, y: this.map.groundHeight(px, pz) };
-    this.dropship = new DeploymentDropship(accentHex);
+    this.dropship = new DeploymentDropship(factionId, accentHex);
     this.rig.scene.add(this.dropship.group);
 
     this.input.setEnabled(false); // no orders during the intro
