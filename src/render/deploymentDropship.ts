@@ -46,30 +46,30 @@ interface KitSpec {
 }
 
 const KIT_SPECS: Record<Archetype, KitSpec> = {
-  // Brutalist war-economy: dark graphite alloy, muted crimson trim, amber emissive.
+  // Brutalist war-economy: graphite alloy + reinforced-paneling albedo, amber emissive.
   crimson: {
-    armor: { color: '#3a3d47', metal: 0.65, rough: 0.85, flat: true },
+    armor: { color: '#2c2e33', metal: 0.85, rough: 0.45, flat: true },
     panel: { color: '#4d525e', metal: 0.6, rough: 0.8, flat: true },
     trim: { color: '#9e3329', metal: 0.5, rough: 0.7 },
     glow: { color: '#ff9a3c' },
   },
-  // Hydro-aerodynamic: pearl-white ceramic, pale-aqua panels, cyan emissive.
+  // Hydro-aerodynamic: pearl-white ceramic shell albedo, pale-aqua panels, cyan emissive.
   azure: {
-    armor: { color: '#dce7ef', metal: 0.4, rough: 0.28 },
+    armor: { color: '#f6f7f9', metal: 0.1, rough: 0.15 },
     panel: { color: '#a9cfe0', metal: 0.35, rough: 0.3 },
     trim: { color: '#6fb7d6', metal: 0.45, rough: 0.35 },
     glow: { color: '#45d8ff' },
   },
-  // Bio-engineered chitin: dark carapace, organic-green tissue, toxic-green veins.
+  // Bio-engineered chitin: segmented-scale carapace albedo, green tissue, toxic veins.
   verdant: {
-    armor: { color: '#2c3a23', metal: 0.15, rough: 0.72, flat: true },
+    armor: { color: '#3a2e2b', metal: 0.0, rough: 0.85, flat: true },
     panel: { color: '#5f8f3a', metal: 0.1, rough: 0.6 },
     trim: { color: '#3c6b2a', metal: 0.1, rough: 0.7 },
     glow: { color: '#9cff5a' },
   },
-  // Levitating bio-mineral: ivory crystal shell, golden mineral, solar-core emissive.
+  // Levitating bio-mineral: ivory sunburst crystal albedo, golden mineral, core emissive.
   solar: {
-    armor: { color: '#ece3c8', metal: 0.3, rough: 0.32, flat: true },
+    armor: { color: '#f3eace', metal: 0.2, rough: 0.25, flat: true },
     panel: { color: '#c8a23a', metal: 0.7, rough: 0.4 },
     trim: { color: '#b8902f', metal: 0.6, rough: 0.45 },
     glow: { color: '#ffd24a' },
@@ -96,6 +96,196 @@ function makeNoiseTexture(seed: number): THREE.Texture | null {
   const tex = new THREE.CanvasTexture(cv);
   tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
   tex.repeat.set(2, 2);
+  return tex;
+}
+
+/**
+ * Runtime 256² canvas albedo for the main hull, one stylised pattern per faction.
+ * Patterns are drawn at low globalAlpha so they read as surface detail from the RTS
+ * camera height, never as noise. Headless-safe (returns null without `document`).
+ */
+function makeFactionAlbedo(arch: Archetype): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  let repeat = 2;
+
+  if (arch === 'crimson') {
+    // Subtle reinforced metal paneling: graphite base + steel grid + recessed rivets.
+    ctx.fillStyle = '#2c2e33';
+    ctx.fillRect(0, 0, S, S);
+    const cell = 64;
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#474b54';
+    ctx.lineWidth = 3;
+    for (let p = 0; p <= S; p += cell) {
+      ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, S); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(S, p); ctx.stroke();
+    }
+    // faint highlight line just inside each panel for a stamped-steel bevel
+    ctx.globalAlpha = 0.25;
+    ctx.strokeStyle = '#5a5f69';
+    ctx.lineWidth = 1;
+    for (let p = cell; p <= S; p += cell) {
+      ctx.beginPath(); ctx.moveTo(p - 4, 0); ctx.lineTo(p - 4, S); ctx.stroke();
+    }
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = '#16171a';
+    for (let x = 0; x < S; x += cell) {
+      for (let y = 0; y < S; y += cell) {
+        for (const [dx, dy] of [[6, 6], [cell - 9, 6], [6, cell - 9], [cell - 9, cell - 9]]) {
+          ctx.fillRect(x + dx, y + dy, 3, 3);
+        }
+      }
+    }
+    repeat = 3;
+  } else if (arch === 'azure') {
+    // Flowing aquatic ceramic: pearlescent horizontal gradient + concentric wave arcs.
+    const grad = ctx.createLinearGradient(0, 0, S, 0);
+    grad.addColorStop(0, '#f6f7f9');
+    grad.addColorStop(1, '#edeff4');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, S, S);
+    ctx.globalAlpha = 0.32;
+    ctx.strokeStyle = '#d4dae3';
+    ctx.lineWidth = 3;
+    for (let i = -1; i < 7; i++) {
+      ctx.beginPath();
+      ctx.arc(S * 0.2, S * 0.5, 34 + i * 34, -Math.PI / 2.1, Math.PI / 2.1);
+      ctx.stroke();
+    }
+    repeat = 1;
+  } else if (arch === 'verdant') {
+    // Segmented chitin scales: repeating hexagonal carapace plates.
+    ctx.fillStyle = '#3a2e2b';
+    ctx.fillRect(0, 0, S, S);
+    const r = 22;
+    const hStep = r * 1.5;
+    const vStep = r * Math.sqrt(3);
+    ctx.lineWidth = 2.5;
+    let row = 0;
+    for (let cy = 0; cy <= S + vStep; cy += vStep, row++) {
+      for (let cx = 0; cx <= S + hStep; cx += hStep * 2) {
+        const ox = (row % 2) * hStep + cx;
+        ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#4d3d37';
+        ctx.strokeStyle = '#211a17';
+        ctx.beginPath();
+        for (let a = 0; a < 6; a++) {
+          const ang = (Math.PI / 3) * a;
+          const px = ox + r * Math.cos(ang);
+          const py = cy + r * Math.sin(ang);
+          if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+    repeat = 3;
+  } else {
+    // Solar: radiant sunburst — fine radial lines + a few branching crystalline cracks.
+    ctx.fillStyle = '#f3eace';
+    ctx.fillRect(0, 0, S, S);
+    const cxp = S / 2, cyp = S / 2;
+    ctx.globalAlpha = 0.42;
+    ctx.strokeStyle = '#ffec7a';
+    ctx.lineWidth = 1.3;
+    const rays = 72;
+    for (let i = 0; i < rays; i++) {
+      const ang = (Math.PI * 2 * i) / rays;
+      ctx.beginPath();
+      ctx.moveTo(cxp, cyp);
+      ctx.lineTo(cxp + Math.cos(ang) * S, cyp + Math.sin(ang) * S);
+      ctx.stroke();
+    }
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 8; i++) {
+      const ang = (Math.PI * 2 * i) / 8 + 0.3;
+      let x = cxp, y = cyp;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      for (let s = 0; s < 5; s++) {
+        x += Math.cos(ang + (s % 2 ? 0.4 : -0.4)) * 16;
+        y += Math.sin(ang + (s % 2 ? 0.4 : -0.4)) * 16;
+        ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    }
+    repeat = 1;
+  }
+
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeat, repeat);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * Translucent insect/dragonfly wing membrane with branching venation, baked into
+ * the alpha channel so the wing reads as a veined see-through membrane. `veinHex`
+ * = vein/edge colour, `membraneHex` = faint membrane tint. Headless-safe.
+ */
+function makeWingTexture(veinHex: string, membraneHex: string): THREE.Texture | null {
+  if (typeof document === 'undefined') return null;
+  const W = 256, H = 160;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  if (!ctx) return null;
+  ctx.clearRect(0, 0, W, H);
+
+  // Faint membrane so the wing isn't fully invisible between veins.
+  ctx.globalAlpha = 0.22;
+  ctx.fillStyle = membraneHex;
+  ctx.fillRect(0, 0, W, H);
+
+  // Longitudinal main veins fanning from the wing root (left) to the tip (right).
+  const roots = [H * 0.5, H * 0.32, H * 0.68, H * 0.18, H * 0.82];
+  const tips = [H * 0.5, H * 0.15, H * 0.85, H * 0.05, H * 0.95];
+  ctx.strokeStyle = veinHex;
+  ctx.lineWidth = 2.2;
+  ctx.globalAlpha = 0.7;
+  const mains: { y0: number; y1: number }[] = [];
+  for (let i = 0; i < roots.length; i++) {
+    ctx.beginPath();
+    ctx.moveTo(2, roots[i]);
+    ctx.bezierCurveTo(W * 0.4, (roots[i] + tips[i]) / 2, W * 0.7, tips[i], W - 2, tips[i]);
+    ctx.stroke();
+    mains.push({ y0: roots[i], y1: tips[i] });
+  }
+  // Leading-edge spar (thicker).
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth = 3.2;
+  ctx.beginPath();
+  ctx.moveTo(2, tips[3]); ctx.lineTo(W - 2, tips[3]); ctx.stroke();
+
+  // Cross-venation: dense short connectors → the characteristic dragonfly cells.
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.5;
+  for (let x = 12; x < W - 8; x += 13) {
+    const t = x / W;
+    const ys = mains.map((m) => m.y0 + (m.y1 - m.y0) * t).sort((a, b) => a - b);
+    for (let j = 0; j < ys.length - 1; j++) {
+      const jitter = ((x * 7 + j * 31) % 9) - 4;
+      ctx.beginPath();
+      ctx.moveTo(x, ys[j]);
+      ctx.lineTo(x + jitter, ys[j + 1]);
+      ctx.stroke();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.needsUpdate = true;
   return tex;
 }
 
@@ -158,12 +348,39 @@ export class DeploymentDropship {
     this.mats.push(glow);
     this.glowMats.push(glow);
 
+    // Main hull gets a faction-specific runtime canvas albedo on its .map.
+    const armor = std(spec.armor.color, spec.armor.metal, spec.armor.rough, spec.armor.flat);
+    const albedo = makeFactionAlbedo(arch);
+    if (albedo) {
+      armor.map = albedo;
+      armor.needsUpdate = true;
+      this.textures.push(albedo);
+    }
     return {
-      armor: std(spec.armor.color, spec.armor.metal, spec.armor.rough, spec.armor.flat),
+      armor,
       panel: std(spec.panel.color, spec.panel.metal, spec.panel.rough, spec.panel.flat),
       trim: std(spec.trim.color, spec.trim.metal, spec.trim.rough),
       glow,
     };
+  }
+
+  /** Translucent veined dragonfly-wing material (tracked for disposal). */
+  private wingMaterial(veinHex: string, membraneHex: string): THREE.MeshStandardMaterial {
+    const m = new THREE.MeshStandardMaterial({
+      color: '#ffffff', transparent: true, side: THREE.DoubleSide,
+      roughness: 0.4, metalness: 0.0, depthWrite: false,
+    });
+    const tex = makeWingTexture(veinHex, membraneHex);
+    if (tex) {
+      m.map = tex; // colour + per-texel alpha (membrane vs veins)
+      m.alphaMap = tex;
+      this.textures.push(tex);
+    } else {
+      m.opacity = 0.55; // headless fallback
+    }
+    m.needsUpdate = true;
+    this.mats.push(m);
+    return m;
   }
 
   // --- primitive helpers (track geo, add to group) ------------------------------
@@ -212,11 +429,12 @@ export class DeploymentDropship {
     body.scale.set(1, 1, 0.72); // ellipse cross-section (local y is along the hull)
     // Smooth blended nose cone.
     this.mesh(new THREE.ConeGeometry(1.25, 2.8, 24), k.armor, [0, -0.05, -3.9], [-Math.PI / 2, 0, 0]);
-    // Swept crescent manta wings (thin, curved back + down).
+    // Swept dragonfly wings (veined translucent membrane), swept back + down.
+    const azureWing = this.wingMaterial('#8fd6f0', '#dff4ff');
     for (const sx of [-1, 1]) {
-      const wing = this.mesh(new THREE.CylinderGeometry(2.2, 0.25, 0.14, 3, 1), k.panel, [sx * 2.4, -0.15, 1.0], [Math.PI / 2, 0, sx * 0.5]);
-      wing.scale.set(1, 1.7, 1);
-      wing.rotation.z = sx * 0.34;
+      const wing = this.mesh(new THREE.PlaneGeometry(3.4, 1.7), azureWing, [sx * 2.5, 0.0, 0.9], [Math.PI / 2, 0, 0]);
+      wing.rotation.z = sx * 0.32; // sweep
+      wing.rotation.x = Math.PI / 2 - 0.18; // slight downward cant
       // pale-aqua intake panel
       this.mesh(new THREE.BoxGeometry(0.5, 0.5, 2.4), k.panel, [sx * 1.05, 0.1, 0.4]);
     }
@@ -249,12 +467,8 @@ export class DeploymentDropship {
       const mand = this.mesh(new THREE.ConeGeometry(0.18, 1.6, 5), k.trim, [sx * 0.55, -0.1, -3.7], [-Math.PI / 2 + 0.5, 0, sx * 0.5]);
       mand.scale.set(1, 1, 0.6);
     }
-    // Hyper-thin translucent dragonfly wings.
-    const wingMat = k.panel.clone();
-    wingMat.transparent = true;
-    wingMat.opacity = 0.55;
-    wingMat.side = THREE.DoubleSide;
-    this.mats.push(wingMat);
+    // Hyper-thin translucent dragonfly wings with veined membrane texture.
+    const wingMat = this.wingMaterial('#9cff5a', '#3f7a2c');
     for (const sx of [-1, 1]) {
       const w1 = this.mesh(new THREE.PlaneGeometry(3.4, 1.1), wingMat, [sx * 2.0, 0.6, -0.2], [Math.PI / 2, 0, sx * 0.35]);
       w1.rotation.z = sx * 0.5;
