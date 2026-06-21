@@ -8,10 +8,12 @@
 
 **Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Gepushter Stand:** HEAD **`28701a7`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro**:
+**Gepushter Stand:** HEAD **`1a02ba6`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships**:
 - `8ede770` — **Admin/Tools-Menü mit Performance-Settings** (`feat(ui): add admin tools menu for performance settings`).
 - `83c0f50` — **Power-HUD zeigt Überschuss** statt used/produced (`fix(ui): show power surplus in HUD`).
 - `28701a7` — **Kurzes Dropship-Deployment-Intro beim Matchstart** (`feat(game): add dropship deployment intro`).
+- `5f869ca` — **Fraktions-distinkte prozedurale Dropships** (`feat(render): faction-distinct procedural dropships`).
+- `1a02ba6` — **Dropships ~25% größer** (uniformer Group-Scale 1.25, `feat(render): enlarge deployment dropships ~25%`).
 
 Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen + Visual-Fixes + Perf**:
 - `4c46d11` — **Local-Score-UI** (Step 3c): End-Screen-Score-Block + „★ LOCAL SCORES"-Menü ([scoreFormat.ts](src/ui/scoreFormat.ts), [localScores.ts](src/ui/localScores.ts)).
@@ -30,9 +32,16 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
 
 **✅ Deployment-Intro (`28701a7`):** Beim Matchstart spielt ein kurzes RTS-Dropship-Intro — **Default an**, in Admin/Tools abschaltbar („Deployment-Intro abspielen: An/Aus"), Query-Overrides `?intro=0|off|false` & `?skipIntro=1` (aus) bzw. `?intro=1` (an). Sequenz: Dropship landet → blendet die **bereits gespawnten** Startereinheiten ein → fliegt ab → normales Spiel. Dauer ~6 s. Skip via **Leertaste / Escape / Mausklick / sichtbaren Skip-Button**. **Startereinheiten unverändert: 1 fabricator/builder + 2 lancer** (Option 2 = vorab gespawnt, nur ver-/eingeblendet → kein Doppel-/Fehl-Spawn). Sim/AI/HUD im Intro gegated. Keine Mission-JSON-/Balance-Änderung. Pure DOM-/THREE-freie State-Machine [deploymentIntro.ts](src/core/deploymentIntro.ts)(+12 Tests) + [deploymentDropship.ts](src/render/deploymentDropship.ts) + [deploymentIntroOverlay.ts](src/ui/deploymentIntroOverlay.ts) + Wiring in [game.ts](src/core/game.ts); Setting in [types.ts](src/platform/profile/types.ts)/[LocalGameSettingsStore.ts](src/platform/profile/LocalGameSettingsStore.ts).
 
+**✅ Fraktions-Dropships (`5f869ca` + `1a02ba6`):** Das Intro-Dropship ist jetzt eine prozedurale **Fraktions-Werft** — nur Dateien geändert: [deploymentDropship.ts](src/render/deploymentDropship.ts) + [game.ts](src/core/game.ts) (Dropship bekommt jetzt die `factionId` durchgereicht). Vier distinkte Architekturen aus Primitiven + Per-Zone-PBR-Kit (armor/panel/trim/glow) + Laufzeit-Canvas-Noise als roughnessMap/bumpMap (kein externes Asset, offline):
+  - **Crimson:** blockiger Graphit/Rot-Brutalist-Dreadnought.
+  - **Azure:** perlweißer Hydro-Cruiser mit Manta-Flügeln + Cyan-Glow.
+  - **Verdant:** segmentierter Bio-Pod mit durchscheinenden grünen Flügeln + Toxic-Veins.
+  - **Solar:** elfenbein/goldenes Sonnen-Prisma-Kristall mit schwebenden Ringen; intern ×1.25 für Massen-Parität mit Crimson.
+  Danach **alle vier global ×1.25** (`1a02ba6`) für mehr Bildschirmpräsenz (Pivot am Ursprung → Lande-/Unload-Offsets unverändert; Solar-Parität bleibt). Animations-/Cleanup-Vertrag (`applyState`/`dispose`/Ramp/Glow), BBox & Pivot unverändert. **Verifikation:** tsc ✓ · 383 Tests ✓ · vite build ✓ · validate:balance ✔ · Browser-Visual-Check sauber · Konsole sauber. **Rein visuell — kein Gameplay/Balance/Unit-Count.**
+
 **Thermal/Performance-Status:** Mac-M2-Thermal-Audit abgeschlossen ([docs/performance-thermal-audit.md](docs/performance-thermal-audit.md)). Rendering läuft über **WebGL/GPU**; CPU/Main-Thread macht Sim/AI/Pathfinding/UI. **FPS-Cap implementiert** (`63851aa`); Default **Balanced/60** senkt die Hitze ggü. uncapped/120 Hz.
 
-**Textured-Buildings-Status:** Gated `?buildings=textured` ist committet (`485b3a8`) und funktioniert; **Default bleibt `current`**. Default-Switch steht noch unter ästhetischem Review aus. **Crimson Texture Pilot entfernt/deprecated** (`a8634cf`) — finale eingebettete GLB-Texturen sind der **einzige aktive** Basis-Building-Textur-Pfad.
+**Textured-Buildings-Status:** Default-Review durchgeführt — **technisch positiv** (28 GLBs = 24 gemappt + 4 Tower review-only; cannon/lance prozedural; embedded Texturen; Perf trivial; Konsole sauber). **Default-Switch steht noch unter menschlicher visueller Abnahme** (besonders Crimson-Lesbarkeit/Helligkeit). Gated `?buildings=textured` ist committet (`485b3a8`) und funktioniert; **aktueller Default bleibt `current`**; bei künftigem Switch `?buildings=current`-Fallback erhalten. **Crimson Texture Pilot entfernt/deprecated** (`a8634cf`) — finale eingebettete GLB-Texturen sind der **einzige aktive** Basis-Building-Textur-Pfad.
 
 **⚠️ LOKAL UNCOMMITTED — ALT-/Fremd-Workstreams (NIE mitstagen):** (a) **Vegetation-Eval-Tooling** (`vegetation_test.html` + `src/tools/vegetationTestViewer.ts` + `public/assets/vegetation/test/`); (b) **`docs/campaign-expansion-desert-jungle.md`** (Wüste/Dschungel-Konzept); (c) vorbestehende `public/assets/vehicles/blue_lightTank.*`; (d) etwaige weitere lokale Artefakte aus `git status`. Diese Dateien beim Committen ausschließen.
 
