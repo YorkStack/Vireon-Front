@@ -8,12 +8,14 @@
 
 **Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Gepushter Stand:** HEAD **`1a02ba6`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships**:
+**Gepushter Stand:** HEAD **`a9db8af`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships + Dropship-Texturen**:
 - `8ede770` — **Admin/Tools-Menü mit Performance-Settings** (`feat(ui): add admin tools menu for performance settings`).
 - `83c0f50` — **Power-HUD zeigt Überschuss** statt used/produced (`fix(ui): show power surplus in HUD`).
 - `28701a7` — **Kurzes Dropship-Deployment-Intro beim Matchstart** (`feat(game): add dropship deployment intro`).
 - `5f869ca` — **Fraktions-distinkte prozedurale Dropships** (`feat(render): faction-distinct procedural dropships`).
 - `1a02ba6` — **Dropships ~25% größer** (uniformer Group-Scale 1.25, `feat(render): enlarge deployment dropships ~25%`).
+- `d2e3939` — **HANDOFF-Update nach Fraktions-Dropships** (docs).
+- `a9db8af` — **Prozedurale Hüllen-Texturen + Libellenflügel** (`feat(render): procedural hull textures + dragonfly wings for dropships`).
 
 Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen + Visual-Fixes + Perf**:
 - `4c46d11` — **Local-Score-UI** (Step 3c): End-Screen-Score-Block + „★ LOCAL SCORES"-Menü ([scoreFormat.ts](src/ui/scoreFormat.ts), [localScores.ts](src/ui/localScores.ts)).
@@ -37,7 +39,8 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
   - **Azure:** perlweißer Hydro-Cruiser mit Manta-Flügeln + Cyan-Glow.
   - **Verdant:** segmentierter Bio-Pod mit durchscheinenden grünen Flügeln + Toxic-Veins.
   - **Solar:** elfenbein/goldenes Sonnen-Prisma-Kristall mit schwebenden Ringen; intern ×1.25 für Massen-Parität mit Crimson.
-  Danach **alle vier global ×1.25** (`1a02ba6`) für mehr Bildschirmpräsenz (Pivot am Ursprung → Lande-/Unload-Offsets unverändert; Solar-Parität bleibt). Animations-/Cleanup-Vertrag (`applyState`/`dispose`/Ramp/Glow), BBox & Pivot unverändert. **Verifikation:** tsc ✓ · 383 Tests ✓ · vite build ✓ · validate:balance ✔ · Browser-Visual-Check sauber · Konsole sauber. **Rein visuell — kein Gameplay/Balance/Unit-Count.**
+  Danach **alle vier global ×1.25** (`1a02ba6`) für mehr Bildschirmpräsenz (Pivot am Ursprung → Lande-/Unload-Offsets unverändert; Solar-Parität bleibt). Animations-/Cleanup-Vertrag (`applyState`/`dispose`/Ramp/Glow), BBox & Pivot unverändert. **Rein visuell — kein Gameplay/Balance/Unit-Count.**
+  - **Prozedurale Texturen (`a9db8af`):** `makeFactionAlbedo()` erzeugt zur Laufzeit pro Fraktion eine **256² `CanvasTexture`**-Albedo (SRGB, repeat-getilt, `needsUpdate`) auf dem Haupt-`armor`-Material: **Crimson** = verstärktes Metall-Paneling (Gitter + Nieten + Bevel), **Azure** = perlweiße Keramik (Verlauf + Wellen-Arcs), **Verdant** = Hexagon-Chitin-Schuppen, **Solar** = radialer Sunburst (Strahlen + Risse). PBR je Fraktion (Crimson metal0.85/rough0.45, Azure 0.1/0.15, Verdant 0.0/0.85, Solar 0.2/0.25). Zusätzlich **Libellenflügel-Membran** mit verzweigter Aderung (`makeWingTexture` → `map`+`alphaMap`, transluzent, DoubleSide, depthWrite off) auf den **geflügelten** Schiffen (Azure 2 + Verdant 4 Flügel; Azure-Flügel zu sauberen Planes umgebaut). Bestehende Noise-`roughnessMap`/`bumpMap` bleibt komplementär; alle Texturen getrackt & in `dispose()` freigegeben. **Verifikation:** tsc ✓ · 383 Tests ✓ · vite build ✓ · validate:balance ✔ · Browser/Konsole sauber.
 
 **Thermal/Performance-Status:** Mac-M2-Thermal-Audit abgeschlossen ([docs/performance-thermal-audit.md](docs/performance-thermal-audit.md)). Rendering läuft über **WebGL/GPU**; CPU/Main-Thread macht Sim/AI/Pathfinding/UI. **FPS-Cap implementiert** (`63851aa`); Default **Balanced/60** senkt die Hitze ggü. uncapped/120 Hz.
 
