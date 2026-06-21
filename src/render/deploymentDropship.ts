@@ -121,6 +121,11 @@ export class DeploymentDropship {
     else if (arch === 'verdant') this.buildVerdant();
     else this.buildSolar();
 
+    // Global presence bump: all four ships ~25% larger. Uniform scale around the
+    // group origin → pivot/landing offsets unaffected; Solar's internal 1.25× mass
+    // parity with Crimson is preserved (both grow by the same factor).
+    g.scale.setScalar(1.25);
+
     g.traverse((o) => {
       o.castShadow = false;
       o.receiveShadow = false;
