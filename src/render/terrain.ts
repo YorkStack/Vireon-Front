@@ -4,7 +4,7 @@
 // (pebbles, alien grass, spore lamps, crystal shards, glow pools).
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
+import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_CRYSTAL } from '../map/map';
 import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
 import { buildVegetationGlbInstances, vegModeFromQuery } from './vegetationGlb';
@@ -456,51 +456,12 @@ export function buildTerrain(map: GameMap): TerrainBuild {
   terrain.receiveShadow = true;
   terrain.name = 'terrain';
 
-  // ---------------- rock spires ----------------
-  const rockPos: number[] = [];
-  const rockCol: number[] = [];
-  const cone = new THREE.ConeGeometry(1, 1, 6);
-  const m4 = new THREE.Matrix4();
-  const rockBase = new THREE.Color('#241e36');
-  const rockTip = new THREE.Color('#4a4470');
-  for (let tz = 0; tz < n; tz++) {
-    for (let tx = 0; tx < n; tx++) {
-      const i = map.idx(tx, tz);
-      if (!(map.flags[i] & F_ROCK)) continue;
-      const [wx, wz] = warpXZ(...map.tileToWorld(tx, tz));
-      const gy = map.level[i] * LEVEL_H;
-      const seeds = 3 + (tx * 7 + tz * 13) % 3;
-      for (let s = 0; s < seeds; s++) {
-        const ox = (hash2(tx * 31 + s, tz * 17) - 0.5) * 1.4;
-        const oz = (hash2(tx * 23, tz * 29 + s) - 0.5) * 1.4;
-        const h = 1.8 + hash2(tx * 13 + s, tz * 7) * 3.2;
-        const r = 0.45 + hash2(tx + s, tz + s) * 0.45;
-        const lean = (hash2(tx * 3 + s, tz * 5) - 0.5) * 0.35;
-        m4.makeRotationZ(lean).scale(new THREE.Vector3(r, h, r)).setPosition(wx + ox, gy + h / 2 - 0.1, wz + oz);
-        const g = cone.clone().applyMatrix4(m4);
-        const arr = g.getAttribute('position').array as Float32Array;
-        for (let k = 0; k < arr.length; k += 3) {
-          rockPos.push(arr[k], arr[k + 1], arr[k + 2]);
-          // Gradient: dark base to lighter violet tip.
-          const t = Math.min(1, Math.max(0, (arr[k + 1] - gy) / (h + 0.001)));
-          cTmp.copy(rockBase).lerp(rockTip, t * t).multiplyScalar(0.85 + hash2(k, s) * 0.3);
-          rockCol.push(cTmp.r, cTmp.g, cTmp.b);
-        }
-      }
-    }
-  }
-  let rocks: THREE.Mesh;
-  if (rockPos.length) {
-    const rg = new THREE.BufferGeometry();
-    rg.setAttribute('position', new THREE.Float32BufferAttribute(rockPos, 3));
-    rg.setAttribute('color', new THREE.Float32BufferAttribute(rockCol, 3));
-    rg.computeVertexNormals();
-    rocks = new THREE.Mesh(rg, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, flatShading: true }));
-    rocks.castShadow = true;
-    rocks.receiveShadow = true;
-  } else {
-    rocks = new THREE.Mesh();
-  }
+  // Rock spires removed — the dark violet needle-like cones (which read as bad
+  // spike/needle trees) are gone. `rocks` stays an empty mesh so the TerrainBuild
+  // contract (consumed in game.ts scene.add) is unchanged. The glTF boulders added
+  // to `props` below are a separate prop and remain.
+  const rocks = new THREE.Mesh();
+  rocks.name = 'rocks-removed';
 
   // ---------------- instanced environment props ----------------
   const props = new THREE.Group();
