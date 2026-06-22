@@ -20,12 +20,22 @@ import type { FactionId } from '../data/factionModifiers';
 
 /** Gated building visual mode (query `?buildings=current|textured`). Default
  *  `current` keeps today's generated GLBs. `textured` swaps in the QA-approved
- *  final textured re-exports for the safe static roles (visual-only). SSR/test-
- *  safe (no `window` → `current`). */
+ *  final textured re-exports for the safe static roles (visual-only). */
 export type BuildingVisualMode = 'current' | 'textured';
-export function buildingModeFromQuery(): BuildingVisualMode {
-  if (typeof window === 'undefined') return 'current';
-  return new URLSearchParams(window.location.search).get('buildings') === 'textured' ? 'textured' : 'current';
+/**
+ * Resolve the building visual mode. Default is now **textured** (final baked GLBs);
+ * `?buildings=current` is the explicit fallback to the older generated set. Any other
+ * value (absent/invalid) → textured. Pure when given `search`; SSR/test-safe.
+ */
+export function buildingModeFromQuery(search?: string): BuildingVisualMode {
+  const s = search ?? (typeof window !== 'undefined' ? window.location.search : '');
+  let params: URLSearchParams;
+  try {
+    params = new URLSearchParams(s);
+  } catch {
+    return 'textured';
+  }
+  return params.get('buildings') === 'current' ? 'current' : 'textured';
 }
 const BUILDING_MODE: BuildingVisualMode = buildingModeFromQuery();
 /** Textured-final assetKeys carry `.tex.` — used to bypass the flat-material

@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import * as THREE from 'three';
 import {
   activeBuildingAsset, makeGlbBuildingGroup, __setBuildingGlbForTest, hasBuildingGlb,
-  ACTIVE_BUILDING_IDS,
+  ACTIVE_BUILDING_IDS, buildingModeFromQuery,
 } from './buildingGlb';
 import { generatedGameplayAsset } from '../data/buildingAssets';
 import type { FactionId } from '../data/factionModifiers';
@@ -154,5 +154,21 @@ describe('building GLB material fidelity (Visual/Fidelity Phase 1)', () => {
     __setBuildingGlbForTest(SPIRE_RED, fakeScene());
     const g = makeGlbBuildingGroup(activeBuildingAsset('spire', 'red')!, '#ff5c4d', 2)!;
     expect(g.userData.anim).toEqual({});
+  });
+});
+
+describe('buildingModeFromQuery (default = textured)', () => {
+  it('no query / empty search → textured (new default)', () => {
+    expect(buildingModeFromQuery('')).toBe('textured');
+  });
+  it('?buildings=current → current (explicit fallback)', () => {
+    expect(buildingModeFromQuery('?buildings=current')).toBe('current');
+  });
+  it('?buildings=textured → textured', () => {
+    expect(buildingModeFromQuery('?buildings=textured')).toBe('textured');
+  });
+  it('invalid / unrelated query → textured', () => {
+    expect(buildingModeFromQuery('?buildings=foo')).toBe('textured');
+    expect(buildingModeFromQuery('?other=1')).toBe('textured');
   });
 });
