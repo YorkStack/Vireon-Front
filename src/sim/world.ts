@@ -7,6 +7,7 @@ import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
 import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, pulseEmissiveGroup, HealthBar, TextLabel } from '../render/models';
 import { healthBarVisible, HEALTH_BAR_FLASH_SEC } from '../render/healthBarVis';
+import { nearestRepairUnit } from './repairDispatch';
 import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedRepairRate, type FactionId } from '../data/factionModifiers';
 import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../render/buildingGlb';
 import { Effects } from '../render/effects';
@@ -468,6 +469,18 @@ export class World {
     u.order = { kind: 'repair', building: b };
     const t = this.freeTileNear(b, u.isInfantry);
     if (t) this.setPath(u, t[0], t[1]);
+  }
+
+  /** UX helper for the selected-building Repair button: dispatch the nearest
+   *  idle repair-capable unit to repair `b` via the existing repair order.
+   *  Returns false (no-op) for a full-health/incomplete building or when no
+   *  repair-capable unit exists. No resource cost (matches builder repair). */
+  requestBuildingRepair(b: Building): boolean {
+    if (!b.complete || b.hp >= b.def.hp) return false;
+    const u = nearestRepairUnit(this.units, b);
+    if (!u) return false;
+    this.orderRepair(u, b);
+    return true;
   }
 
   stop(u: Unit) {

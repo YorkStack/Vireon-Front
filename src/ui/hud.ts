@@ -3,6 +3,7 @@ import { BUILDING_DEFS, UNIT_DEFS, unitStats, buildingStats } from '../core/defs
 import type { World, Unit, Building } from '../sim/world';
 import { toast } from './screens';
 import { powerHudText, powerHudTitle } from './powerHud';
+import { hasRepairUnit } from '../sim/repairDispatch';
 
 export interface HudCallbacks {
   startPlacement: (defId: string) => void;
@@ -176,6 +177,16 @@ export class Hud {
       </div>
     `;
 
+    // Repair action for a damaged, finished structure: dispatch the nearest
+    // repair-capable unit via the existing repair order (no resource cost yet).
+    if (b.complete && b.hp < b.def.hp - 0.5) {
+      const canRepair = hasRepairUnit(this.world.units, 0);
+      const hint = canRepair ? 'Send the nearest repair unit to fix this structure' : 'Requires repair unit';
+      html += `<div class="cmd-actions">
+        <button class="cmd-act" data-repair="1" ${canRepair ? '' : 'disabled'} title="${hint}">🔧 Repair</button>
+      </div>`;
+    }
+
     if (b.complete && b.def.produces) {
       const buildable = Object.values(UNIT_DEFS).filter(u => u.builtAt === b.def.id);
       html += `<div class="sel-sub" style="letter-spacing:1.5px;">PRODUCE</div><div class="btn-grid">`;
@@ -235,6 +246,13 @@ export class Hud {
       btn.addEventListener('click', () => {
         const b = this.cb.getSelection().building;
         if (b && !this.world.enqueue(b, btn.dataset.train!)) toast('Cannot train: check funds');
+        this.renderPanel();
+      });
+    });
+    this.panel.querySelectorAll<HTMLButtonElement>('[data-repair]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const b = this.cb.getSelection().building;
+        if (b && !this.world.requestBuildingRepair(b)) toast('No repair unit available');
         this.renderPanel();
       });
     });
