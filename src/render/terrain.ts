@@ -3,6 +3,7 @@
 // cliff walls, paved ramps, plus dense instanced environment props
 // (pebbles, alien grass, spore lamps, crystal shards, glow pools).
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GameMap, TILE, LEVEL_H, F_RAMP, F_NARROW, F_ROCK, F_CRYSTAL } from '../map/map';
 import { hash2, vnoise, warpXZ } from './terrainNoise';
 import { buildVegetation, buildRocks, type VegetationBuild } from './props';
@@ -556,18 +557,54 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     return true;
   });
 
-  // Alien grass blades: thin dark-teal cones, denser in valleys.
-  const grassGeo = new THREE.ConeGeometry(0.05, 0.55, 4);
-  const grassMat = new THREE.MeshStandardMaterial({ color: '#2f5f5c', roughness: 0.9, flatShading: true });
-  scatter(new THREE.InstancedMesh(grassGeo, grassMat, 3600), 3600, (d, tx, tz, r1, r2) => {
-    if (map.level[map.idx(tx, tz)] > 1 && r1 > 0.3) return false; // mostly low ground
-    const [wx, wz] = map.tileToWorld(tx, tz);
-    const x = wx + (r1 - 0.5) * TILE * 0.95, z = wz + (r2 - 0.5) * TILE * 0.95;
-    d.position.set(x, map.groundHeight(x, z) + 0.22, z);
-    d.rotation.set((r1 - 0.5) * 0.5, 0, (r2 - 0.5) * 0.5);
-    d.scale.set(1, 0.6 + r1 * 1.3, 1);
-    return true;
+  // Alien grass tufts: green blades splaying from a shared root (a proper grass
+  // clump), sparse and denser in valleys. Three deterministic variants with 3 / 4
+  // / 5 blades; each is one merged geometry instanced over its share of placements
+  // → far fewer clumps than the old single-blade field, no per-frame work.
+  const grassMat = new THREE.MeshStandardMaterial({ color: '#5c9442', roughness: 0.9, flatShading: true });
+  const makeTuft = (blades: number, seed: number): THREE.BufferGeometry => {
+    const parts: THREE.BufferGeometry[] = [];
+    for (let b = 0; b < blades; b++) {
+      const len = 0.42 + hash2(seed * 31 + b * 7 + 1, seed * 17 + b * 3 + 2) * 0.34;
+      const tilt = 0.10 + hash2(seed * 13 + b * 5 + 3, seed * 23 + b * 9 + 4) * 0.5;     // outward lean
+      const spread = (b / blades) * Math.PI * 2 + (hash2(seed * 11 + b, seed * 19 + b) - 0.5) * 0.7;
+      const blade = new THREE.ConeGeometry(0.04, len, 4);
+      blade.translate(0, len / 2, 0);                                  // root the blade at y=0
+      blade.applyMatrix4(new THREE.Matrix4().makeRotationY(spread)
+        .multiply(new THREE.Matrix4().makeRotationX(tilt)));
+      parts.push(blade);
+    }
+    return mergeGeometries(parts)!;
+  };
+  const tuftGeos = [makeTuft(3, 1), makeTuft(4, 2), makeTuft(5, 3)];
+  const GRASS_TUFTS = 480;
+  const tuftMeshes = tuftGeos.map((g) => {
+    const im = new THREE.InstancedMesh(g, grassMat, GRASS_TUFTS);
+    im.castShadow = true; im.receiveShadow = true; im.name = 'grass-tuft';
+    return im;
   });
+  {
+    const counts = [0, 0, 0];
+    let placed = 0, guard = 0;
+    while (placed < GRASS_TUFTS && guard++ < GRASS_TUFTS * 12) {
+      const [tx, tz] = walkableTiles[(hash2(guard * 17, guard * 31) * walkableTiles.length) | 0];
+      const lvl = map.level[map.idx(tx, tz)];
+      const r1 = hash2(guard * 7, guard * 13), r2 = hash2(guard * 19, guard * 23);
+      if (lvl > 1 && r1 > 0.25) continue;        // mostly low ground
+      if (lvl === 0 && r1 > 0.75) continue;      // thin out even on the valley floor
+      const [wx, wz] = map.tileToWorld(tx, tz);
+      const x = wx + (r1 - 0.5) * TILE * 0.9, z = wz + (r2 - 0.5) * TILE * 0.9;
+      const v = Math.min(2, (hash2(guard * 5 + 1, guard * 9 + 2) * 3) | 0);   // 3 / 4 / 5 blades
+      dummy.position.set(x, map.groundHeight(x, z), z);
+      dummy.rotation.set(0, r1 * Math.PI * 2, 0);          // random clump orientation
+      dummy.scale.setScalar(0.8 + r2 * 0.7);
+      dummy.updateMatrix();
+      tuftMeshes[v].setMatrixAt(counts[v]++, dummy.matrix);
+      placed++;
+    }
+    tuftMeshes.forEach((m, i) => { m.count = counts[i]; m.instanceMatrix.needsUpdate = true; });
+    props.add(...tuftMeshes);
+  }
 
   // Rocks: instanced glTF boulders (triplanar albedo + baked vertex AO), loaded
   // async and added to the prop group when ready. Distribution (clean valleys,
@@ -592,34 +629,7 @@ export function buildTerrain(map: GameMap): TerrainBuild {
     props.add(glbGroup);
   }
 
-  // Spore lamps: small glowing teal bulbs on dark stalks (two meshes).
-  const stalkGeo = new THREE.CylinderGeometry(0.025, 0.045, 0.55, 4);
-  const stalkMat = new THREE.MeshStandardMaterial({ color: '#1d2030', roughness: 1 });
-  const bulbGeo = new THREE.SphereGeometry(0.1, 6, 5);
-  const bulbMat = new THREE.MeshStandardMaterial({ color: '#46e0c8', emissive: '#1da592', emissiveIntensity: 1.1 });
-  const stalks = new THREE.InstancedMesh(stalkGeo, stalkMat, 220);
-  const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, 220);
-  {
-    let placed = 0, guard = 0;
-    while (placed < 220 && guard++ < 4000) {
-      const [tx, tz] = walkableTiles[(hash2(guard * 11, guard * 29) * walkableTiles.length) | 0];
-      const r1 = hash2(guard * 3, guard * 41), r2 = hash2(guard * 43, guard * 5);
-      if (map.level[map.idx(tx, tz)] !== 0 && r1 > 0.25) continue;
-      const [wx, wz] = map.tileToWorld(tx, tz);
-      const ox = wx + (r1 - 0.5) * TILE, oz = wz + (r2 - 0.5) * TILE;
-      const y = map.groundHeight(ox, oz);
-      const [x, z] = warpXZ(ox, oz);
-      const s = 0.7 + r2 * 0.9;
-      dummy.position.set(x, y + 0.27 * s, z); dummy.rotation.set(0, 0, (r1 - 0.5) * 0.3); dummy.scale.setScalar(s);
-      dummy.updateMatrix(); stalks.setMatrixAt(placed, dummy.matrix);
-      dummy.position.set(x, y + 0.55 * s, z); dummy.scale.setScalar(s);
-      dummy.updateMatrix(); bulbs.setMatrixAt(placed, dummy.matrix);
-      placed++;
-    }
-    stalks.count = bulbs.count = placed;
-    stalks.instanceMatrix.needsUpdate = bulbs.instanceMatrix.needsUpdate = true;
-    props.add(stalks, bulbs);
-  }
+  // (Spore lamps removed — the glowing teal bulb-on-stalk props are gone.)
 
   // ---------------- crystal nodes ----------------
   // One pre-rendered crystal-cluster billboard per node + an additive teal glow
