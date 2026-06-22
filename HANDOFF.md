@@ -8,7 +8,7 @@
 
 **Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Gepushter Stand:** HEAD **`a9db8af`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships + Dropship-Texturen**:
+**Gepushter Stand:** HEAD **`36dc93b`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships + Dropship-Texturen + Production-Dropships-Upgrade**:
 - `8ede770` — **Admin/Tools-Menü mit Performance-Settings** (`feat(ui): add admin tools menu for performance settings`).
 - `83c0f50` — **Power-HUD zeigt Überschuss** statt used/produced (`fix(ui): show power surplus in HUD`).
 - `28701a7` — **Kurzes Dropship-Deployment-Intro beim Matchstart** (`feat(game): add dropship deployment intro`).
@@ -16,6 +16,8 @@
 - `1a02ba6` — **Dropships ~25% größer** (uniformer Group-Scale 1.25, `feat(render): enlarge deployment dropships ~25%`).
 - `d2e3939` — **HANDOFF-Update nach Fraktions-Dropships** (docs).
 - `a9db8af` — **Prozedurale Hüllen-Texturen + Libellenflügel** (`feat(render): procedural hull textures + dragonfly wings for dropships`).
+- `a659455` — **HANDOFF-Update nach Dropship-Texturen** (docs).
+- `36dc93b` — **Production-Dropships-Upgrade** (`feat(render): upgrade production dropship visuals`).
 
 Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen + Visual-Fixes + Perf**:
 - `4c46d11` — **Local-Score-UI** (Step 3c): End-Screen-Score-Block + „★ LOCAL SCORES"-Menü ([scoreFormat.ts](src/ui/scoreFormat.ts), [localScores.ts](src/ui/localScores.ts)).
@@ -40,7 +42,8 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
   - **Verdant:** segmentierter Bio-Pod mit durchscheinenden grünen Flügeln + Toxic-Veins.
   - **Solar:** elfenbein/goldenes Sonnen-Prisma-Kristall mit schwebenden Ringen; intern ×1.25 für Massen-Parität mit Crimson.
   Danach **alle vier global ×1.25** (`1a02ba6`) für mehr Bildschirmpräsenz (Pivot am Ursprung → Lande-/Unload-Offsets unverändert; Solar-Parität bleibt). Animations-/Cleanup-Vertrag (`applyState`/`dispose`/Ramp/Glow), BBox & Pivot unverändert. **Rein visuell — kein Gameplay/Balance/Unit-Count.**
-  - **Prozedurale Texturen (`a9db8af`):** `makeFactionAlbedo()` erzeugt zur Laufzeit pro Fraktion eine **256² `CanvasTexture`**-Albedo (SRGB, repeat-getilt, `needsUpdate`) auf dem Haupt-`armor`-Material: **Crimson** = verstärktes Metall-Paneling (Gitter + Nieten + Bevel), **Azure** = perlweiße Keramik (Verlauf + Wellen-Arcs), **Verdant** = Hexagon-Chitin-Schuppen, **Solar** = radialer Sunburst (Strahlen + Risse). PBR je Fraktion (Crimson metal0.85/rough0.45, Azure 0.1/0.15, Verdant 0.0/0.85, Solar 0.2/0.25). Zusätzlich **Libellenflügel-Membran** mit verzweigter Aderung (`makeWingTexture` → `map`+`alphaMap`, transluzent, DoubleSide, depthWrite off) auf den **geflügelten** Schiffen (Azure 2 + Verdant 4 Flügel; Azure-Flügel zu sauberen Planes umgebaut). Bestehende Noise-`roughnessMap`/`bumpMap` bleibt komplementär; alle Texturen getrackt & in `dispose()` freigegeben. **Verifikation:** tsc ✓ · 383 Tests ✓ · vite build ✓ · validate:balance ✔ · Browser/Konsole sauber.
+  - **Prozedurale Texturen (`a9db8af`):** `makeFactionAlbedo()` erzeugt zur Laufzeit pro Fraktion eine **256² `CanvasTexture`**-Albedo (SRGB, repeat-getilt, `needsUpdate`) auf dem Haupt-`armor`-Material. Zusätzlich **Libellenflügel-Membran** mit verzweigter Aderung (`makeWingTexture` → `map`+`alphaMap`, transluzent, DoubleSide, depthWrite off) auf den **geflügelten** Schiffen (Azure 2 + Verdant 4 Flügel; Azure-Flügel zu sauberen Planes umgebaut). Alle Texturen getrackt & in `dispose()` freigegeben.
+  - **✅ Production-Dropships-Upgrade (`36dc93b`, abgeschlossen):** Geometrie- + Hi-Detail-Textur-Pass, nur [deploymentDropship.ts](src/render/deploymentDropship.ts). **Crimson neu als H-Profil-Command-Cruiser** (flaches 8-seitiges Core-Chassis, Hull-Undercut, Kommandobrücke, flache Nasen-Ramme, Outrigger-Block-Triebwerke) — **„Schubkarren"-Look eliminiert**; **gebürsteter Stahl/Silber** (heller `armor`-Basis-Ton `#e4e7ec` + Brushed-Albedo, damit die Textur den echten Stahlton trägt statt dunkel zu multiplizieren). Alle vier Fraktionen mit **Hi-Detail-256²-Runtime-CanvasTextures**, durchgehend **`map` + `bumpMap`** (`bumpScale 0.03`); **Solar zusätzlich `roughnessMap`** (Ivory matt / Plasma glänzend). Texturen: **Crimson** = Dark Steel & Rivets (aufgehellte Stahl-Lesbarkeit), **Azure** = Submarine-Pressure-Hull (Verlauf + Nahtlinien + Flutventil-Kapseln), **Verdant** = Reptilien-/Chitin-Schuppen (Rauten mit Radial-Gradient), **Solar** = Fluid Plasma Streaks (Bezier-Schlieren + Biolumineszenz-Zellen). PBR je Fraktion (Crimson metal0.9/rough0.4, Azure 0.1/0.15, Verdant 0.0/0.85, Solar 0.2/0.25). **Deployment-Intro bleibt Default-an.** **Verifikation:** tsc ✓ · 383 Tests ✓ · vite build ✓ · validate:balance ✔ · Browser-Smoke (Intro an, alle 4 Fraktionen sauber, Crimson kein Schubkarren mehr) · Konsole sauber. **Kein Gameplay/Balance/Unit-Count.** Production-Dropship-Visuals damit **komplett**.
 
 **Thermal/Performance-Status:** Mac-M2-Thermal-Audit abgeschlossen ([docs/performance-thermal-audit.md](docs/performance-thermal-audit.md)). Rendering läuft über **WebGL/GPU**; CPU/Main-Thread macht Sim/AI/Pathfinding/UI. **FPS-Cap implementiert** (`63851aa`); Default **Balanced/60** senkt die Hitze ggü. uncapped/120 Hz.
 
@@ -70,8 +73,8 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
 6. **Terrain — organische Höhenstufen-Kanten** ([terrain.ts](src/render/terrain.ts), `2415afd`) + **Startscreen viewport-safe** ([screens.ts](src/ui/screens.ts)+[style.css](src/ui/style.css), `c16a4d2`).
 
 **➡️ NÄCHSTE SCHRITTE / OFFENE ENTSCHEIDUNGEN (NICHT ohne Ansage starten):**
-- **Option A — Textured-Buildings Default-Review:** auf Default schalten (ästhetische 6×4-Freigabe nötig; ~28 GLBs erhöhen Bundle/Ladegewicht) oder gated lassen. Gated `?buildings=textured` committet (`485b3a8`).
-- **Option B — Intro-Visual-Politur:** Dropship-Mesh/Animation/Skip-Prompt verfeinern (z. B. Schub-Partikel, Sound-Hook, Fraktions-Akzente).
+- **➡️ Empfohlen nächstes Task — Option A: Textured-Buildings Default-Switch:** auf Default schalten (ästhetische 6×4-Freigabe nötig; ~28 GLBs erhöhen Bundle/Ladegewicht) oder gated lassen. Gated `?buildings=textured` committet (`485b3a8`). _(Hinweis: **Production-Dropship-Visuals sind jetzt komplett** — `36dc93b`.)_
+- **Option B — Intro-Visual-Politur (optional):** Dropship-Mesh/Animation/Skip-Prompt verfeinern (z. B. Schub-Partikel, Sound-Hook). Kern-Visuals stehen.
 - **Option C — Admin/Tools erweitern:** weitere Settings (z. B. Sound/Musik-Toggle, Kamera-Speed, Minimap-Throttle).
 - **Option D — Vegetation-Workstream:** Default ist GLB v3.1. Offen: Biome-aware Placement + Weight-Feintuning. (Eval-Tooling lokal, nicht committet.)
 - **Option E — Campaign-Expansion** (`docs/campaign-expansion-desert-jungle.md`, lokal): Wüste/Dschungel-Konzept ausarbeiten.
