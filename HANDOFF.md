@@ -4,11 +4,16 @@
 
 ---
 
-## 🚀 QUICK RESUME (Stand 2026-06-20, nach Compact hier weiterlesen)
+## 🚀 QUICK RESUME (Stand 2026-06-22, nach Compact hier weiterlesen)
 
 **Repos:** Game = `/Users/yorkvonloew/Documents/Claude/Vireon Front` (Branch `main`). Studio = `../vireon-design-studio` (Branch `main`). Beides auf GitHub (YorkStack/Vireon-Front bzw. Vireon-Design-Studio).
 
-**Gepushter Stand:** HEAD **`36dc93b`** auf `origin/main` (lokal == remote). **383 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships + Dropship-Texturen + Production-Dropships-Upgrade**:
+**Gepushter Stand:** HEAD **`0b1f4f8`** auf `origin/main` (lokal == remote). **387 Tests grün**, tsc/build/validate:balance sauber. Zuletzt gepusht — **Textured-Buildings als Default + Material-Lesbarkeit + Solar-Command-Center-Geometrie**:
+- `92792a4` — **Textured Buildings sind jetzt Default** (`feat(render): default building visuals to textured`); `?buildings=current` bleibt expliziter Fallback; Tower weiterhin unmapped (cannon/lance prozedural). 4 Resolver-Tests in [buildingGlb.test.ts](src/render/buildingGlb.test.ts).
+- `a557ee5` — **Material-Lesbarkeit der texturierten Gebäude** (`feat(render): improve textured building material readability`); **nur** [buildingGlb.ts](src/render/buildingGlb.ts). Code-seitiger prozeduraler Welt-Raum-Albedo-Override (UV-unabhängig, einmal pro Template) ersetzt die dunkle/flache eingebettete Albedo der Kern-Hüllen-Materialien je Fraktion. Inkl. Solar-Fassaden-Shader-Details. **Kein Gameplay/Balance/Unit-Count.**
+- `0b1f4f8` — **Solar-Command-Center-Geometrie** (`feat(assets): refine solar command center geometry`); **nur** das Asset `public/assets/buildings/textured_final/solar/solar_singularity_nexus.glb`. Basis-Etagen angehoben, Z-Fighting/Streifen durch kohärente SA/SAM/SP-Transformation behoben, Spike-Apex stabil gehalten, Tower/Core dominanter + Fassaden-Lesbarkeit verbessert.
+
+Davor gepusht — **Admin/Tools + Power-HUD + Deployment-Intro + Fraktions-Dropships + Dropship-Texturen + Production-Dropships-Upgrade**:
 - `8ede770` — **Admin/Tools-Menü mit Performance-Settings** (`feat(ui): add admin tools menu for performance settings`).
 - `83c0f50` — **Power-HUD zeigt Überschuss** statt used/produced (`fix(ui): show power surplus in HUD`).
 - `28701a7` — **Kurzes Dropship-Deployment-Intro beim Matchstart** (`feat(game): add dropship deployment intro`).
@@ -47,7 +52,14 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
 
 **Thermal/Performance-Status:** Mac-M2-Thermal-Audit abgeschlossen ([docs/performance-thermal-audit.md](docs/performance-thermal-audit.md)). Rendering läuft über **WebGL/GPU**; CPU/Main-Thread macht Sim/AI/Pathfinding/UI. **FPS-Cap implementiert** (`63851aa`); Default **Balanced/60** senkt die Hitze ggü. uncapped/120 Hz.
 
-**Textured-Buildings-Status:** Default-Review durchgeführt — **technisch positiv** (28 GLBs = 24 gemappt + 4 Tower review-only; cannon/lance prozedural; embedded Texturen; Perf trivial; Konsole sauber). **Default-Switch steht noch unter menschlicher visueller Abnahme** (besonders Crimson-Lesbarkeit/Helligkeit). Gated `?buildings=textured` ist committet (`485b3a8`) und funktioniert; **aktueller Default bleibt `current`**; bei künftigem Switch `?buildings=current`-Fallback erhalten. **Crimson Texture Pilot entfernt/deprecated** (`a8634cf`) — finale eingebettete GLB-Texturen sind der **einzige aktive** Basis-Building-Textur-Pfad.
+**Textured-Buildings-Status (✅ jetzt Default):** Der Default-Switch ist **vollzogen** (`92792a4`) und menschlich visuell abgenommen. **Default ist jetzt `textured`**; der explizite Fallback **`?buildings=current`** bleibt verfügbar. **Tower bleiben review-only/unmapped** (cannon/lance prozedural). Ein **code-seitiger prozeduraler Material-Override** (`a557ee5`, Welt-Raum-Albedo, UV-unabhängig, einmal pro Template, nur [buildingGlb.ts](src/render/buildingGlb.ts)) hebt die Lesbarkeit der texturierten Gebäude je Fraktion:
+  - **Crimson:** hellerer gebürsteter Stahl/Gunmetal, Wand-vs-Dach-Differenzierung, Paneele, Nähte, Niete, Vents, kontrolliertes rotes Warn-Trim.
+  - **Azure:** hellere aquatische Keramik/Schale-Tech mit Perlmutt-/Schalen-Variation und strukturierten unteren/Fundament-Zonen (Höhen-Zoning Basis vs. oben).
+  - **Verdant:** Chitin/Schuppen-Segmentierung mit tiefen Grooves; **Orange-Blob-Look reduziert/entfernt**, Command-Center-Kuppel verbessert.
+  - **Solar:** zonenbasierte Material-Logik (dunkle vertikale Wände vs. hellere Dach-/Top-Flächen), Gold-Energie-Nähte, **Fassaden-Fenster/Schiebe-Schienen/Lüftungs-Lamellen** auf den Basis-Etagen.
+  **Kein Gameplay/Balance/Unit-Count.** **Crimson Texture Pilot** bleibt entfernt/deprecated (`a8634cf`) — finale eingebettete GLB-Texturen + dieser Override sind der **einzige aktive** Basis-Building-Textur-Pfad.
+
+**Solar Command Center (`solar_singularity_nexus.glb`, asset-seitig korrigiert in `0b1f4f8`):** Die Geometrie wurde **asset-seitig** überarbeitet (Binär-Diff, nur dieses GLB). Die **angehobenen Basis-Etagen lesen sich jetzt als mehrstöckiger gestufter Turm**; **Z-Fighting/Streifen sind durch eine kohärente SA/SAM/SP-Transformation behoben**; der **Spike-Apex bleibt stabil** auf gleicher Höhe; der **zentrale Spike/Core ist visuell dominanter** und die **Fassaden-Lesbarkeit** (zusammen mit dem Solar-Shader oben) ist verbessert.
 
 **⚠️ LOKAL UNCOMMITTED — ALT-/Fremd-Workstreams (NIE mitstagen):** (a) **Vegetation-Eval-Tooling** (`vegetation_test.html` + `src/tools/vegetationTestViewer.ts` + `public/assets/vegetation/test/`); (b) **`docs/campaign-expansion-desert-jungle.md`** (Wüste/Dschungel-Konzept); (c) vorbestehende `public/assets/vehicles/blue_lightTank.*`; (d) etwaige weitere lokale Artefakte aus `git status`. Diese Dateien beim Committen ausschließen.
 
@@ -73,7 +85,7 @@ Davor gepusht (chronologisch, `2c15472`→`63851aa`) — **MVP 1 abgeschlossen +
 6. **Terrain — organische Höhenstufen-Kanten** ([terrain.ts](src/render/terrain.ts), `2415afd`) + **Startscreen viewport-safe** ([screens.ts](src/ui/screens.ts)+[style.css](src/ui/style.css), `c16a4d2`).
 
 **➡️ NÄCHSTE SCHRITTE / OFFENE ENTSCHEIDUNGEN (NICHT ohne Ansage starten):**
-- **➡️ Empfohlen nächstes Task — Option A: Textured-Buildings Default-Switch:** auf Default schalten (ästhetische 6×4-Freigabe nötig; ~28 GLBs erhöhen Bundle/Ladegewicht) oder gated lassen. Gated `?buildings=textured` committet (`485b3a8`). _(Hinweis: **Production-Dropship-Visuals sind jetzt komplett** — `36dc93b`.)_
+- **✅ Erledigt — Textured-Buildings Default-Switch:** Default ist jetzt `textured` (`92792a4`), Material-Lesbarkeit verbessert (`a557ee5`), Solar-Command-Center asset-seitig korrigiert (`0b1f4f8`); Fallback `?buildings=current` bleibt. _(Hinweis: **Production-Dropship-Visuals sind ebenfalls komplett** — `36dc93b`.)_
 - **Option B — Intro-Visual-Politur (optional):** Dropship-Mesh/Animation/Skip-Prompt verfeinern (z. B. Schub-Partikel, Sound-Hook). Kern-Visuals stehen.
 - **Option C — Admin/Tools erweitern:** weitere Settings (z. B. Sound/Musik-Toggle, Kamera-Speed, Minimap-Throttle).
 - **Option D — Vegetation-Workstream:** Default ist GLB v3.1. Offen: Biome-aware Placement + Weight-Feintuning. (Eval-Tooling lokal, nicht committet.)
