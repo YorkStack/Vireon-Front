@@ -14,6 +14,7 @@ import { textureSetUsable } from '../data/artMetadata';
 import { getVariant } from '../vehicles';
 import { importedSpecFor } from '../vehicles/importedSpecs';
 import { hasVehicleGlb, expectedVehicleGlb, makeGlbEntityGroup, VEH_SOURCE } from './vehicleGlb';
+import { healthColor, type HealthTier } from './healthBarVis';
 import { buildVehicleParts } from './vehicleModels';
 import { buildPartsFromSpec } from './specInterpreter';
 import { infantryVisualFor } from './infantryVisual';
@@ -1065,27 +1066,35 @@ export function makeSelectionRing(radius: number, colorHex: string): THREE.Mesh 
   return mesh;
 }
 
-const hbBg = new THREE.MeshBasicMaterial({ color: '#101018', depthTest: false, transparent: true, opacity: 0.85 });
-const hbG = new THREE.MeshBasicMaterial({ color: '#43e860', depthTest: false });
-const hbY = new THREE.MeshBasicMaterial({ color: '#ffce3a', depthTest: false });
-const hbR = new THREE.MeshBasicMaterial({ color: '#ff4545', depthTest: false });
+// All four are transparent so the foreground fill shares the renderer's
+// transparent queue with the background: renderOrder (21 > 20) then decides draw
+// order, so the coloured fill paints ON TOP. (When the fill was opaque it drew in
+// the opaque pass first, and the semi-transparent dark bg was then painted over
+// it — bars looked black.) toneMapped:false keeps the colours bright/unlit.
+const hbBg = new THREE.MeshBasicMaterial({ color: '#0b0b12', depthTest: false, transparent: true, opacity: 0.85, toneMapped: false });
+const hbG = new THREE.MeshBasicMaterial({ color: '#43e860', depthTest: false, transparent: true, toneMapped: false });
+const hbY = new THREE.MeshBasicMaterial({ color: '#ffce3a', depthTest: false, transparent: true, toneMapped: false });
+const hbR = new THREE.MeshBasicMaterial({ color: '#ff4545', depthTest: false, transparent: true, toneMapped: false });
 const hbGeo = new THREE.PlaneGeometry(1, 1);
+const HB_MAT: Record<HealthTier, THREE.MeshBasicMaterial> = { green: hbG, yellow: hbY, red: hbR };
 
 export interface HealthBar { group: THREE.Group; set: (ratio: number) => void }
 export function makeHealthBar(width: number): HealthBar {
   const group = new THREE.Group();
+  // Slightly taller/darker background than the fill so the bar reads at RTS zoom.
   const bg = new THREE.Mesh(hbGeo, hbBg);
-  bg.scale.set(width, 0.18, 1);
+  bg.scale.set(width, 0.2, 1);
   bg.renderOrder = 20;
   const fg = new THREE.Mesh(hbGeo, hbG);
-  fg.scale.set(width, 0.11, 1);
+  fg.scale.set(width, 0.13, 1);
   fg.position.z = 0.01;
   fg.renderOrder = 21;
   group.add(bg, fg);
   const set = (ratio: number) => {
     const r = Math.max(0, Math.min(1, ratio));
-    // Tri-colour by remaining health: green 100–50 %, yellow 49–25 %, red <25 %.
-    fg.material = r >= 0.5 ? hbG : r >= 0.25 ? hbY : hbR;
+    // Tri-colour by remaining health (green 100–50 %, yellow 49–25 %, red <25 %),
+    // resolved by the shared healthColor() helper so the rule lives in one place.
+    fg.material = HB_MAT[healthColor(r)];
     fg.scale.x = width * r;
     fg.position.x = -(width * (1 - r)) / 2;
   };

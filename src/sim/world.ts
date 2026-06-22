@@ -6,6 +6,7 @@ import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
 import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
+import { healthBarVisible, HEALTH_BAR_FLASH_SEC } from '../render/healthBarVis';
 import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedRepairRate, type FactionId } from '../data/factionModifiers';
 import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../render/buildingGlb';
 import { Effects } from '../render/effects';
@@ -58,6 +59,7 @@ export class Unit {
   visHeading = 0; // previous frame heading (movement-style banking)
   visRoll = 0;
   selected = false;
+  hbFlashUntil = 0; // sim-time until which the health bar lingers after damage/repair
   group: THREE.Group;
   ring: THREE.Mesh;
   hb: HealthBar;
@@ -109,6 +111,7 @@ export class Building {
   scanTimer = Math.random() * 0.4;
   target: Unit | Building | null = null;
   selected = false;
+  hbFlashUntil = 0; // sim-time until which the health bar lingers after damage/repair
   group: THREE.Group;
   ring: THREE.Mesh;
   hb: HealthBar;
@@ -481,6 +484,7 @@ export class World {
     const armor = target instanceof Building ? 'structure' : target.def.armor;
     const mult = DAMAGE_MATRIX[weapon.damageType][armor] ?? 1;
     target.hp -= weapon.damage * mult;
+    target.hbFlashUntil = this.time + HEALTH_BAR_FLASH_SEC; // keep the bar readable through the hit
     // returnFire stance: shoot back at whoever hits us (no proactive scanning).
     if (target instanceof Unit && target.stance === 'returnFire' && target.def.weapon
         && (!target.engage || !target.engage.alive)) {
@@ -511,6 +515,7 @@ export class World {
       if (ally.def.class !== 'vehicle' || ally.hp >= ally.def.hp) continue;
       if ((ally.x - u.x) ** 2 + (ally.z - u.z) ** 2 > r * r) continue;
       ally.hp = Math.min(ally.def.hp, ally.hp + aura.repairAmount * 0.5);
+      ally.hbFlashUntil = this.time + HEALTH_BAR_FLASH_SEC; // show repair feedback
     }
   }
 
@@ -695,6 +700,7 @@ export class World {
           const fid = this.teams[u.team].faction.id as FactionId;
           const repairMul = getModifiedRepairRate(1, fid) * this.powerOutage(u.team).repairEfficiencyMultiplier;
           b.hp = Math.min(b.def.hp, b.hp + 35 * dt * repairMul);
+          b.hbFlashUntil = this.time + HEALTH_BAR_FLASH_SEC; // show repair feedback
         } else if (!this.stepAlongPath(u, dt)) {
           const t = this.freeTileNear(b, u.isInfantry);
           if (t) this.setPath(u, t[0], t[1]);
@@ -964,8 +970,7 @@ export class World {
       u.group.position.set(u.x, this.map.groundHeight(u.x, u.z), u.z);
       u.group.rotation.y = u.heading;
       u.ring.visible = u.selected;
-      const hurt = u.hp < u.def.hp - 0.5;
-      u.hb.group.visible = u.selected || hurt;
+      u.hb.group.visible = healthBarVisible({ selected: u.selected, hp: u.hp, maxHp: u.def.hp, now: this.time, flashUntil: u.hbFlashUntil });
       if (u.hb.group.visible) {
         u.hb.set(u.hp / u.def.hp);
         u.hb.group.quaternion.copy(this.camQuat);
@@ -1002,8 +1007,7 @@ export class World {
         }
       } else {
         b.pct.sprite.visible = false;
-        const hurt = b.hp < b.def.hp - 0.5;
-        b.hb.group.visible = b.selected || hurt;
+        b.hb.group.visible = healthBarVisible({ selected: b.selected, hp: b.hp, maxHp: b.def.hp, now: this.time, flashUntil: b.hbFlashUntil });
         if (b.hb.group.visible) {
           b.hb.set(b.hp / b.def.hp);
           b.hb.group.quaternion.copy(this.camQuat);
