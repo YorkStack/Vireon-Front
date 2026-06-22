@@ -126,6 +126,206 @@ function addSurfaceDetail(m: THREE.MeshStandardMaterial) {
   m.needsUpdate = true;
 }
 
+// ── Textured-building readability pass ───────────────────────────────────────
+// The final textured GLBs bake their detail into albedo, which reads dark/flat/
+// wrong at RTS zoom (Crimson near-black, Azure uniform, Verdant orange blobs,
+// Solar structureless). Rather than edit the binary GLBs, we inject a per-faction
+// WORLD-SPACE correction+detail shader (UV-independent → safe on any GLB UV),
+// once per cached template. Purely visual; geometry/scale/gameplay untouched.
+type Archetype = 'crimson' | 'azure' | 'verdant' | 'solar';
+function archOf(f: FactionId): Archetype {
+  return f === 'red' ? 'crimson' : f === 'blue' ? 'azure' : f === 'green' ? 'verdant' : 'solar';
+}
+
+// Per-faction fragment body, run after <color_fragment>. It FULLY REPLACES the
+// (baked, wrong) albedo with a deterministic world-space material so dark/orange/
+// flat embedded textures are overridden — `puv` = triplanar 2D world coords,
+// `up`/`down` = normal facing, `vBWPos`/`vBNrm` provided.
+const TEX_FACTION_FRAG: Record<Archetype, string> = {
+  // Brushed industrial steel with ROOF vs WALL differentiation: vertical walls =
+  // darker ribbed brushed steel + rivet rows + vertical seams; horizontal roofs =
+  // lighter worn plates, larger maintenance panels, hatch lines, grime streaks.
+  crimson: `
+    float roof = smoothstep(0.55, 0.82, up);                  // 1 = horizontal roof/top
+    vec3 wallC = vec3(0.35, 0.36, 0.40);                      // darker vertical steel
+    vec3 roofC = vec3(0.52, 0.53, 0.57);                      // lighter worn roof plates
+    vec3 base = mix(wallC, roofC, roof);
+    base *= 0.90 + 0.16 * bNoise(vec3(vBWPos.x * 9.0, vBWPos.y * 1.3, vBWPos.z * 9.0)); // brushed
+    // WALLS: tight vertical ribs + rivet rows.
+    vec2 wc = abs(fract(puv / 0.85) - 0.5);
+    float rib = smoothstep(0.42, 0.5, wc.x);
+    // ROOFS: large square maintenance panels + hatch seams.
+    vec2 rc = abs(fract(puv / 1.9) - 0.5);
+    float rseam = smoothstep(0.45, 0.5, max(rc.x, rc.y));
+    base *= 1.0 - 0.28 * rib * (1.0 - roof) - 0.26 * rseam * roof;
+    vec2 cc = mix(wc, rc, roof);
+    float e = max(cc.x, cc.y);
+    base += 0.10 * smoothstep(0.36, 0.45, e) * (1.0 - smoothstep(0.46, 0.5, e)); // edge highlight
+    float rivet = smoothstep(0.43, 0.5, cc.x) * smoothstep(0.43, 0.5, cc.y);
+    base += 0.17 * rivet;                                      // rivets at panel corners
+    base *= mix(1.0, 0.93 + 0.07 * bNoise(vBWPos * 3.0), roof); // roof grime streaks
+    float pid = bHash(floor(puv / 0.85));
+    float warn = step(0.62, pid) * step(pid, 0.67) * smoothstep(0.30, 0.34, wc.x) * (1.0 - smoothstep(0.34, 0.38, wc.x)) * (1.0 - roof);
+    base = mix(base, vec3(0.60, 0.07, 0.06), warn * 0.82);    // sparse crimson warning trim (walls)
+    diffuseColor.rgb = base;
+  `,
+  // Aquatic ceramic/shell with BASE vs UPPER zoning by height: lower body = darker
+  // blue-grey desaturated ceramic + ribbed shell-supports; upper rounded = bright
+  // pearl with shell-segment arcs, wave lines, pearlescent bands, cyan grooves.
+  azure: `
+    float baseZone = 1.0 - smoothstep(0.7, 1.8, vBWPos.y);    // 1 near ground
+    vec3 lower = vec3(0.54, 0.61, 0.69);                      // blue-grey desat aqua ceramic
+    vec3 upper = vec3(0.86, 0.89, 0.93);                      // bright pearl
+    vec3 base = mix(upper, lower, baseZone);
+    base += vec3(-0.03, 0.0, 0.05) * (bNoise(vBWPos * 1.1) - 0.5) * 2.0; // perlmutt shift
+    vec2 lc = abs(fract(puv / 0.8) - 0.5);
+    base -= 0.11 * smoothstep(0.40, 0.5, lc.x) * baseZone;    // ribbed shell-supports (lower)
+    vec2 uc = abs(fract(puv / 1.5) - 0.5);
+    float seam = smoothstep(0.45, 0.5, max(uc.x, uc.y));
+    base -= 0.06 * seam * (1.0 - baseZone);                   // recessed shell seam (upper)
+    base += vec3(0.0, 0.05, 0.08) * seam * (1.0 - baseZone);  // cyan groove
+    float wave = sin(puv.x * 1.8 + puv.y * 1.1 + 4.0 * bNoise(vBWPos * 0.5)) * 0.5 + 0.5;
+    base += 0.045 * smoothstep(0.7, 0.95, wave) * vec3(0.0, 0.06, 0.09) * (1.0 - baseZone); // wave arcs
+    base += 0.04 * up * vec3(0.02, 0.04, 0.06);               // pearlescent band on tops
+    diffuseColor.rgb = base;
+  `,
+  // Technical insectoid chitin: segmented beetle-shell plates with deep grooves,
+  // layered shell ridges, plate sheen, sparse amber bio-nodes. Per-building phase
+  // variation via uSeed so building types don't look one-note.
+  verdant: `
+    vec3 base = vec3(0.15, 0.19, 0.12);
+    base *= 0.9 + 0.14 * bNoise(vBWPos * 2.2 + uSeed * 7.0);  // chitin mottle (varied)
+    vec2 sc = puv * vec2(1.6, 3.0) + uSeed * 5.0;             // per-building phase
+    sc.x += 0.5 * mod(floor(sc.y), 2.0);                       // overlapping rows
+    vec2 f = fract(sc) - 0.5;
+    float d = length(f * vec2(1.0, 1.7));
+    float groove = smoothstep(0.30, 0.5, d);
+    base *= 1.0 - 0.5 * groove;                                // deep grooves between plates
+    base += 0.06 * (1.0 - groove) * smoothstep(0.55, 0.0, d);  // raised plate sheen
+    float ridge = smoothstep(0.46, 0.5, abs(fract(puv.y * 1.2 + 0.3 * bNoise(vBWPos * 0.8)) - 0.5) * 2.0);
+    base *= 1.0 - 0.18 * ridge;                                // layered shell ridges (segmentation)
+    float pore = smoothstep(0.45, 0.5, 1.0 - d) * step(0.92, bHash(floor(sc)));
+    base = mix(base, vec3(0.55, 0.30, 0.02), pore * 0.7);      // sparse amber bio-nodes
+    diffuseColor.rgb = base;
+  `,
+  // Zoned sun-prism crystal: triplanar — dark faceted walls, ivory/gold roofs,
+  // darker base supports, controlled gold energy seams.
+  solar: `
+    vec3 wall = vec3(0.24, 0.21, 0.15);                        // dark faceted crystal/graphite-gold
+    vec3 roof = vec3(0.82, 0.73, 0.46);                        // ivory/gold ornamental plates
+    vec3 supp = vec3(0.10, 0.09, 0.07);                        // darker structural base
+    vec3 base = mix(wall, roof, smoothstep(0.45, 0.85, up));
+    base = mix(base, supp, down * 0.75);
+    float facet = step(0.5, bNoise(floor(vBWPos * 2.2)));
+    base *= mix(0.86, 1.08, facet);                            // faceted variation
+    float v = bNoise(vBWPos * 1.6);
+    float seam = smoothstep(0.47, 0.5, abs(fract(v * 3.0) - 0.5) * 2.0);
+    base += vec3(0.40, 0.27, 0.05) * seam;                     // controlled gold energy seams
+    // ---- Base-floor facade: windows, sliders & vents on the vertical walls of the 3 base stories ----
+    float side = clamp(1.0 - 1.7 * up - 1.7 * down, 0.0, 1.0);  // 1 on vertical walls, 0 on roofs/base
+    float baseFloors = 1.0 - smoothstep(3.5, 3.9, vBWPos.y);    // limit to base; spike above stays clean
+    float facade = side * baseFloors;
+    vec2 cell = vec2(puv.x / 0.80, puv.y / 1.05);              // facade module grid (col, row)
+    vec2 cf = fract(cell) - 0.5;                               // -0.5..0.5 within a module
+    float cid = bHash(floor(cell));                            // stable per-module id
+    float openX = 1.0 - smoothstep(0.28, 0.34, abs(cf.x));     // opening rectangle inside the module
+    float openY = 1.0 - smoothstep(0.30, 0.36, abs(cf.y));
+    float opening = openX * openY * facade;
+    float reveal = (1.0 - opening) * (1.0 - smoothstep(0.40, 0.46, max(abs(cf.x), abs(cf.y)))) * facade;
+    base *= 1.0 - 0.42 * reveal;                              // recessed dark frame/reveal around openings
+    float isVent = step(0.60, cid);                           // ~40% of modules are vents
+    float isBlank = step(0.28, cid) * step(cid, 0.40);        // a few solid armored panels
+    // WINDOW: dark glass with a lit horizontal slider rail + faint vertical divider
+    float mullH = 1.0 - smoothstep(0.02, 0.06, abs(cf.y));    // horizontal slider mullion
+    float mullV = 1.0 - smoothstep(0.015, 0.05, abs(cf.x));   // vertical divider
+    vec3 glass = vec3(0.05, 0.09, 0.12);
+    glass += vec3(0.10, 0.26, 0.34) * (1.0 - mullH) * 0.7;    // cool glass glow
+    glass += vec3(0.46, 0.38, 0.16) * mullH * 0.8;            // lit gold slider rail
+    glass += vec3(0.30, 0.25, 0.12) * mullV * 0.5;            // gold vertical divider
+    // VENT: stack of horizontal louver slats
+    float louver = smoothstep(0.30, 0.5, abs(fract(cf.y * 6.0) - 0.5) * 2.0);
+    vec3 ventC = vec3(0.12, 0.11, 0.085) * (0.55 + 0.55 * louver);
+    // BLANK: flush armored panel (no lit opening)
+    vec3 blankC = vec3(0.20, 0.18, 0.13);
+    vec3 content = mix(glass, ventC, isVent);
+    content = mix(content, blankC, isBlank);
+    base = mix(base, content, opening);
+    diffuseColor.rgb = base;
+  `,
+};
+
+/** Inject the per-faction textured-albedo replacement shader into a MeshStandardMaterial.
+ *  `seed` (0..1) varies the pattern phase per building template so types differ. */
+function addTexturedDetail(m: THREE.MeshStandardMaterial, arch: Archetype, seed: number) {
+  m.onBeforeCompile = (shader) => {
+    shader.vertexShader = 'varying vec3 vBWPos;\nvarying vec3 vBNrm;\n' + shader.vertexShader
+      .replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\n  vBNrm = normalize(mat3(modelMatrix) * objectNormal);')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vBWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = 'varying vec3 vBWPos;\nvarying vec3 vBNrm;\n' + DETAIL_GLSL + shader.fragmentShader
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 an = abs(vBNrm);
+        vec2 puv = an.y > 0.5 ? vBWPos.xz : (an.x > 0.5 ? vBWPos.zy : vBWPos.xy);
+        float up = clamp(vBNrm.y, 0.0, 1.0);
+        float down = clamp(-vBNrm.y, 0.0, 1.0);
+        float uSeed = ${seed.toFixed(3)};
+        ${TEX_FACTION_FRAG[arch]}
+      `);
+  };
+  m.needsUpdate = true;
+}
+
+/** Deterministic 0..1 seed from an assetKey (stable per building template). */
+function texSeed(s: string): number {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return (h % 1000) / 1000;
+}
+
+// Core hull materials per faction (named in the GLBs) whose baked albedo we fully
+// override. Accent/glow materials (CY, AQ, VT, SAM, SP) are deliberately preserved.
+const TEX_CORE_MATERIALS: Record<Archetype, string[]> = {
+  crimson: ['CC', 'CS', 'CW'],
+  azure: ['AW'],
+  verdant: ['VH', 'VB'],
+  solar: ['SA'],
+};
+
+/**
+ * Apply the textured readability pass to a textured template's materials (once).
+ * Core hull materials get a full world-space albedo replacement (their baked
+ * texture is dropped); Crimson's always-on red emissive (CR) is tamed so it stops
+ * reading like a construction/power-preview marker. All other accent/glow
+ * materials are left exactly as the artist baked them.
+ */
+function enhanceTexturedTemplate(scene: THREE.Object3D, factionId: FactionId, seed: number) {
+  const arch = archOf(factionId);
+  const core = new Set(TEX_CORE_MATERIALS[arch]);
+  const seen = new Set<THREE.Material>();
+  scene.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mat of mats) {
+      if (!mat || seen.has(mat)) continue;
+      seen.add(mat);
+      const std = mat as THREE.MeshStandardMaterial;
+      if (!std.isMaterial || !('metalness' in std)) continue;
+      const nm = (std as unknown as { name?: string }).name ?? '';
+      if (core.has(nm)) {
+        std.map = null;             // drop the wrong baked albedo → shader fully owns the colour
+        if (std.emissive) { std.emissive.setRGB(0, 0, 0); std.emissiveIntensity = 0; } // kill baked tint glow on hull
+        std.metalness = arch === 'azure' ? 0.15 : arch === 'verdant' ? 0.0 : 0.55;
+        std.roughness = arch === 'azure' ? 0.35 : arch === 'verdant' ? 0.7 : 0.5;
+        addTexturedDetail(std, arch, seed);
+      } else if (arch === 'crimson' && nm === 'CR') {
+        std.emissiveIntensity = (std.emissiveIntensity ?? 1) * 0.3; // tame red shimmer/spikes
+        std.needsUpdate = true;
+      }
+      // CY / AQ / VT / SAM / SP and any other accent → preserved untouched.
+    }
+  });
+}
+
 /** Enhance a cached template's materials once: surface detail + emissive boost. */
 function enhanceTemplate(scene: THREE.Object3D) {
   const seen = new Set<THREE.Material>();
@@ -164,10 +364,11 @@ export async function preloadBuildingGlbs(): Promise<void> {
     if (cache.has(a.assetKey)) continue;
     try {
       const gltf = await loader.loadAsync(a.modelPath);
-      // Final textured GLBs carry their own baked textures/materials → BYPASS the
-      // flat-material surface-detail + emissive-boost pass (it is for textureless
-      // generated assets and would muddy/over-brighten the baked textures).
-      if (!isTexturedAsset(a.assetKey)) enhanceTemplate(gltf.scene);
+      // Textured GLBs get the per-faction readability pass (lift/recolor + world-
+      // space surface structure); textureless generated GLBs get the flat-material
+      // grain/AO + emissive boost. Both are visual-only, once per cached template.
+      if (isTexturedAsset(a.assetKey)) enhanceTexturedTemplate(gltf.scene, a.factionId, texSeed(a.assetKey));
+      else enhanceTemplate(gltf.scene);
       cache.set(a.assetKey, gltf.scene);
     } catch (e) {
       if (import.meta.env.DEV) console.warn(`[bld] GLB-Load fehlgeschlagen ${a.assetKey} (${a.modelPath}) → prozedural`, e);
@@ -218,6 +419,13 @@ export function makeGlbBuildingGroup(
     const remap = (m: THREE.Material): THREE.Material => fidelityRemap(m, accentHex, pulseMats);
     mesh.material = Array.isArray(mesh.material) ? mesh.material.map(remap) : remap(mesh.material);
   });
+
+  // NOTE: Solar Command Center "bigger central spike" is NOT done here. Inspection
+  // of solar_singularity_nexus shows only 3 building-sized meshes (SA hull incl. the
+  // spike, SAM thin glow ring, SP magenta — all ~6×5×6). There is no separable small
+  // "core/spike" mesh, so scaling SP just inflates a building-sized magenta volume
+  // that pokes through the hull as a pink blob. A real bigger spike needs GLB
+  // geometry surgery on the SA hull (asset-level) — deliberately not attempted.
 
   // Auto-fit: scale the model so its horizontal extent ≈ footprint (× fill),
   // then ground it (bottom at y=0). Per-asset visualTransform fine-tunes.
