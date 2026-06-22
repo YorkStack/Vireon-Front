@@ -46,6 +46,15 @@ export const VEG_V31_ASSETS: VegAssetDef[] = [
   { id: 'desert_barrel', file: 'desert/desert_barrel_v31.glb', target: 1.2, weight: 1 },
   { id: 'desert_opuntia', file: 'desert/desert_opuntia_v31.glb', target: 1.9, weight: 1 },
   { id: 'desert_palm', file: 'desert/desert_palm_v31.glb', target: 4.0, weight: 1 },
+  // ⚠️ TEMPORARY GLOBAL VISUAL-TEST SCATTER — authored low-poly conifers at very rare
+  // FRACTIONAL weights (0.35 each → ~7% combined) so they appear sparsely without
+  // dominating the current single-biome mix. This is NOT final placement: proper
+  // forest/highland distribution waits for biome-aware scatter. needle_pine keeps its
+  // per-variant authored green (see enhanceVegMaterial 'needles').
+  { id: 'forest_conifer_small', file: 'forest/forest_conifer_small_v31.glb', target: 1.7, weight: 0.35 },
+  { id: 'forest_conifer_medium', file: 'forest/forest_conifer_medium_v31.glb', target: 2.4, weight: 0.35 },
+  { id: 'forest_conifer_tall', file: 'forest/forest_conifer_tall_v31.glb', target: 3.4, weight: 0.35 },
+  { id: 'forest_conifer_broad', file: 'forest/forest_conifer_broad_v31.glb', target: 2.6, weight: 0.35 },
 ];
 
 interface VegPrim { geo: THREE.BufferGeometry; mat: THREE.Material; nodeMat: THREE.Matrix4; }
@@ -69,10 +78,11 @@ let loaded = false;
 // compiles once, runs per-fragment only (no per-instance clone, no per-frame
 // work, no extra draw calls). Stylised alien accents (emissive glow / crystal)
 // are left exactly as authored so the sci-fi read survives.
-export type VegZone = 'woody' | 'foliage' | 'cap' | 'node' | 'cactus' | null;
+export type VegZone = 'woody' | 'foliage' | 'needles' | 'cap' | 'node' | 'cactus' | null;
 export function vegZoneOf(name: string): VegZone {
   const n = name.toLowerCase();
-  if (/bark|trunk|stalk|stem/.test(n)) return 'woody';   // incl. palm_trunk
+  if (/bark|trunk|stalk|stem/.test(n)) return 'woody';   // incl. bark_pine, palm_trunk
+  if (/needle/.test(n)) return 'needles';                // conifer needles (keep authored green)
   if (/canopy|leaf|fan|frond/.test(n)) return 'foliage'; // incl. palm_frond
   if (/cap|under/.test(n)) return 'cap';
   if (/pod/.test(n)) return 'node';        // tree pods/fruit dots → subtle, not bright
@@ -108,6 +118,11 @@ const VG_DETAIL: Record<Exclude<VegZone, null>, string> = {
     float leaflet=vgNoise(P*11.0);                                    // fine leaflet break-up
     diffuseColor.rgb*= mix(0.58,1.22,patch)*mix(0.84,1.12,cluster)*mix(0.93,1.05,leaflet);
     diffuseColor.g*=1.05; diffuseColor.r*=mix(1.05,0.93,patch); diffuseColor.b*=0.95;`, // highs yellow-green, shadows blue-green
+  needles: `
+    vec3 P=vVegPos;
+    float tier=vgNoise(P*2.0);                                        // broad light/dark between tiers
+    float facet=vgNoise(P*7.0);                                       // fine needle-facet break-up
+    diffuseColor.rgb*= mix(0.66,1.12,tier)*mix(0.92,1.07,facet);`,    // hue-preserving (NO colour replace)
   cap: `
     vec3 P=vVegPos;
     float rad=length(P.xz);
@@ -137,7 +152,7 @@ function addVegDetail(m: THREE.MeshStandardMaterial, zone: Exclude<VegZone, null
 /** Apply the readability tint + detail shader to one template material
  *  (idempotent-safe via a userData guard). Preserves the embedded map + any
  *  authored emissive glow. `assetId` lets us drop tree-only glow nodes. */
-function enhanceVegMaterial(material: THREE.Material, assetId: string): void {
+export function enhanceVegMaterial(material: THREE.Material, assetId: string): void {
   const m = material as THREE.MeshStandardMaterial;
   if (!('color' in m) || m.userData.vegTinted) return;
   // Stylised emissive accents (glow/crystal/vein): preserved on glow-identity
@@ -161,6 +176,12 @@ function enhanceVegMaterial(material: THREE.Material, assetId: string): void {
     case 'foliage': // flat green → richer leaf green, keep brightness
       m.color.setHex(0x7ab85f);
       m.emissive.setHex(0x244d1c); m.emissiveIntensity = 0.10;
+      break;
+    case 'needles': // conifer needles → KEEP the per-variant authored green (do NOT
+      // replace the colour like 'foliage' does); only a tiny neutral floor so the
+      // needles don't crush to black at night. The 'needles' detail shader below is
+      // multiplicative → preserves each variant's authored hue.
+      m.emissive.setHex(0x0e140e); m.emissiveIntensity = 0.05;
       break;
     case 'cap': // fungal caps stay warm amber; small floor lifts dark gills
       m.color.setHex(0xc79a52);
@@ -273,9 +294,17 @@ export async function preloadVegetationGlbs(): Promise<void> {
   loaded = true;
 }
 
-/** Deterministic weighted asset pick from a [0,1) random. */
-const WEIGHTED: string[] = VEG_V31_ASSETS.flatMap((a) => Array(a.weight).fill(a.id));
-function pickAsset(r: number): string { return WEIGHTED[Math.min(WEIGHTED.length - 1, (r * WEIGHTED.length) | 0)]; }
+/** Deterministic weighted asset pick from a [0,1) random. Cumulative form so weights
+ *  may be FRACTIONAL (lets the conifer test assets sit below 1 = very rare). */
+const _CUM_WEIGHTS: { id: string; upto: number }[] = (() => {
+  const total = VEG_V31_ASSETS.reduce((s, a) => s + a.weight, 0) || 1;
+  let acc = 0;
+  return VEG_V31_ASSETS.map((a) => { acc += a.weight; return { id: a.id, upto: acc / total }; });
+})();
+function pickAsset(r: number): string {
+  for (const c of _CUM_WEIGHTS) if (r < c.upto) return c.id;
+  return _CUM_WEIGHTS[_CUM_WEIGHTS.length - 1].id;
+}
 
 /**
  * Build the v3.1 GLB vegetation as instanced meshes. Deterministic for a given
