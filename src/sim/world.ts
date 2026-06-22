@@ -5,7 +5,7 @@ import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, CrystalNode } from '../m
 import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
-import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, HealthBar, TextLabel } from '../render/models';
+import { makeEntityGroup, makeSelectionRing, makeHealthBar, makeCargoBar, makePctLabel, makePowerIcon, makeDarkOverlay, makeGroundDecal, makeFoundationPad, foundationDoneMat, accentMat, pulseLights, pulseEmissiveGroup, HealthBar, TextLabel } from '../render/models';
 import { healthBarVisible, HEALTH_BAR_FLASH_SEC } from '../render/healthBarVis';
 import { getPowerRatio, getPowerOutageEffects, getEconomyModifiers, getModifiedRepairRate, type FactionId } from '../data/factionModifiers';
 import { activeBuildingAsset, makeGlbBuildingGroup, BUILDING_SOURCE } from '../render/buildingGlb';
@@ -1080,7 +1080,10 @@ export class World {
       u.turretYaw = this.aimYaw(u.turretYaw, desired, dt);
       anim.turret.rotation.y = u.turretYaw;
     }
-    if (anim.spin) anim.spin.rotation.y = this.time * 1.6 + u.id;
+    // Idle accent "spinner": a gentle emissive glow pulse (replaces the old
+    // barely-visible micro-rotation). Per-unit phase via u.id; ~same cost, no
+    // extra draw calls. Building cores still rotate (animateBuilding).
+    if (anim.spin) pulseEmissiveGroup(anim.spin, 0.5 + 0.9 * (0.5 + 0.5 * Math.sin(this.time * 3 + u.id)));
     if (anim.load) {
       const ratio = (u.def.capacity ?? 0) > 0 ? u.cargo / u.def.capacity! : 0;
       const gathering = u.sub === 'gathering';

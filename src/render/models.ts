@@ -951,6 +951,11 @@ export function makeEntityGroup(
     if (name === 'turret') {
       const pv = TURRET_PIVOTS[pivotKey] ?? [0, 0, 0];
       g.position.set(pv[0], pv[1], pv[2]);
+    } else if (name === 'spin' && kind === 'unit') {
+      // Unit accent "spinners" now pulse their glow instead of rotating. Clone the
+      // (shared/cached) accent/light materials so the per-unit pulse doesn't bleed
+      // into other units or static parts; stash the base emissive for the modulator.
+      cloneEmissiveForPulse(g);
     }
     inner.add(g);
     anim[name] = g;
@@ -962,6 +967,30 @@ export function makeEntityGroup(
   outer.userData.inner = inner;
   outer.userData.anim = anim;
   return outer;
+}
+
+/** Clone a spin group's standard materials so each unit can pulse its emissive
+ *  glow independently (the source accent/light mats are shared/cached). The base
+ *  emissiveIntensity is stashed on each mesh for pulseEmissiveGroup() to modulate. */
+function cloneEmissiveForPulse(group: THREE.Group) {
+  for (const o of group.children) {
+    const mesh = o as THREE.Mesh;
+    const src = mesh.material as THREE.MeshStandardMaterial | undefined;
+    if (!src || !(src as THREE.MeshStandardMaterial).isMeshStandardMaterial) continue;
+    const cl = src.clone();
+    mesh.material = cl;
+    mesh.userData.baseEmissive = cl.emissiveIntensity;
+  }
+}
+
+/** Modulate a pulse group's per-instance emissive intensity. factor 1 = base. */
+export function pulseEmissiveGroup(group: THREE.Group, factor: number) {
+  for (const o of group.children) {
+    const mesh = o as THREE.Mesh;
+    const base = mesh.userData.baseEmissive as number | undefined;
+    if (base === undefined) continue;
+    (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = base * factor;
+  }
 }
 
 // ---------------- placement ghost + ground decals ----------------
