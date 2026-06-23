@@ -68,6 +68,9 @@ export function templateToDef(t: UnitClassTemplate): UnitDef {
       : undefined,
     buildRange: t.building?.buildRange,
     repairRate: t.building?.repairRate,
+    clears: t.clearVegetation ? true : undefined,
+    clearRange: t.clearVegetation?.clearRange,
+    clearTime: t.clearVegetation?.clearTime,
   };
 }
 

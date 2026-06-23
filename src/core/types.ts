@@ -63,6 +63,9 @@ export interface UnitDef {
   supportAura?: { repairRange: number; repairAmount: number };
   buildRange?: number;
   repairRate?: number;
+  clears?: boolean;          // pioneer: can clear F_TREE vegetation tiles
+  clearRange?: number;       // tiles within which it can clear a tree tile
+  clearTime?: number;        // seconds of work per tile
   // visual variant (vehicles with faction variants)
   visual?: UnitVisual;
 }

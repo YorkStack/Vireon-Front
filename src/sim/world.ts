@@ -1,7 +1,7 @@
 // The simulation world: units, buildings, economy, combat. Owns both the
 // gameplay state and each entity's visual group (kept in sync every frame).
 import * as THREE from 'three';
-import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, CrystalNode } from '../map/map';
+import { GameMap, TILE, LEVEL_H, F_BUILDING, F_CRYSTAL, F_TREE, CrystalNode } from '../map/map';
 import { findPath } from '../path/astar';
 import { unitStats, buildingStats, DAMAGE_MATRIX, BUILDING_DEFS } from '../core/defs';
 import type { UnitDef, BuildingDef, FactionDef, WeaponDef, TeamId } from '../core/types';
@@ -31,7 +31,13 @@ export type Order =
   | { kind: 'attack'; target: Unit | Building }
   | { kind: 'gather'; node: CrystalNode | null }
   | { kind: 'build'; site: Building }
-  | { kind: 'repair'; building: Building };
+  | { kind: 'repair'; building: Building }
+  | { kind: 'clearVegetation'; tx: number; tz: number; remaining: number };
+
+// Flat one-off reward for clearing one large-vegetation (F_TREE) tile. Deliberately
+// small (≈2s of harvester income) and NOT multiplied by income/gather modifiers —
+// reclaiming build space is a utility action, not a resource economy.
+const PIONEER_CLEAR_REWARD = 30;
 
 export class Unit {
   id = nextId++;
@@ -471,6 +477,20 @@ export class World {
     if (t) this.setPath(u, t[0], t[1]);
   }
 
+  /** Order a pioneer to clear the large vegetation (F_TREE) on a tile, reclaiming
+   *  build space. Returns false (no-op) for a non-pioneer unit, an out-of-bounds
+   *  tile, or a tile that does not currently carry F_TREE — mirroring the other
+   *  order helpers. Movement/visual removal happen in the execution case (2C). */
+  orderClearVegetation(u: Unit, tx: number, tz: number): boolean {
+    if (!u.def.clears) return false;
+    if (!this.map.inBounds(tx, tz)) return false;
+    if ((this.map.flags[this.map.idx(tx, tz)] & F_TREE) === 0) return false;
+    u.order = { kind: 'clearVegetation', tx, tz, remaining: u.def.clearTime ?? 3 };
+    u.engage = null;
+    this.setPath(u, tx, tz);
+    return true;
+  }
+
   /** UX helper for the selected-building Repair button: dispatch the nearest
    *  idle repair-capable unit to repair `b` via the existing repair order.
    *  Returns false (no-op) for a full-health/incomplete building or when no
@@ -717,6 +737,31 @@ export class World {
         } else if (!this.stepAlongPath(u, dt)) {
           const t = this.freeTileNear(b, u.isInfantry);
           if (t) this.setPath(u, t[0], t[1]);
+        }
+        return;
+      }
+      case 'clearVegetation': {
+        const idx = this.map.idx(o.tx, o.tz);
+        // Tile already cleared (e.g. by another pioneer) -> end safely, no reward.
+        if ((this.map.flags[idx] & F_TREE) === 0) { this.stop(u); return; }
+        const [wx, wz] = this.map.tileToWorld(o.tx, o.tz);
+        const reach = (u.def.clearRange ?? 1.5) * TILE;
+        if (Math.hypot(u.x - wx, u.z - wz) <= reach) {
+          u.path = null;
+          this.faceToward(u, wx, wz, dt);
+          o.remaining -= dt;
+          if (o.remaining <= 0) {
+            // Re-check the flag right before crediting so two pioneers finishing
+            // on the same tile can never double-pay (the bit is the lock).
+            if ((this.map.flags[idx] & F_TREE) !== 0) {
+              this.map.flags[idx] &= ~F_TREE; // tile becomes buildable; still walkable
+              this.teams[u.team].credits += PIONEER_CLEAR_REWARD; // flat, no multipliers
+              this.teams[u.team].stats.resourcesCollected += PIONEER_CLEAR_REWARD; // observational
+            }
+            this.stop(u);
+          }
+        } else if (!this.stepAlongPath(u, dt)) {
+          this.setPath(u, o.tx, o.tz);
         }
         return;
       }

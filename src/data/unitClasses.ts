@@ -89,6 +89,10 @@ export interface UnitClassTemplate {
     shieldBoostRange: number;
     detectionAuraRange: number;
   };
+  clearVegetation?: {
+    clearRange: number;           // tiles within which a tree tile can be cleared
+    clearTime: number;            // seconds of work per tile
+  };
 }
 
 const T = (t: UnitClassTemplate) => t;
@@ -225,6 +229,7 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
     primaryWeapon: null, secondaryWeapon: null,
     visionRange: 8, autoAcquireRange: 8, pursuitRange: 12.8,
     targetPriority: [], ...PASSIVE_AI,
+    clearVegetation: { clearRange: 1.5, clearTime: 3 },
   }),
   // ====================== infantry ======================
   lancer: T({
