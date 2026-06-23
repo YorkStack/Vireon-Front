@@ -5,6 +5,7 @@ import { GameMap, TILE } from '../map/map';
 import { buildTerrain } from '../render/terrain';
 import { hideVegetationAtTile } from '../render/vegetationGlb';
 import { warpXZ } from '../render/terrainNoise';
+import { TumbleweedSystem } from '../render/tumbleweed';
 import { SceneRig } from '../render/scene';
 import { Effects } from '../render/effects';
 import { World, Unit, Building } from '../sim/world';
@@ -58,6 +59,7 @@ export class Game {
   private onVisibility?: () => void;
   private resolveRun!: (r: GameResult) => void;
   private updateProps!: (camera: THREE.Camera) => void;
+  private tumbleweed?: TumbleweedSystem; // rare ambient decoration (render-only)
   // Deployment intro (short dropship/landing opener). Visual-only; never changes
   // unit counts/positions — starting units are just hidden then revealed.
   private introActive = false;
@@ -108,6 +110,11 @@ export class Game {
     this.world.teams[0].credits = mission.startingResources;
     this.world.teams[1].credits = mission.enemyStartingResources;
     this.world.teams[1].incomeMul = difficulty.aiIncomeMul; // AI economy handicap by difficulty
+
+    // Rare rolling tumbleweed (render-only atmosphere). Opt-out via ?tumbleweed=0.
+    const tumbleOff = typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).get('tumbleweed') === '0';
+    if (!tumbleOff) this.tumbleweed = new TumbleweedSystem(this.rig.scene, this.map);
 
     // Starting units.
     const spawn = (team: TeamId, list: { type: string; offset: [number, number] }[], at: { tx: number; tz: number }) => {
@@ -177,6 +184,7 @@ export class Game {
     // Debug/profiling hook (also used by automated verification).
     (window as unknown as Record<string, unknown>).__game = {
       world: this.world, input: this.input, rig: this.rig, map: this.map, mission: this.mission,
+      tumbleweed: this.tumbleweed, // render-only ambient decoration (debug/smoke handle)
       step: (secs: number) => {
         for (let t = 0; t < secs; t += 0.05) {
           this.world.update(0.05, this.rig.camera);
@@ -291,6 +299,7 @@ export class Game {
       this.world.update(dt, this.rig.camera);
       this.ai.update(dt);
       this.effects.update(dt);
+      this.tumbleweed?.update(dt); // render-only ambient decoration; no gameplay
       this.input.update(dt);
       this.input.validateSelection();
       this.world.syncVisuals(this.rig.camera, dt);
@@ -422,6 +431,7 @@ export class Game {
 
   private dispose() {
     cancelAnimationFrame(this.raf);
+    this.tumbleweed?.dispose();
     this.introOverlay?.dispose(); // remove any lingering intro listeners/DOM
     this.dropship?.dispose();
     if (this.onVisibility && typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility);
