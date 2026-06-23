@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { GameMap, F_TREE } from '../map/map';
+import { classifyTileBiome, type Biome } from '../map/biomeClassify';
 import { hash2 } from './terrainNoise';
 import { scatterVegInstances } from './props';
 
@@ -306,6 +307,52 @@ function pickAsset(r: number): string {
   return _CUM_WEIGHTS[_CUM_WEIGHTS.length - 1].id;
 }
 
+// ── Biome-aware asset pools (Slice B2) ────────────────────────────────────────
+// Each biome draws from a sub-distribution of the SAME VEG_V31_ASSETS ids (no new
+// assets) so conifers land on high ground, cacti on dry low ground, etc. — instead
+// of the old single global pick. The blocking set (vegAssetBlocks) is unchanged;
+// only WHICH asset a tile gets changes. Total instance count is untouched.
+const BIOME_VEG_POOLS: Record<Biome, { id: string; weight: number }[]> = {
+  desert: [
+    { id: 'desert_saguaro', weight: 1.0 }, { id: 'desert_palm', weight: 0.5 },
+    { id: 'desert_opuntia', weight: 1.2 }, { id: 'desert_barrel', weight: 1.2 },
+    { id: 'desert_crystal_cactus', weight: 0.25 },
+  ],
+  forest: [
+    { id: 'forest_canopy_tree', weight: 2.5 }, { id: 'coastal_coral_tree', weight: 1.2 },
+    { id: 'forest_hiveshroom', weight: 1.8 }, { id: 'oasis_glowshroom', weight: 0.5 },
+  ],
+  highland: [
+    { id: 'highland_canopy_tree', weight: 2.0 },
+    { id: 'forest_conifer_small', weight: 1.0 }, { id: 'forest_conifer_medium', weight: 1.0 },
+    { id: 'forest_conifer_tall', weight: 1.0 }, { id: 'forest_conifer_broad', weight: 1.0 },
+    { id: 'highland_luminous_fern', weight: 0.6 },
+  ],
+  crystal: [
+    { id: 'oasis_glowshroom', weight: 2.0 }, { id: 'highland_luminous_fern', weight: 1.5 },
+    { id: 'forest_hiveshroom', weight: 0.8 }, { id: 'desert_crystal_cactus', weight: 0.6 },
+  ],
+};
+const _BIOME_CUM: Record<Biome, { id: string; upto: number }[]> = (() => {
+  const out = {} as Record<Biome, { id: string; upto: number }[]>;
+  for (const k of Object.keys(BIOME_VEG_POOLS) as Biome[]) {
+    const pool = BIOME_VEG_POOLS[k];
+    const total = pool.reduce((s, a) => s + a.weight, 0) || 1;
+    let acc = 0;
+    out[k] = pool.map((a) => { acc += a.weight; return { id: a.id, upto: acc / total }; });
+  }
+  return out;
+})();
+
+/** Biome-weighted asset pick. Falls back to the global distribution if the biome
+ *  has no pool (defensive — every Biome has one today). Deterministic in `r`. */
+export function pickAssetForBiome(biome: Biome, r: number): string {
+  const cum = _BIOME_CUM[biome];
+  if (!cum || !cum.length) return pickAsset(r); // global fallback
+  for (const c of cum) if (r < c.upto) return c.id;
+  return cum[cum.length - 1].id;
+}
+
 // ── Build-blocking vegetation → F_TREE tiles (visual layer ↔ gameplay grid) ───
 // Large plants make their gameplay tile UNBUILDABLE (canPlace rejects any non-zero
 // flag) but NOT impassable (F_TREE is outside the isWalkable mask → units drive
@@ -331,9 +378,11 @@ export function blockedVegetationTiles(map: GameMap, count: number): number[] {
   const out = new Set<number>();
   const placements = scatterVegInstances(map, VEG_SCATTER(count));
   for (let i = 0; i < placements.length; i++) {
-    const id = pickAsset(hash2(i * 2 + 7, i * 5 + 11));
-    if (!vegAssetBlocks(id)) continue;
     const p = placements[i];
+    // Biome-aware pick keyed on the logical tile — MUST match the render loop's pick
+    // (same hash, same classifier) so the F_TREE tiles equal the rendered trees.
+    const id = pickAssetForBiome(classifyTileBiome(map, p.tx, p.tz), hash2(i * 2 + 7, i * 5 + 11));
+    if (!vegAssetBlocks(id)) continue;
     if (nearStart(map, p.tx, p.tz)) continue;
     out.add(map.idx(p.tx, p.tz));
   }
@@ -377,7 +426,9 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
     const r2 = hash2(i * 3 + 13, i * 9 + 17);
     const r3 = hash2(i * 7 + 19, i * 4 + 23);
     const r4 = hash2(i * 11 + 3, i * 6 + 5);
-    const id = pickAsset(r1);
+    // Biome-aware pick (Slice B2): same hash + classifier as blockedVegetationTiles
+    // so rendered trees and F_TREE tiles stay in lock-step.
+    const id = pickAssetForBiome(classifyTileBiome(map, placements[i].tx, placements[i].tz), r1);
     // Start-zone large plants are neither flagged (above) nor rendered → base stays buildable.
     if (vegAssetBlocks(id) && nearStart(map, placements[i].tx, placements[i].tz)) continue;
     const s = 0.85 + r2 * 0.30;            // ±15% scale jitter

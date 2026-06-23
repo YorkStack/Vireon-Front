@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { vegZoneOf, enhanceVegMaterial, vegAssetBlocks, blockedVegetationTiles } from './vegetationGlb';
+import { vegZoneOf, enhanceVegMaterial, vegAssetBlocks, blockedVegetationTiles, pickAssetForBiome, VEG_V31_ASSETS } from './vegetationGlb';
 import { GameMap, F_TREE } from '../map/map';
+import type { Biome } from '../map/biomeClassify';
 
 // Guards the name-based vegetation material classification against the real
 // v3.1 GLB material names (see VEG_V31_ASSETS).
@@ -122,5 +123,49 @@ describe('vegetation build-blocking (F_TREE)', () => {
     const a = blockedVegetationTiles(new GameMap(48, 999), 285);
     const b = blockedVegetationTiles(new GameMap(48, 999), 285);
     expect(a).toEqual(b);
+  });
+});
+
+// Slice B2: biome-aware asset weighting. Each biome draws only from its own pool
+// of EXISTING asset ids; the blocking set and total scatter count are unchanged.
+describe('pickAssetForBiome — biome-weighted scatter', () => {
+  const VALID_IDS = new Set(VEG_V31_ASSETS.map((a) => a.id));
+  const BIOMES: Biome[] = ['desert', 'forest', 'highland', 'crystal'];
+
+  it('only ever returns real, registered asset ids per biome', () => {
+    for (const biome of BIOMES) {
+      for (let k = 0; k < 200; k++) {
+        const id = pickAssetForBiome(biome, k / 200);
+        expect(VALID_IDS.has(id), `${biome} -> ${id}`).toBe(true);
+      }
+    }
+  });
+
+  it('routes biome-defining assets to the right biome (conifers→highland, cacti→desert)', () => {
+    const sample = (biome: Biome) => new Set(
+      Array.from({ length: 200 }, (_, k) => pickAssetForBiome(biome, k / 200)),
+    );
+    const highland = sample('highland');
+    const desert = sample('desert');
+    // Conifers appear in highland, never in desert.
+    expect([...highland].some((id) => /conifer/.test(id))).toBe(true);
+    expect([...desert].some((id) => /conifer/.test(id))).toBe(false);
+    // Desert cacti/palm appear in desert, the big forest canopy never does.
+    expect([...desert].some((id) => /saguaro|opuntia|barrel|_palm/.test(id))).toBe(true);
+    expect(desert.has('forest_canopy_tree')).toBe(false);
+  });
+
+  it('is deterministic in r and falls back to a valid id for an unknown biome', () => {
+    expect(pickAssetForBiome('forest', 0.3)).toBe(pickAssetForBiome('forest', 0.3));
+    // Defensive global fallback path still yields a registered asset.
+    const fallback = pickAssetForBiome('nope' as unknown as Biome, 0.5);
+    expect(VALID_IDS.has(fallback)).toBe(true);
+  });
+
+  it('keeps F_TREE flagging deterministic and non-empty with biome-aware scatter', () => {
+    const a = blockedVegetationTiles(new GameMap(48, 12345), 285);
+    const b = blockedVegetationTiles(new GameMap(48, 12345), 285);
+    expect(a).toEqual(b);              // still deterministic
+    expect(a.length).toBeGreaterThan(0); // trees still block building somewhere
   });
 });
