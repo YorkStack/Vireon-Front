@@ -233,7 +233,7 @@ export class World {
         const X = tx + dx, Z = tz + dz;
         if (!this.map.inBounds(X, Z)) return false;
         const i = this.map.idx(X, Z);
-        if (this.map.flags[i] !== 0) return false; // rocks, ramps, crystal, buildings
+        if (this.map.flags[i] !== 0) return false; // rocks, ramps, crystal, buildings, trees (F_TREE)
         if (lvl < 0) lvl = this.map.level[i];
         else if (this.map.level[i] !== lvl) return false;
       }

@@ -16,7 +16,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { GameMap } from '../map/map';
+import { GameMap, F_TREE } from '../map/map';
 import { hash2 } from './terrainNoise';
 import { scatterVegInstances } from './props';
 
@@ -306,6 +306,40 @@ function pickAsset(r: number): string {
   return _CUM_WEIGHTS[_CUM_WEIGHTS.length - 1].id;
 }
 
+// ── Build-blocking vegetation → F_TREE tiles (visual layer ↔ gameplay grid) ───
+// Large plants make their gameplay tile UNBUILDABLE (canPlace rejects any non-zero
+// flag) but NOT impassable (F_TREE is outside the isWalkable mask → units drive
+// through). A clear radius around BOTH starts is exempted (neither flagged nor
+// rendered) so a base is always buildable — tree-clearing is a later workstream.
+const START_CLEAR_R = 7;                          // tiles around each start kept tree-free
+const BLOCKING_VEG_RE = /canopy_tree|coral_tree|_palm|_saguaro|crystal_cactus|conifer/;
+/** True for the large plants that block building (canopy trees, coral, palm,
+ *  saguaro, crystal cactus, conifers) — not mushrooms/ferns/small cacti/grass. */
+export function vegAssetBlocks(id: string): boolean { return BLOCKING_VEG_RE.test(id); }
+function nearStart(map: GameMap, tx: number, tz: number): boolean {
+  return Math.hypot(tx - map.playerStart.tx, tz - map.playerStart.tz) <= START_CLEAR_R
+      || Math.hypot(tx - map.enemyStart.tx, tz - map.enemyStart.tz) <= START_CLEAR_R;
+}
+const VEG_SCATTER = (count: number) => ({
+  count, salt: 101, valleyBias: false, hMin: 1, hMax: 1, wRatio: 1, yOff: -0.03, texCount: 1,
+});
+/** Gameplay tiles to flag F_TREE: blocking vegetation outside the start-clear
+ *  zones. Pure + deterministic (mirrors the build-time scatter+pick). Exported
+ *  for testing. Uses the un-warped source tile (placement.tx/tz), not the warped
+ *  visual x/z. */
+export function blockedVegetationTiles(map: GameMap, count: number): number[] {
+  const out = new Set<number>();
+  const placements = scatterVegInstances(map, VEG_SCATTER(count));
+  for (let i = 0; i < placements.length; i++) {
+    const id = pickAsset(hash2(i * 2 + 7, i * 5 + 11));
+    if (!vegAssetBlocks(id)) continue;
+    const p = placements[i];
+    if (nearStart(map, p.tx, p.tz)) continue;
+    out.add(map.idx(p.tx, p.tz));
+  }
+  return [...out];
+}
+
 /**
  * Build the v3.1 GLB vegetation as instanced meshes. Deterministic for a given
  * (map, count). Returns a Group ready to drop into the terrain props group.
@@ -318,9 +352,10 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
 
   // Reuse the shipping scatter for grounded, warp-aligned positions (same logic
   // as the sprite path) — we only override the per-asset choice/scale/rotation.
-  const placements = scatterVegInstances(map, {
-    count, salt: 101, valleyBias: false, hMin: 1, hMax: 1, wRatio: 1, yOff: -0.03, texCount: 1,
-  });
+  const placements = scatterVegInstances(map, VEG_SCATTER(count));
+  // Couple the visual layer to the gameplay grid: flag tiles under blocking
+  // vegetation as F_TREE (unbuildable, still walkable). Start-clear zones excluded.
+  for (const t of blockedVegetationTiles(map, count)) map.flags[t] |= F_TREE;
 
   // bucket placements per asset id (+ deterministic silhouette variant for trees)
   type Inst = { p: typeof placements[number]; s: number; yaw: number; variant: number };
@@ -331,6 +366,8 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
     const r3 = hash2(i * 7 + 19, i * 4 + 23);
     const r4 = hash2(i * 11 + 3, i * 6 + 5);
     const id = pickAsset(r1);
+    // Start-zone large plants are neither flagged (above) nor rendered → base stays buildable.
+    if (vegAssetBlocks(id) && nearStart(map, placements[i].tx, placements[i].tz)) continue;
     const s = 0.85 + r2 * 0.30;            // ±15% scale jitter
     const yaw = r3 * Math.PI * 2;          // full random Y rotation
     const variant = Math.min(2, (r4 * 3) | 0); // 0 sparse / 1 medium / 2 dense

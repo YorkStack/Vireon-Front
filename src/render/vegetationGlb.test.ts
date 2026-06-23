@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import * as THREE from 'three';
-import { vegZoneOf, enhanceVegMaterial } from './vegetationGlb';
+import { vegZoneOf, enhanceVegMaterial, vegAssetBlocks, blockedVegetationTiles } from './vegetationGlb';
+import { GameMap, F_TREE } from '../map/map';
 
 // Guards the name-based vegetation material classification against the real
 // v3.1 GLB material names (see VEG_V31_ASSETS).
@@ -82,5 +83,44 @@ describe('enhanceVegMaterial — conifer needle colour preservation', () => {
     const m = new THREE.MeshStandardMaterial({ name: 'bark_pine', color: 0x5f422a });
     enhanceVegMaterial(m, 'forest_conifer_medium');
     expect(m.color.getHex()).toBe(0x6b4a2c);   // standard woody brown
+  });
+});
+
+// Large vegetation flags its gameplay tile F_TREE → unbuildable, but still walkable.
+describe('vegetation build-blocking (F_TREE)', () => {
+  it('classifies large plants as build-blocking, small ground cover as not', () => {
+    for (const id of ['forest_canopy_tree', 'highland_canopy_tree', 'coastal_coral_tree',
+      'desert_palm', 'desert_saguaro', 'desert_crystal_cactus',
+      'forest_conifer_small', 'forest_conifer_tall', 'forest_conifer_broad']) {
+      expect(vegAssetBlocks(id), id).toBe(true);
+    }
+    for (const id of ['forest_hiveshroom', 'oasis_glowshroom', 'highland_luminous_fern',
+      'desert_barrel', 'desert_opuntia']) {
+      expect(vegAssetBlocks(id), id).toBe(false);
+    }
+  });
+
+  it('flags only tiles outside the start-clear radius, and leaves them walkable', () => {
+    const map = new GameMap(48, 12345);
+    const tiles = blockedVegetationTiles(map, 285);
+    expect(tiles.length).toBeGreaterThan(0);
+    const R = 7; // START_CLEAR_R
+    for (const t of tiles) {
+      const tx = t % map.size, tz = Math.floor(t / map.size);
+      const dP = Math.hypot(tx - map.playerStart.tx, tz - map.playerStart.tz);
+      const dE = Math.hypot(tx - map.enemyStart.tx, tz - map.enemyStart.tz);
+      expect(dP, `tile ${tx},${tz} too close to player start`).toBeGreaterThan(R);
+      expect(dE, `tile ${tx},${tz} too close to enemy start`).toBeGreaterThan(R);
+    }
+    // Flagging a tree tile keeps it WALKABLE (units drive through; only building blocked).
+    const t0 = tiles[0]; const tx0 = t0 % map.size, tz0 = Math.floor(t0 / map.size);
+    map.flags[t0] |= F_TREE;
+    expect(map.isWalkable(tx0, tz0)).toBe(true);
+  });
+
+  it('is deterministic for a given (map seed, count)', () => {
+    const a = blockedVegetationTiles(new GameMap(48, 999), 285);
+    const b = blockedVegetationTiles(new GameMap(48, 999), 285);
+    expect(a).toEqual(b);
   });
 });

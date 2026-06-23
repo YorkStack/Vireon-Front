@@ -34,7 +34,10 @@ export function triplanarWeights(nx: number, ny: number, nz: number): [number, n
   return [ax / sum, ay / sum, az / sum];
 }
 
-export interface VegPlacement { x: number; y: number; z: number; w: number; h: number; tex: number; }
+// `tx,tz` = the un-warped SOURCE tile the instance was scattered from (the visual
+// x,z are warped). Consumers that need the gameplay-grid tile (e.g. flagging tree
+// tiles as unbuildable) must use tx,tz, not floor(x/TILE).
+export interface VegPlacement { x: number; y: number; z: number; w: number; h: number; tex: number; tx: number; tz: number; }
 
 export interface ScatterOpts {
   count: number; salt: number; valleyBias: boolean;
@@ -66,7 +69,7 @@ export function scatterVegInstances(map: GameMap, o: ScatterOpts): VegPlacement[
     const [x, z] = warpXZ(ox, oz);
     const h = o.hMin + (o.hMax - o.hMin) * r2;
     const tex = Math.min(o.texCount - 1, (hash2(tx * 3 + guard, tz * 7) * o.texCount) | 0);
-    out.push({ x, y: y + o.yOff, z, w: h * o.wRatio, h, tex });
+    out.push({ x, y: y + o.yOff, z, w: h * o.wRatio, h, tex, tx, tz });
   }
   return out;
 }

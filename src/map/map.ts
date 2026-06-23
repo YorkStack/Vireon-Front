@@ -9,6 +9,10 @@ export const F_BUILDING = 2;
 export const F_RAMP = 4;
 export const F_NARROW = 8; // infantry-only ramp
 export const F_CRYSTAL = 16;
+// Tile carries blocking (large) vegetation: NOT buildable (canPlace rejects any
+// non-zero flag), but still walkable — deliberately excluded from the isWalkable
+// mask so units drive through trees. Set by the vegetation layer at build time.
+export const F_TREE = 32;
 
 export interface CrystalNode {
   id: number;
