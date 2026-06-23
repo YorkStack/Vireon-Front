@@ -14,6 +14,8 @@ export interface HudCallbacks {
   holdSel: () => void;     // hold position
   returnHarvesters: () => void; // send loaded harvesters to a dropoff now
   isArmed: () => boolean;  // attack-move currently armed?
+  armClear: () => void;    // toggle clear-vegetation targeting (pioneer)
+  isClearArmed: () => boolean; // clear-vegetation currently armed?
 }
 
 const BUILD_ORDER = ['nexus', 'spire', 'refinery', 'barracks', 'foundry', 'wall', 'cannon', 'lance'];
@@ -137,9 +139,12 @@ export class Hud {
 
     // Mac-friendly command buttons (work without right-click / keyboard).
     const anyWeapon = units.some(u => u.def.weapon);
+    const anyClear = units.some(u => u.def.clears);
     const armed = this.cb.isArmed();
+    const clearArmed = this.cb.isClearArmed();
     html += `<div class="cmd-actions">
       ${anyWeapon ? `<button class="cmd-act${armed ? ' active' : ''}" data-act="attack" title="Angriffsbewegung — dann Ziel/Boden anklicken (Taste A)">⚔ Angriff</button>` : ''}
+      ${anyClear ? `<button class="cmd-act${clearArmed ? ' active' : ''}" data-act="clear" title="Vegetation roden — dann einen Baum anklicken (ESC bricht ab)">🌲 Roden</button>` : ''}
       ${loaded.length ? `<button class="cmd-act" data-act="return" title="Beladene Harvester sofort zur Raffinerie schicken">◈ Abladen</button>` : ''}
       <button class="cmd-act" data-act="stop" title="Stoppen (Taste S)">⛔ Stopp</button>
       <button class="cmd-act" data-act="hold" title="Position halten">✋ Halten</button>
@@ -236,6 +241,7 @@ export class Hud {
       btn.addEventListener('click', () => {
         const a = btn.dataset.act;
         if (a === 'attack') this.cb.armAttack();
+        else if (a === 'clear') this.cb.armClear();
         else if (a === 'stop') this.cb.stopSel();
         else if (a === 'hold') this.cb.holdSel();
         else if (a === 'return') this.cb.returnHarvesters();

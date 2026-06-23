@@ -8,6 +8,7 @@ import type { SceneRig } from '../render/scene';
 import type { Effects } from '../render/effects';
 import { makeGhost } from '../render/models';
 import { toast } from './screens';
+import { findClearTargetTile } from './clearTarget';
 
 type PickResult =
   | { kind: 'unit'; unit: Unit }
@@ -37,6 +38,8 @@ export class InputController {
   private enabled = true;
   /** Attack-move is "armed": the next command click issues an attack-move, then disarms. */
   attackArmed = false;
+  /** Clear-vegetation is "armed": the next click targets a tree tile for a pioneer. */
+  clearArmed = false;
   onSelectionChanged: () => void = () => {};
   openPause: () => void = () => {};
 
@@ -107,6 +110,7 @@ export class InputController {
     this.selectedUnits = [];
     this.selectedBuilding = null;
     this.setAttackArmed(false);
+    this.setClearArmed(false);
   }
 
   private selectUnits(units: Unit[]) {
@@ -205,6 +209,21 @@ export class InputController {
       return;
     }
 
+    // Armed clear-vegetation: the next click targets a tree tile (warp-tolerant).
+    // Stays armed on a miss so the player can retry; ESC cancels.
+    if (this.clearArmed && haveSel) {
+      const g = this.groundPoint(e.clientX, e.clientY);
+      const t = g && findClearTargetTile(this.world.map, g[0], g[1], true);
+      if (t && this.orderClearForSelected(t[0], t[1]) > 0) {
+        const [wx, wz] = this.world.map.tileToWorld(t[0], t[1]);
+        this.markerAt(wx, wz, 'move');
+        this.setClearArmed(false);
+      } else {
+        toast('Kein Baum dort – einen Baum anklicken (ESC bricht ab)');
+      }
+      return;
+    }
+
     // Own units/buildings are SELECTION targets (selection always wins for them)...
     if (hit?.kind === 'unit' && hit.unit.team === 0) { this.selectUnits([hit.unit]); return; }
     if (hit?.kind === 'building' && hit.building.team === 0) {
@@ -241,6 +260,7 @@ export class InputController {
     if (!this.enabled) return;
     if (k === 'escape') {
       if (this.attackArmed) this.setAttackArmed(false);
+      else if (this.clearArmed) this.setClearArmed(false);
       else if (this.placement) this.cancelPlacement();
       else this.openPause();
     }
@@ -319,6 +339,17 @@ export class InputController {
       return;
     }
     if (hit.kind === 'ground') {
+      // Pioneer convenience: a plain click on an actual tree tile clears it.
+      // Exact tile only (no fuzzy) so ordinary moves near trees aren't hijacked;
+      // attack-move intent is respected (skip when armed).
+      if (!attackMod && this.selectedUnits.some(u => u.def.clears)) {
+        const t = findClearTargetTile(this.world.map, hit.x, hit.z, false);
+        if (t && this.orderClearForSelected(t[0], t[1]) > 0) {
+          const [wx, wz] = this.world.map.tileToWorld(t[0], t[1]);
+          this.markerAt(wx, wz, 'move');
+          return;
+        }
+      }
       this.moveFormation(this.selectedUnits, hit.x, hit.z, attackMod);
       this.markerAt(hit.x, hit.z, attackMod ? 'attack' : 'move');
     }
@@ -348,6 +379,34 @@ export class InputController {
 
   /** Toggle attack-move arming (on-screen ⚔ button / A key). */
   armAttackMove() { this.setAttackArmed(!this.attackArmed); }
+
+  /** Arm/disarm clear-vegetation targeting; crosshair cursor + hint while armed.
+   *  Mutually exclusive with attack-move. Needs a clear-capable (pioneer) unit. */
+  setClearArmed(v: boolean) {
+    const canClear = this.selectedUnits.some(u => u.def.clears);
+    const next = v && canClear;
+    if (v && !canClear) { toast('Kein Pioneer ausgewählt'); return; } // invalid selection feedback
+    if (next === this.clearArmed) { if (!next && this.canvas) this.canvas.style.cursor = ''; return; }
+    if (next) this.setAttackArmed(false); // don't hold both modes at once
+    this.clearArmed = next;
+    if (this.canvas) this.canvas.style.cursor = next ? 'crosshair' : '';
+    if (next) toast('Vegetation roden: Baum anklicken (ESC bricht ab)');
+    this.onSelectionChanged();
+  }
+
+  /** Toggle clear-vegetation arming (on-screen 🌲 button). */
+  armClearVegetation() { this.setClearArmed(!this.clearArmed); }
+
+  /** Issue clearVegetation to every selected clear-capable (pioneer) unit for the
+   *  given tile. The sim's no-double-pay guard means only one earns the reward.
+   *  Returns how many pioneers accepted the order. */
+  private orderClearForSelected(tx: number, tz: number): number {
+    let n = 0;
+    for (const u of this.selectedUnits) {
+      if (u.def.clears && this.world.orderClearVegetation(u, tx, tz)) n++;
+    }
+    return n;
+  }
 
   /** Stop selected units (on-screen ⛔ button / S key). */
   stopSelected() { for (const u of this.selectedUnits) this.world.stop(u); }

@@ -145,6 +145,8 @@ export class Game {
       holdSel: () => this.input.holdSelected(),
       returnHarvesters: () => this.input.returnLoadedHarvesters(),
       isArmed: () => this.input.attackArmed,
+      armClear: () => this.input.armClearVegetation(),
+      isClearArmed: () => this.input.clearArmed,
     });
     this.input.onSelectionChanged = () => this.hud.renderPanel();
 
