@@ -216,6 +216,16 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
     visionRange: 10, autoAcquireRange: 10, pursuitRange: 16,
     targetPriority: ['vehicles', 'structures', 'turrets'], ...COMBAT_AI,
   }),
+  pioneer: T({
+    id: 'pioneer', displayName: 'Pioneer', unitClass: 'vehicle', role: 'engineer',
+    techTier: 1, builtAt: 'foundry', buildTime: 16, cost: 700, supplyCost: 0, prerequisites: [],
+    description: 'Forestry utility vehicle. Reclaims build space by clearing vegetation. Unarmed.',
+    defaultMovementType: 'tracked', speed: 5.0, collisionRadius: 0.85, ...GROUND_MOBILITY,
+    maxHitPoints: 360, armorClass: 'heavy', armorValue: 0, resistances: res('heavy'), ...NO_SHIELD,
+    primaryWeapon: null, secondaryWeapon: null,
+    visionRange: 8, autoAcquireRange: 8, pursuitRange: 12.8,
+    targetPriority: [], ...PASSIVE_AI,
+  }),
   // ====================== infantry ======================
   lancer: T({
     id: 'lancer', displayName: 'Lancer', unitClass: 'infantry', role: 'rifle',
@@ -252,7 +262,7 @@ export const UNIT_CLASS_TEMPLATES: Record<string, UnitClassTemplate> = {
 /** Vehicle classes that get per-faction variants (order = codex display + balance audit). */
 export const VEHICLE_CLASS_IDS = [
   'harvester', 'builder', 'scout', 'lightAttack',
-  'mediumTank', 'heavyTank', 'antiAir', 'support', 'warden',
+  'mediumTank', 'heavyTank', 'antiAir', 'support', 'warden', 'pioneer',
 ] as const;
 export type VehicleClassId = typeof VEHICLE_CLASS_IDS[number];
 
