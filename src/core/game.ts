@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { GameMap, TILE } from '../map/map';
 import { buildTerrain } from '../render/terrain';
+import { hideVegetationAtTile } from '../render/vegetationGlb';
 import { SceneRig } from '../render/scene';
 import { Effects } from '../render/effects';
 import { World, Unit, Building } from '../sim/world';
@@ -92,6 +93,10 @@ export class Game {
     }
 
     this.world = new World(this.map, this.rig.scene, this.effects, playerFaction, enemyFaction, built.crystalGroups);
+    // Slice 2C: when a pioneer clears a tile's F_TREE, hide its blocking vegetation
+    // visual (render-only; the sim stays free of Three/render imports).
+    const vegGroup = this.rig.scene.getObjectByName('vegetation-glb-v31');
+    this.world.onVegetationCleared = (tx, tz) => hideVegetationAtTile(vegGroup, tx, tz);
     this.world.teams[0].credits = mission.startingResources;
     this.world.teams[1].credits = mission.enemyStartingResources;
     this.world.teams[1].incomeMul = difficulty.aiIncomeMul; // AI economy handicap by difficulty

@@ -201,6 +201,10 @@ export class World {
   teams: [TeamState, TeamState];
   crystalGroups: Map<number, THREE.Group>;
   onDeath: ((e: Unit | Building) => void)[] = [];
+  /** Render hook: fired once when a tile's blocking vegetation is cleared by a
+   *  pioneer, so the render layer can hide the visual. Sim stays render-free —
+   *  the game wires this to hideVegetationAtTile; tests can stub it. */
+  onVegetationCleared: ((tx: number, tz: number) => void) | null = null;
   time = 0;
   private grid = new Map<number, Unit[]>(); // spatial hash, cell = 4 world units
   private camQuat = new THREE.Quaternion();
@@ -757,6 +761,7 @@ export class World {
               this.map.flags[idx] &= ~F_TREE; // tile becomes buildable; still walkable
               this.teams[u.team].credits += PIONEER_CLEAR_REWARD; // flat, no multipliers
               this.teams[u.team].stats.resourcesCollected += PIONEER_CLEAR_REWARD; // observational
+              this.onVegetationCleared?.(o.tx, o.tz); // hide the visual (render hook) — once
             }
             this.stop(u);
           }

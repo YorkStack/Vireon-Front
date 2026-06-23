@@ -345,9 +345,21 @@ export function blockedVegetationTiles(map: GameMap, count: number): number[] {
  * (map, count). Returns a Group ready to drop into the terrain props group.
  * Visual-only: no collision / selection / health / pathfinding / blocking.
  */
+/** Stable per-tile key for the runtime tile→instance map (independent of map size). */
+export function vegTileKey(tx: number, tz: number): string { return `${tx},${tz}`; }
+
+/** One InstancedMesh instance that belongs to a logical tile (for runtime hiding). */
+interface VegInstanceRef { mesh: THREE.InstancedMesh; index: number; }
+
 export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.Group {
   const group = new THREE.Group();
   group.name = 'vegetation-glb-v31';
+  // Runtime hide bookkeeping: logical tile → every blocking-vegetation instance on
+  // it (across all primitives/variants). Populated below for blocking assets only;
+  // pioneers clear F_TREE then call hideVegetationAtTile (Slice 2C).
+  const tileToInstances = new Map<string, VegInstanceRef[]>();
+  group.userData.tileToInstances = tileToInstances;
+  group.userData.hiddenTiles = new Set<string>();
   if (!templates.size || count <= 0) return group;
 
   // Reuse the shipping scatter for grounded, warp-aligned positions (same logic
@@ -378,7 +390,9 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
   const world = new THREE.Matrix4(), place = new THREE.Matrix4();
   const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
   // One InstancedMesh for `prim` over `entries` (matrices baked once, no per-frame work).
-  const addMesh = (prim: VegPrim, entries: Inst[], baseScale: number, name: string) => {
+  // When `record` (blocking vegetation), index every instance under its logical tile
+  // so the pioneer clear hook can hide it later.
+  const addMesh = (prim: VegPrim, entries: Inst[], baseScale: number, name: string, record: boolean) => {
     const im = new THREE.InstancedMesh(prim.geo, prim.mat, entries.length);
     im.castShadow = true; im.receiveShadow = true;
     im.name = name;
@@ -390,6 +404,10 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
       place.compose(pos, q, sc);
       world.multiplyMatrices(place, prim.nodeMat); // bake GLB-internal node xform
       im.setMatrixAt(i, world);
+      if (record) {
+        const key = vegTileKey(p.tx, p.tz);
+        (tileToInstances.get(key) ?? tileToInstances.set(key, []).get(key)!).push({ mesh: im, index: i });
+      }
     }
     im.instanceMatrix.needsUpdate = true;
     group.add(im);
@@ -397,21 +415,51 @@ export function buildVegetationGlbInstances(map: GameMap, count: number): THREE.
   for (const [id, list] of byAsset) {
     const tmpl = templates.get(id);
     if (!tmpl || !list.length) continue;
+    const blocks = vegAssetBlocks(id); // only blocking veg (F_TREE) is hideable
     // base GLB prims — instanced over the whole asset bucket (hidden nodes/glow skipped)
     for (const prim of tmpl.prims) {
       if (prim.mat.userData.vegHide) continue;
-      addMesh(prim, list, tmpl.baseScale, `veg-${id}`);
+      addMesh(prim, list, tmpl.baseScale, `veg-${id}`, blocks);
     }
     // per-silhouette-variant augmentation (trees): each variant over its sub-bucket
     if (tmpl.variants) {
       for (let v = 0; v < tmpl.variants.length; v++) {
         const sub = list.filter((e) => e.variant === v);
         if (!sub.length) continue;
-        for (const prim of tmpl.variants[v]) addMesh(prim, sub, tmpl.baseScale, `veg-${id}-v${v}`);
+        for (const prim of tmpl.variants[v]) addMesh(prim, sub, tmpl.baseScale, `veg-${id}-v${v}`, blocks);
       }
     }
   }
   return group;
+}
+
+// Collapse an instance to a zero-size point — invisible, no geometry rebuild.
+const VEG_ZERO_MATRIX = new THREE.Matrix4().makeScale(0, 0, 0);
+
+/**
+ * Visually remove the blocking vegetation on a logical tile by collapsing all of
+ * its instances to zero size (Slice 2C). Pairs with the sim's F_TREE clear — this
+ * is purely visual, touches no gameplay state. Idempotent (repeat calls no-op),
+ * and safe if `group` is null/undefined or the tile carries no recorded instances.
+ * Returns true if something was newly hidden, false otherwise.
+ */
+export function hideVegetationAtTile(group: THREE.Object3D | null | undefined, tx: number, tz: number): boolean {
+  const ud = group?.userData as
+    | { tileToInstances?: Map<string, VegInstanceRef[]>; hiddenTiles?: Set<string> }
+    | undefined;
+  const map = ud?.tileToInstances;
+  if (!map) return false;
+  const key = vegTileKey(tx, tz);
+  const refs = map.get(key);
+  if (!refs || !refs.length) return false;
+  const hidden = ud!.hiddenTiles ?? (ud!.hiddenTiles = new Set<string>());
+  if (hidden.has(key)) return false; // already hidden → idempotent no-op
+  for (const { mesh, index } of refs) {
+    mesh.setMatrixAt(index, VEG_ZERO_MATRIX);
+    mesh.instanceMatrix.needsUpdate = true;
+  }
+  hidden.add(key);
+  return true;
 }
 
 /**

@@ -116,6 +116,34 @@ describe('pioneer clearVegetation order (Slice 2B — headless sim)', () => {
     expect(map.isWalkable(tx, tz)).toBe(true);
   });
 
+  it('fires onVegetationCleared exactly once on a successful clear', () => {
+    const { world, map } = makeWorld();
+    const [tx, tz] = openTile(map);
+    map.flags[map.idx(tx, tz)] |= F_TREE;
+    const calls: [number, number][] = [];
+    world.onVegetationCleared = (x, z) => calls.push([x, z]);
+    const pio = spawnAtTile(world, 'pioneer', tx, tz, map);
+    world.orderClearVegetation(pio, tx, tz);
+    run(world, 4);
+    expect(calls).toEqual([[tx, tz]]); // exactly one call, with the cleared tile
+  });
+
+  it('does not fire the render hook when the tile was already cleared', () => {
+    const { world, map } = makeWorld();
+    const [tx, tz] = openTile(map);
+    const idx = map.idx(tx, tz);
+    map.flags[idx] |= F_TREE;
+    let calls = 0;
+    world.onVegetationCleared = () => { calls++; };
+    const pio = spawnAtTile(world, 'pioneer', tx, tz, map);
+    world.orderClearVegetation(pio, tx, tz);
+    run(world, 1);
+    map.flags[idx] &= ~F_TREE; // someone else cleared it first
+    run(world, 4);
+    expect(calls).toBe(0); // no reward, no visual hide
+    expect(world.teams[0].credits).toBe(0);
+  });
+
   it('exposes the tuned clear range and time on the resolved pioneer def', () => {
     const { world, map } = makeWorld();
     const [tx, tz] = openTile(map);
