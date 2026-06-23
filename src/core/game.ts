@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { GameMap, TILE } from '../map/map';
 import { buildTerrain } from '../render/terrain';
 import { hideVegetationAtTile } from '../render/vegetationGlb';
+import { warpXZ } from '../render/terrainNoise';
 import { SceneRig } from '../render/scene';
 import { Effects } from '../render/effects';
 import { World, Unit, Building } from '../sim/world';
@@ -93,10 +94,17 @@ export class Game {
     }
 
     this.world = new World(this.map, this.rig.scene, this.effects, playerFaction, enemyFaction, built.crystalGroups);
-    // Slice 2C: when a pioneer clears a tile's F_TREE, hide its blocking vegetation
-    // visual (render-only; the sim stays free of Three/render imports).
+    // Slice 2C/2D: when a pioneer clears a tile's F_TREE, hide its blocking
+    // vegetation visual AND kick off a short wood-splinter burst at the stump.
+    // Render-only; the sim stays free of Three/render imports. The vegetation
+    // visual rides the terrain warp, so spawn the chips at the warped tile centre.
     const vegGroup = this.rig.scene.getObjectByName('vegetation-glb-v31');
-    this.world.onVegetationCleared = (tx, tz) => hideVegetationAtTile(vegGroup, tx, tz);
+    this.world.onVegetationCleared = (tx, tz) => {
+      hideVegetationAtTile(vegGroup, tx, tz);
+      const [cx, cz] = this.map.tileToWorld(tx, tz);
+      const [wx, wz] = warpXZ(cx, cz);
+      this.effects.woodChips(new THREE.Vector3(wx, this.map.groundHeight(wx, wz), wz));
+    };
     this.world.teams[0].credits = mission.startingResources;
     this.world.teams[1].credits = mission.enemyStartingResources;
     this.world.teams[1].incomeMul = difficulty.aiIncomeMul; // AI economy handicap by difficulty

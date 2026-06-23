@@ -22,6 +22,44 @@ interface Fx {
 
 const V = new THREE.Vector3();
 
+// ── Wood splinter burst (pioneer tree clearing) ───────────────────────────────
+// Brown shades from dark bark → reddish bark → medium wood → light tan. Index is
+// the material slot in Effects.chipMats.
+export const WOOD_CHIP_COLORS = ['#3a2616', '#5a3320', '#6b4a2c', '#9c7a48'] as const;
+
+/** One spawned wood chip: local position, velocity, tumble spin, scale, colour slot. */
+export interface WoodChipSpec {
+  px: number; py: number; pz: number;   // start position (local to the burst origin)
+  vx: number; vy: number; vz: number;   // initial velocity (m/s); vy>0 = upward kick
+  sx: number; sy: number; sz: number;   // tumble angular velocity (rad/s)
+  scale: number;
+  mat: number;                          // index into WOOD_CHIP_COLORS
+}
+
+/**
+ * Deterministic-for-a-given-rng init of a wood-chip burst: each chip gets a small
+ * upward kick, an outward radial velocity, a random tumble and a brown colour
+ * slot. Pure (no THREE / no scene) so the spread can be unit-tested. `rng`
+ * defaults to Math.random; pass a seeded rng for reproducible data.
+ */
+export function woodChipParticleInit(count: number, rng: () => number = Math.random): WoodChipSpec[] {
+  const out: WoodChipSpec[] = [];
+  for (let i = 0; i < count; i++) {
+    const ang = rng() * Math.PI * 2;
+    const outward = 1.4 + rng() * 2.2;        // radial speed (outward spread)
+    out.push({
+      px: 0, py: 0.25 + rng() * 0.3, pz: 0,   // start just above the stump
+      vx: Math.cos(ang) * outward,
+      vy: 2.6 + rng() * 1.8,                   // upward kick (always positive)
+      vz: Math.sin(ang) * outward,
+      sx: (rng() - 0.5) * 12, sy: (rng() - 0.5) * 12, sz: (rng() - 0.5) * 12,
+      scale: 0.7 + rng() * 0.8,
+      mat: i % WOOD_CHIP_COLORS.length,        // cycle the brown palette
+    });
+  }
+  return out;
+}
+
 export class Effects {
   scene: THREE.Scene;
   active: Fx[] = [];
@@ -41,6 +79,18 @@ export class Effects {
   private flashGeo = new THREE.SphereGeometry(0.22, 6, 4);
   private ringGeo = (() => { const g = new THREE.RingGeometry(0.6, 0.78, 24); g.rotateX(-Math.PI / 2); return g; })();
   private scorchGeo = (() => { const g = new THREE.CircleGeometry(1, 20); g.rotateX(-Math.PI / 2); return g; })();
+
+  // Small flat triangular splinter (a thin wedge ~0.14 across), shared by every
+  // wood chip; DoubleSide so it stays visible while tumbling.
+  private chipGeo = (() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+      0, 0, 0.11, -0.07, 0, -0.06, 0.07, 0, -0.06,
+    ]), 3));
+    g.computeVertexNormals();
+    return g;
+  })();
+  private chipMats = WOOD_CHIP_COLORS.map(c => new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide }));
 
   private bulletMat = new THREE.MeshBasicMaterial({ color: '#ffd98a' });
   private shellMat = new THREE.MeshBasicMaterial({ color: '#ffb060' });
@@ -209,6 +259,41 @@ export class Effects {
     m.scale.setScalar(0.6);
     this.add(m, 0.12, (fx) => {
       (fx.mesh as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>).material.opacity = 0.9 * (fx.ttl / fx.life);
+    });
+  }
+
+  /**
+   * Short brown wood-splinter burst when a pioneer fells a tree. A single Group of
+   * `count` tiny triangle chips, each kicked up + outward, pulled down by gravity,
+   * tumbling; chips vanish on ground contact and the whole burst clears at ttl.
+   * Visual-only — no gameplay/collision. `at` is the stump position (ground level).
+   */
+  woodChips(at: THREE.Vector3, count = 14) {
+    const group = new THREE.Group();
+    group.position.copy(at);
+    const specs = woodChipParticleInit(count);
+    const parts = specs.map((s) => {
+      const m = new THREE.Mesh(this.chipGeo, this.chipMats[s.mat]);
+      m.position.set(s.px, s.py, s.pz);
+      m.rotation.set(Math.random() * 6.28, Math.random() * 6.28, Math.random() * 6.28);
+      m.scale.setScalar(s.scale);
+      group.add(m);
+      return { mesh: m, vx: s.vx, vy: s.vy, vz: s.vz, sx: s.sx, sy: s.sy, sz: s.sz, landed: false };
+    });
+    const G = 11; // gravity (m/s²) — chips arc and drop quickly
+    this.add(group, 1.6, (_fx, dt) => {
+      for (const p of parts) {
+        if (p.landed) continue;
+        p.vy -= G * dt;
+        p.vx *= 0.98; p.vz *= 0.98; // mild air drag so they don't slide far
+        p.mesh.position.x += p.vx * dt;
+        p.mesh.position.y += p.vy * dt;
+        p.mesh.position.z += p.vz * dt;
+        p.mesh.rotation.x += p.sx * dt;
+        p.mesh.rotation.y += p.sy * dt;
+        p.mesh.rotation.z += p.sz * dt;
+        if (p.mesh.position.y <= 0) { p.mesh.position.y = 0; p.mesh.visible = false; p.landed = true; }
+      }
     });
   }
 
